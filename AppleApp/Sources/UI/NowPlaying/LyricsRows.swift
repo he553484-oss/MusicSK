@@ -28,54 +28,13 @@ struct LyricsClock {
 
     /// The lyric clock in milliseconds: the transport, `offsetMs` behind.
     func lyricMs(at date: Date, offsetMs: Int32) -> Int64 {
-        max(0, Int64((pausedPosition ?? read(date)) * 1000) - Int64(offsetMs))
+        LyricPlaybackTime.milliseconds(at: pausedPosition ?? read(date), offsetMs: offsetMs)
     }
 }
 
-/// Which lines are being sung, the line the list follows, and the break that is
-/// playing. Equatable so the ticker only reports a change.
-struct LyricFocusState: Equatable {
-    var document: ObjectIdentifier?
-    var active: [Int] = []
-    var lead = 0
-    var gap: Int?
-}
-
-/// The shared module's [LyricFocus] over plain arrays.
-///
-/// The same rules, line for line (`activeRows`, `scrollLead`, `leadRow`), but
-/// read from arrays built once per document instead of from a bridged Kotlin
-/// list on every frame. `LyricFocusTest` in the shared module is still the
-/// specification; change both together.
-struct LyricTimeline {
-    private let starts: [Int64]
-    private let ends: [Int64]
-    private let holds: [Bool]
-    private let gaps: [Bool]
-    let synced: Bool
-
-    static let scrollLeadMinMs: Int64 = 350
-    static let scrollLeadMaxMs: Int64 = 500
-
-    init(lines: [LyricLineDto], synced: Bool) {
-        var starts: [Int64] = [], ends: [Int64] = [], holds: [Bool] = [], gaps: [Bool] = []
-        starts.reserveCapacity(lines.count)
-        ends.reserveCapacity(lines.count)
-        holds.reserveCapacity(lines.count)
-        gaps.reserveCapacity(lines.count)
-        starts = Self.startTimes(lines)
-        for line in lines {
-            ends.append(line.endMs)
-            holds.append(line.hasKnownEnd || line.background?.hasKnownEnd == true)
-            gaps.append(line.isGap)
-        }
-        self.starts = starts
-        self.ends = ends
-        self.holds = holds
-        self.gaps = gaps
-        self.synced = synced
-    }
-
+/// Adapts provider DTOs to the same timeline used by the transcript and the
+/// player snippet.
+private enum LyricTimeline {
     /// `LyricFocus.startTimes`: an untimed line in a partly timed lyric sits
     /// between the timed lines around it (a few seconds a line past the last
     /// one) instead of reading as "started at zero", which made the last
@@ -118,50 +77,6 @@ struct LyricTimeline {
         return line.timeMs
     }
 
-    private func lastStarted(by ms: Int64, skippingGaps: Bool = false) -> Int {
-        var index = starts.count - 1
-        while index >= 0 {
-            if starts[index] <= ms, !(skippingGaps && gaps[index]) { return index }
-            index -= 1
-        }
-        return -1
-    }
-
-    func focus(at ms: Int64, document: ObjectIdentifier?) -> LyricFocusState {
-        guard synced, !starts.isEmpty else { return LyricFocusState(document: document) }
-        let latest = lastStarted(by: ms)
-        var active: [Int] = []
-        if latest >= 0 {
-            for index in 0...latest where !gaps[index] {
-                if index == latest || (holds[index] && starts[index] <= ms && ms < ends[index]) {
-                    active.append(index)
-                }
-            }
-        }
-        let lead: Int
-        if let first = active.first {
-            lead = first
-        } else {
-            lead = lastStarted(by: ms + scrollLead(latest: latest), skippingGaps: true)
-        }
-        return LyricFocusState(
-            document: document,
-            active: active,
-            lead: lead < 0 ? 0 : min(lead, starts.count - 1),
-            gap: latest >= 0 && gaps[latest] ? latest : nil
-        )
-    }
-
-    private func scrollLead(latest: Int) -> Int64 {
-        guard latest >= 0, latest + 1 < starts.count else { return Self.scrollLeadMinMs }
-        return min(max(starts[latest + 1] - ends[latest], Self.scrollLeadMinMs), Self.scrollLeadMaxMs)
-    }
-}
-
-struct LyricWord: Equatable {
-    let text: String
-    let startMs: Int64
-    let endMs: Int64
 }
 
 /// One lyric line, prepared for drawing: everything the row needs that does not
@@ -174,8 +89,7 @@ struct LyricRow: Identifiable {
     let timed: Bool
     let secondVoice: Bool
     let rightToLeft: Bool
-    /// What the row shows while it is not being sung. The words joined when
-    /// there are words, so the line does not reflow as it starts.
+    /// Provider text used in both the static and timed render paths.
     let leadText: String
     let backingText: String?
     /// The same words with their timings attached, for the sweep. Built once
@@ -191,7 +105,7 @@ struct LyricRow: Identifiable {
 final class PreparedLyrics {
     let identity: [ObjectIdentifier]
     let rows: [LyricRow]
-    let timeline: LyricTimeline
+    let timeline: LyricTimingIndex
     let synced: Bool
     /// Some line is sung from the other side, so both voices keep a lane.
     let duet: Bool
@@ -202,10 +116,13 @@ final class PreparedLyrics {
         identity = lines.map(ObjectIdentifier.init)
         let synced = LyricFocus.shared.isSynced(lines: lines)
         self.synced = synced
-        timeline = LyricTimeline(lines: lines, synced: synced)
         var rows: [LyricRow] = []
         rows.reserveCapacity(lines.count)
         let starts = LyricTimeline.startTimes(lines)
+        timeline = LyricTimingIndex(lines: zip(starts, lines).map { start, line in
+            LyricTimingLine(start: start, end: line.endMs,
+                            holds: line.hasKnownEnd || line.background?.hasKnownEnd == true, isGap: line.isGap)
+        }, synced: synced)
         for (index, line) in lines.enumerated() {
             rows.append(Self.row(line, at: index, synced: synced,
                                  until: index + 1 < lines.count ? starts[index + 1] : line.endMs))
@@ -239,18 +156,18 @@ final class PreparedLyrics {
             line.background?.words.contains(where: { $0.startMs > 0 || $0.endMs > 0 }) == true ||
             // A timed document's first line may really start at zero.
             (index == 0 && synced)
-        let shown = leadWords.isEmpty ? leadText : leadWords.map(\.text).joined(separator: " ")
-        let backingShown = backingWords.isEmpty ? backingText : backingWords.map(\.text).joined(separator: " ")
+        let shown = leadText.isEmpty ? leadWords.map(\.text).joined(separator: " ") : leadText
+        let backingShown = backingText ?? (backingWords.isEmpty ? nil : backingWords.map(\.text).joined(separator: " "))
         return LyricRow(
             id: index,
             isGap: line.isGap,
             timed: timed,
             secondVoice: line.alignment == .end,
-            rightToLeft: lyricTextIsRightToLeft(line.text),
+            rightToLeft: lyricTextIsRightToLeft(shown),
             leadText: shown.isEmpty ? "♪" : shown,
             backingText: backingShown.flatMap { $0.isEmpty ? nil : $0 },
-            leadSwept: swept(leadWords),
-            backingSwept: swept(backingWords),
+            leadSwept: swept(shown, words: leadWords),
+            backingSwept: backingShown.flatMap { swept($0, words: backingWords) },
             timeMs: line.timeMs,
             untilMs: until
         )
@@ -264,18 +181,20 @@ final class PreparedLyrics {
         )
     }
 
-    /// The words as one `Text`, each carrying its timing for the renderer.
-    private static func swept(_ words: [LyricWord]) -> Text? {
-        guard words.contains(where: { $0.endMs > $0.startMs }) else { return nil }
-        var text = Text(verbatim: "")
-        for (index, word) in words.enumerated() {
-            let literal = Text(verbatim: word.text)
-            let piece = word.endMs > word.startMs
-                ? literal.customAttribute(LyricWordTiming(startMs: word.startMs, endMs: word.endMs))
-                : literal
-            text = index == 0 ? piece : Text("\(text) \(piece)")
+    /// Build the attributed display text once, keeping the provider's wrapping
+    /// opportunities and marking only word spans with a real duration.
+    private static func swept(_ text: String, words: [LyricWord]) -> Text? {
+        let spans = LyricTextSpans.make(text: text, words: words)
+        guard spans.contains(where: { $0.timing != nil }) else { return nil }
+        var rendered = Text(verbatim: "")
+        for (index, span) in spans.enumerated() {
+            let literal = Text(verbatim: span.text)
+            let piece = span.timing.map {
+                literal.customAttribute(LyricWordTiming(startMs: $0.startMs, endMs: $0.endMs))
+            } ?? literal
+            rendered = index == 0 ? piece : Text("\(rendered)\(piece)")
         }
-        return text
+        return rendered
     }
 
     private static func isBackingToken(_ text: String) -> Bool {
@@ -328,8 +247,12 @@ enum LyricStyle {
     static let glowRadius: CGFloat = 6
     /// A note held at least this long glows; quick syllables never do.
     static let heldNoteMs: Int64 = 900
-    static let duetLane: CGFloat = 44
     static let rowInset: CGFloat = 10
+    static let headerTopPadding: CGFloat = 8
+    static let headerBottomPadding: CGFloat = 14
+    static var minimumHeaderHeight: CGFloat {
+        PlayerLayout.sleeveCollapsedSide + headerTopPadding + headerBottomPadding
+    }
 }
 
 // MARK: - Sweep
@@ -353,8 +276,9 @@ struct LyricSweepRenderer: TextRenderer {
     var reduceMotion: Bool
 
     var displayPadding: EdgeInsets {
-        let room = reduceMotion ? 0 : LyricStyle.glowRadius * 2
-        return EdgeInsets(top: room, leading: room, bottom: room, trailing: room)
+        let halo = glow && !reduceMotion ? LyricStyle.glowRadius * 2 : 0
+        let lift = reduceMotion ? 0 : LyricStyle.wordRise
+        return EdgeInsets(top: halo + lift, leading: halo, bottom: halo, trailing: halo)
     }
 
     func draw(layout: Text.Layout, in context: inout GraphicsContext) {
@@ -472,7 +396,7 @@ struct LyricRowView: View, Equatable {
     let active: Bool
     let look: LyricRowLook
     let fontSize: CGFloat
-    let duet: Bool
+    let geometry: LyricRowGeometry
     let picked: Bool
     let picking: Bool
     let tapMode: LyricTapMode
@@ -484,7 +408,7 @@ struct LyricRowView: View, Equatable {
 
     static func == (lhs: LyricRowView, rhs: LyricRowView) -> Bool {
         lhs.row.id == rhs.row.id && lhs.document == rhs.document && lhs.active == rhs.active &&
-            lhs.look == rhs.look && lhs.fontSize == rhs.fontSize && lhs.duet == rhs.duet &&
+            lhs.look == rhs.look && lhs.fontSize == rhs.fontSize && lhs.geometry == rhs.geometry &&
             lhs.picked == rhs.picked && lhs.picking == rhs.picking && lhs.tapMode == rhs.tapMode &&
             lhs.offsetMs == rhs.offsetMs && (!lhs.active ||
                 (lhs.clock.playing == rhs.clock.playing && lhs.clock.pausedPosition == rhs.clock.pausedPosition))
@@ -498,11 +422,12 @@ struct LyricRowView: View, Equatable {
                     .opacity(LyricStyle.backingAlpha)
             }
         }
-        .frame(maxWidth: .infinity, alignment: row.secondVoice ? .trailing : .leading)
-        .padding(.leading, duet && row.secondVoice ? LyricStyle.duetLane : 0)
-        .padding(.trailing, duet && !row.secondVoice ? LyricStyle.duetLane : 0)
+        .frame(width: geometry.textWidth, alignment: row.secondVoice ? .trailing : .leading)
+        .padding(.leading, row.secondVoice ? geometry.duetInset : 0)
+        .padding(.trailing, row.secondVoice ? 0 : geometry.duetInset)
         .padding(.vertical, LyricStyle.rowInset * 0.8)
-        .padding(.horizontal, LyricStyle.rowInset)
+        .padding(.horizontal, geometry.effectInset)
+        .frame(width: geometry.rowWidth, alignment: row.secondVoice ? .trailing : .leading)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(.white.opacity(picked ? 0.16 : (picking ? 0.05 : 0)))
@@ -510,37 +435,51 @@ struct LyricRowView: View, Equatable {
         .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .onTapGesture(perform: onTap)
         .environment(\.layoutDirection, row.rightToLeft ? .rightToLeft : .leftToRight)
-        .opacity(look.alpha)
-        .blur(radius: look.blur)
-        .clipped()
-        .animation(reduceMotion ? nil : LyricStyle.emphasis, value: look)
+        .animation(reduceMotion ? nil : LyricStyle.emphasis) { content in
+            content.opacity(look.alpha).blur(radius: look.blur)
+        }
     }
 
-    @ViewBuilder
     private func line(_ plain: String, swept: Text?, size: CGFloat, glow: Bool) -> some View {
-        Group {
-            if let swept {
-                // Keep the same attributed Text, wrapping and renderer when
-                // focus changes. Inactive rows do not run a frame clock.
-                TimelineView(.animation(
-                    minimumInterval: 1.0 / (reduceMotion ? 30.0 : 60.0),
-                    paused: !active || !clock.playing
-                )) { timeline in
-                    swept.textRenderer(LyricSweepRenderer(
-                        ms: active ? clock.lyricMs(at: timeline.date, offsetMs: offsetMs) : nil,
-                        glow: glow,
-                        reduceMotion: reduceMotion
-                    ))
-                }
-            } else {
-                Text(verbatim: plain)
+        LyricGlyphs(plain: plain, swept: swept, active: active, glow: glow, offsetMs: offsetMs, clock: clock)
+            .scaledFont(size: size, weight: .heavy, design: .default)
+            .foregroundStyle(.white)
+            .multilineTextAlignment(row.secondVoice ? .trailing : .leading)
+            .lineSpacing(size * 0.06)
+            .lineLimit(nil)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(width: geometry.textWidth, alignment: row.secondVoice ? .trailing : .leading)
+    }
+}
+
+/// Both lyric surfaces use the same word renderer and adjusted transport time.
+struct LyricGlyphs: View {
+    let plain: String
+    let swept: Text?
+    let active: Bool
+    let glow: Bool
+    let offsetMs: Int32
+    let clock: LyricsClock
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        if let swept {
+            // Inactive words use the same attributed glyph layout with no
+            // frame clock. Switching focus never switches text implementations.
+            TimelineView(.animation(
+                minimumInterval: 1.0 / (reduceMotion ? 30.0 : 60.0),
+                paused: !active || !clock.playing
+            )) { timeline in
+                swept.textRenderer(LyricSweepRenderer(
+                    ms: active ? clock.lyricMs(at: timeline.date, offsetMs: offsetMs) : nil,
+                    glow: glow,
+                    reduceMotion: reduceMotion
+                ))
             }
+        } else {
+            Text(verbatim: plain)
         }
-        .scaledFont(size: size, weight: .heavy, design: .default)
-        .foregroundStyle(.white)
-        .multilineTextAlignment(row.secondVoice ? .trailing : .leading)
-        .lineSpacing(size * 0.06)
-        .fixedSize(horizontal: false, vertical: true)
     }
 }
 

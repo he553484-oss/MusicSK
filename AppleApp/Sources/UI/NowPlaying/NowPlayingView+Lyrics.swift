@@ -16,19 +16,30 @@ extension NowPlayingView {
     /// Compact credits and return to artwork. This row stays accessible while
     /// the phone's transport fades out beneath the lyrics.
     var lyricsHeader: some View {
+        lyricsHeader(usesSharedArtwork: false)
+    }
+
+    func lyricsHeader(usesSharedArtwork: Bool) -> some View {
         HStack(spacing: 12) {
             Button {
                 Haptics.play(.tap)
                 pane = .main
             } label: {
-                SleeveArt(
-                    entry: controller.current,
-                    canvasURL: controller.canvasURL,
-                    fallbackURL: controller.canvasFallbackURL,
-                    isPlaying: controller.isPlaying,
-                    side: PlayerLayout.sleeveCollapsedSide
-                )
-                .id(controller.current?.id)
+                if usesSharedArtwork {
+                    Color.clear
+                        .frame(width: PlayerLayout.sleeveCollapsedSide, height: PlayerLayout.sleeveCollapsedSide)
+                        .anchorPreference(key: PlayerArtworkFrames.self, value: .bounds) { [.lyrics: $0] }
+                        .contentShape(Rectangle())
+                } else {
+                    SleeveArt(
+                        entry: controller.current,
+                        canvasURL: controller.canvasURL,
+                        fallbackURL: controller.canvasFallbackURL,
+                        isPlaying: controller.isPlaying,
+                        side: PlayerLayout.sleeveCollapsedSide
+                    )
+                    .id(controller.current?.id)
+                }
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Back to player")
@@ -68,109 +79,28 @@ extension NowPlayingView {
             }
         }
         .padding(.horizontal, 24)
-        .padding(.top, 8)
-        .padding(.bottom, 14)
+        .padding(.top, LyricStyle.headerTopPadding)
+        .padding(.bottom, LyricStyle.headerBottomPadding)
         .foregroundStyle(.white)
     }
 
-    /// One line of the lyric being sung now — or why there is not one.
-    ///
-    /// A button, because tapping it opens the lyrics. That is the whole
-    /// interaction: the strip is a preview of a pane rather than a display of its
-    /// own, and a line of text that looks like the lyrics but cannot be reached
-    /// by tapping it is the one part of the player a listener would try and fail.
+    /// A short readout of the currently sung verse and an entry to the transcript.
     @ViewBuilder
     var currentLyricStrip: some View {
-        // Settings › Lyrics on Player. Hidden, nothing holds its place, so the
-        // controls close up under the credits.
-        if showsLyricLine { lyricStripButton }
-    }
-
-    private var lyricStripButton: some View {
-        Button {
-            Haptics.play(.expand)
-            pane = pane == .lyrics ? .main : .lyrics
-        } label: {
-            Group {
-                if let line = currentLyric {
-                    // Upstream's strip carries a small chevron after the sung
-                    // line (PlayerLyrics.kt:2741): the strip previews a pane,
-                    // and the glyph is the part that says "this opens
-                    // something".
-                    HStack(spacing: 6) {
-                        Text(line)
-                            .foregroundStyle(.white.opacity(0.92))
-                            .multilineTextAlignment(currentLyricIsRightToLeft ? .trailing : .leading)
-                            .layoutPriority(1)
-                        Image(.bchChevronRight)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 9, height: 9)
-                            .foregroundStyle(.white.opacity(0.55))
-                            .scaleEffect(x: currentLyricIsRightToLeft ? -1 : 1)
-                            .accessibilityHidden(true)
-                    }
-                    .environment(
-                        \.layoutDirection,
-                        currentLyricIsRightToLeft ? .rightToLeft : .leftToRight
-                    )
-                } else if controller.lyricsLoading {
-                    Text("Looking for lyrics…")
-                        .foregroundStyle(.white.opacity(0.5))
-                } else if controller.lyricsUnavailable {
-                    Text("No lyrics for this track")
-                        .foregroundStyle(.white.opacity(0.5))
-                } else {
-                    // Nothing has been looked for yet — a track whose lyrics are
-                    // off, or a player with nothing loaded. Saying so is better
-                    // than an empty gap where the words would be.
-                    Text(controller.current == nil ? "" : "Lyrics off")
-                        .foregroundStyle(.white.opacity(0.4))
+        if showsLyricLine {
+            CompactLyricStrip(
+                lines: controller.displayedLyrics,
+                hasTrack: controller.current != nil,
+                loading: controller.lyricsLoading,
+                unavailable: controller.lyricsUnavailable,
+                clock: lyricsClock,
+                offsetMs: lyricsOffsetMs,
+                onOpen: {
+                    Haptics.play(.expand)
+                    pane = pane == .lyrics ? .main : .lyrics
                 }
-            }
-            .font(.subheadline.weight(.medium))
-            .lineLimit(1)
-            .truncationMode(.tail)
-            .frame(maxWidth: .infinity, alignment: .center)
-            .shadow(color: .black.opacity(0.45), radius: 5, y: 1)
-            .padding(.horizontal, 24)
-            .frame(height: 20)
-            .contentShape(Rectangle())
+            )
         }
-        .buttonStyle(.plain)
-        .disabled(currentLyric == nil)
-        .accessibilityLabel(
-            currentLyric.map { "Now singing: \($0)" }
-                ?? (controller.lyricsLoading ? "Looking for lyrics" : "No lyrics")
-        )
-        .accessibilityHint("Opens the lyrics")
-    }
-
-    /// The line at the playhead, from the same set the lyrics pane shows and on
-    /// the same adjusted clock — the offset applies to both, since they are
-    /// showing the same thing in two sizes.
-    private var currentLyric: String? {
-        CurrentLyricLine.line(
-            in: controller.displayedLyrics,
-            at: controller.position,
-            offsetMs: lyricsOffsetMs
-        )
-    }
-
-    /// Use the first strong letter's direction for the compact preview. Checking
-    /// script ranges rather than the device locale keeps mixed-language songs
-    /// readable when the app itself is set to another language.
-    private var currentLyricIsRightToLeft: Bool {
-        guard let currentLyric else { return false }
-        for scalar in currentLyric.unicodeScalars {
-            let value = scalar.value
-            guard CharacterSet.letters.contains(scalar) else { continue }
-            return (0x0590...0x08FF).contains(value) ||
-                (0xFB1D...0xFDFF).contains(value) ||
-                (0xFE70...0xFEFF).contains(value) ||
-                (0x1EE00...0x1EEFF).contains(value)
-        }
-        return false
     }
 
     func revealLyricsControls() {
@@ -181,5 +111,88 @@ extension NowPlayingView {
     func hideLyricsControls() {
         guard !lyricsScrubbing, !volumeDragging, !sharePicking else { return }
         lyricsControlsOpen = false
+    }
+}
+
+
+private struct CompactLyricStrip: View {
+    let lines: [LyricLineDto]
+    let hasTrack: Bool
+    let loading: Bool
+    let unavailable: Bool
+    let clock: LyricsClock
+    let offsetMs: Int32
+    let onOpen: () -> Void
+
+    @State private var cache = LyricsDocumentCache()
+    @State private var latestFocus = LyricFocusState()
+    @ScaledMetric(relativeTo: .subheadline) private var stripHeight = 20.0
+
+    var body: some View {
+        let document = cache.document(for: lines)
+        let id = ObjectIdentifier(document)
+        let focus = latestFocus.document == id ? latestFocus : document.timeline.focus(
+            at: clock.lyricMs(at: .now, offsetMs: offsetMs), document: id
+        )
+        let row = focus.active.first.flatMap { document.rows.indices.contains($0) ? document.rows[$0] : nil }
+        Button(action: onOpen) {
+            Group {
+                if let row {
+                    HStack(spacing: 6) {
+                        LyricGlyphs(
+                            plain: row.leadText, swept: row.leadSwept, active: true, glow: false,
+                            offsetMs: offsetMs, clock: clock
+                        )
+                        .foregroundStyle(.white.opacity(0.92))
+                        .multilineTextAlignment(.leading)
+                        .layoutPriority(1)
+                        Image(.bchChevronRight)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 9, height: 9)
+                            .foregroundStyle(.white.opacity(0.55))
+                            .scaleEffect(x: row.rightToLeft ? -1 : 1)
+                            .accessibilityHidden(true)
+                    }
+                    .environment(\.layoutDirection, row.rightToLeft ? .rightToLeft : .leftToRight)
+                } else if loading {
+                    Text("Looking for lyrics…")
+                        .foregroundStyle(.white.opacity(0.5))
+                } else if unavailable {
+                    Text("No lyrics for this track")
+                        .foregroundStyle(.white.opacity(0.5))
+                } else if !document.synced {
+                    Text(hasTrack ? "Lyrics off" : "")
+                        .foregroundStyle(.white.opacity(0.4))
+                }
+            }
+            .font(.subheadline.weight(.medium))
+            .lineLimit(1)
+            .truncationMode(.tail)
+            .frame(minWidth: 0, maxWidth: .infinity, alignment: .center)
+            .shadow(color: .black.opacity(0.45), radius: 5, y: 1)
+            .padding(.horizontal, 24)
+            .frame(height: stripHeight)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(row == nil)
+        .accessibilityLabel(voiceOverLabel(for: row))
+        .accessibilityHint("Opens the lyrics")
+        .background {
+            if document.synced {
+                LyricsFocusTicker(document: document, clock: clock, offsetMs: offsetMs) { focus in
+                    if latestFocus != focus { latestFocus = focus }
+                }
+            }
+        }
+    }
+
+    private func voiceOverLabel(for row: LyricRow?) -> String {
+        if let row {
+            let line = row.leadText
+            return String(localized: "Now singing: \(line)")
+        }
+        return loading ? String(localized: "Looking for lyrics") : String(localized: "No lyrics")
     }
 }

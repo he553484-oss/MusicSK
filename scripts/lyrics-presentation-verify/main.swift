@@ -74,3 +74,102 @@ follow.update(.resting)
 precondition(follow.follows)
 
 print("PASS lyric follow waits for momentum, rejects stale timers and distinguishes a tap from a drag")
+
+// 590 px capture normalized to the equivalent 393 pt portrait viewport.
+let phoneWidth: CGFloat = 590 / 1.5
+let compactVerse = LyricRowGeometry(viewportWidth: phoneWidth, compact: true, duet: true)
+let compactSolo = LyricRowGeometry(viewportWidth: phoneWidth, compact: true, duet: false)
+precondition(compactVerse.effectInset >= 12 && compactVerse.duetInset <= 44)
+precondition(compactSolo.textWidth > compactVerse.textWidth && compactSolo.duetInset == 0)
+precondition(abs(compactVerse.textWidth + compactVerse.duetInset + 2 * compactVerse.effectInset
+                 + 2 * compactVerse.documentInset - phoneWidth) < 0.001)
+for width: CGFloat in [590, 320, 240, 96, 0] {
+    for compact in [true, false] {
+        let geometry = LyricRowGeometry(viewportWidth: width, compact: compact, duet: true)
+        // Both alignments allot the same text width. The lane can be leading
+        // or trailing in either layout direction without pushing glyphs out.
+        let nearLeading = geometry.documentInset + geometry.effectInset
+        let nearTrailing = nearLeading
+        let farInset = nearLeading + geometry.duetInset
+        precondition(geometry.textWidth >= 0)
+        precondition(nearLeading + geometry.textWidth <= width - farInset + 0.001)
+        precondition(farInset + geometry.textWidth <= width - nearTrailing + 0.001)
+    }
+}
+let phoneViewport = LyricViewportGeometry(height: 720, topChrome: 78, bottomChrome: 230)
+precondition(phoneViewport.topOcclusion == 78 && phoneViewport.compactFocusAnchor == 0.27)
+let shortViewport = LyricViewportGeometry(height: 220, topChrome: 96, bottomChrome: 190)
+precondition(shortViewport.topOcclusion == 96)
+precondition(shortViewport.topOcclusion + shortViewport.bottomOcclusion <= 220 - 64)
+precondition(shortViewport.compactFocusAnchor > 0.27)
+
+// Match real provider word spans without changing line breaks, direction,
+// accented glyphs, punctuation, or the spacing between timed words.
+let rtlPhrase = "هَلّا يا صديقي،\nلا تتركني هنا"
+let rtlWords = [
+    LyricWord(text: "هلا", startMs: 700, endMs: 1000),
+    LyricWord(text: "يا", startMs: 1050, endMs: 1250),
+    LyricWord(text: "صديقي", startMs: 1400, endMs: 2200),
+    LyricWord(text: "تتركني", startMs: 2450, endMs: 3200)
+]
+let rtlSpans = LyricTextSpans.make(text: rtlPhrase, words: rtlWords)
+precondition(rtlSpans.map(\.text).joined() == rtlPhrase)
+precondition(rtlSpans.compactMap(\.timing) == rtlWords)
+precondition(rtlSpans.contains { $0.timing == nil && $0.text.contains("\n") })
+
+let ltrPhrase = "7-3 — te dejo\nde estorbar…"
+let ltrWords = [
+    LyricWord(text: "te", startMs: 1010, endMs: 1200),
+    LyricWord(text: "dejo", startMs: 1210, endMs: 2200),
+    LyricWord(text: "de", startMs: 2200, endMs: 2200),
+    LyricWord(text: "no existe", startMs: 2230, endMs: 2700)
+]
+let ltrSpans = LyricTextSpans.make(text: ltrPhrase, words: ltrWords)
+precondition(ltrSpans.map(\.text).joined() == ltrPhrase)
+precondition(ltrSpans.compactMap(\.timing) == Array(ltrWords.prefix(2)))
+let cjkPhrase = "きみが好き"
+let cjkWord = LyricWord(text: "好き", startMs: 500, endMs: 1200)
+precondition(LyricTextSpans.make(text: cjkPhrase, words: [cjkWord]) ==
+             [LyricTextSpan(text: "きみが", timing: nil), LyricTextSpan(text: "好き", timing: cjkWord)])
+let lineTimedOnly = LyricTextSpans.make(text: ltrPhrase, words: [])
+precondition(lineTimedOnly == [LyricTextSpan(text: ltrPhrase, timing: nil)])
+
+precondition(LyricPlaybackTime.milliseconds(at: 1.25, offsetMs: 80) == 1170)
+precondition(LyricPlaybackTime.milliseconds(at: 1.25, offsetMs: -80) == 1330)
+precondition(LyricPlaybackTime.milliseconds(at: 0.02, offsetMs: 80) == 0)
+precondition(LyricPlaybackTime.milliseconds(at: .infinity, offsetMs: 0) == 0)
+
+func referenceFocus(in lines: [LyricTimingLine], at position: Int64) -> LyricFocusState {
+    let latest = lines.lastIndex { $0.start <= position } ?? -1
+    let active = lines.indices.filter { index in
+        let line = lines[index]
+        return index <= latest && !line.isGap && (index == latest ||
+            (line.holds && line.start <= position && position < line.end))
+    }
+    let preview: Int64
+    if latest >= 0, latest + 1 < lines.count {
+        preview = min(max(lines[latest + 1].start - lines[latest].end, 350), 500)
+    } else {
+        preview = 350
+    }
+    let lead = active.first ?? lines.lastIndex { !$0.isGap && $0.start <= position + preview } ?? 0
+    return LyricFocusState(active: active, lead: lead, gap: latest >= 0 && lines[latest].isGap ? latest : nil)
+}
+
+let timedLines = [
+    LyricTimingLine(start: 0, end: 480, holds: false, isGap: true),
+    LyricTimingLine(start: 480, end: 1880, holds: true, isGap: false),
+    LyricTimingLine(start: 760, end: 1610, holds: true, isGap: false),
+    LyricTimingLine(start: 760, end: 1900, holds: false, isGap: false),
+    LyricTimingLine(start: 1900, end: 5100, holds: false, isGap: true),
+    LyricTimingLine(start: 5100, end: 5600, holds: false, isGap: false)
+]
+for lines in [timedLines, [timedLines[3], timedLines[2], timedLines[0]] + Array(timedLines.dropFirst(4))] {
+    let index = LyricTimingIndex(lines: lines, synced: true)
+    for position in stride(from: Int64(5600), through: 0, by: -13) {
+        precondition(index.focus(at: position, document: nil) == referenceFocus(in: lines, at: position))
+    }
+}
+precondition(LyricTimingIndex(lines: timedLines, synced: false).focus(at: 900, document: nil).active.isEmpty)
+
+print("PASS bounded widths for both voice alignments, header occlusion, real RTL/multiline spans, and focused timeline equivalence")

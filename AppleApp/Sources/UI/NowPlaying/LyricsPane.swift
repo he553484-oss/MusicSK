@@ -128,8 +128,15 @@ struct LyricsPane: View {
         #endif
     }
 
-    private var scrollAnchor: UnitPoint {
-        phoneColumn ? UnitPoint(x: 0.5, y: 0.27) : .center
+    private var topChromeInset: CGFloat {
+        guard let chromeInsets else { return 0 }
+        return max(chromeInsets.top, LyricStyle.minimumHeaderHeight)
+    }
+
+    private func scrollAnchor(viewportHeight: CGFloat) -> UnitPoint {
+        guard phoneColumn else { return .center }
+        let vertical = LyricViewportGeometry(height: viewportHeight, topChrome: topChromeInset, bottomChrome: 0)
+        return UnitPoint(x: 0.5, y: vertical.compactFocusAnchor)
     }
 
     /// How a row sits in the stack, by its distance from the line being sung.
@@ -150,7 +157,9 @@ struct LyricsPane: View {
     }
 
     @ViewBuilder
-    private func rowView(_ row: LyricRow, document: PreparedLyrics, focus: LyricFocusState) -> some View {
+    private func rowView(
+        _ row: LyricRow, document: PreparedLyrics, focus: LyricFocusState, geometry: LyricRowGeometry
+    ) -> some View {
         if row.isGap && !document.synced {
             Spacer().frame(height: 14)
         } else if row.isGap {
@@ -174,7 +183,7 @@ struct LyricsPane: View {
                 active: active,
                 look: look(for: row, document: document, focus: focus, active: active),
                 fontSize: fontSize,
-                duet: document.duet,
+                geometry: geometry,
                 picked: selection.contains(row.id),
                 picking: picking,
                 tapMode: mode,
@@ -233,7 +242,7 @@ struct LyricsPane: View {
                     if let translator {
                         LyricsTranslationNote(outcome: translator.outcome)
                             .padding(.horizontal, 12)
-                            .padding(.top, chromeInsets?.top ?? 0)
+                            .padding(.top, topChromeInset)
                     }
                     lyricsScroll
                     if picking {
@@ -298,92 +307,95 @@ struct LyricsPane: View {
     }
 
     private var lyricsScroll: some View {
-        ScrollViewReader { proxy in
-            let document = cache.document(for: lines)
-            let focus = currentFocus(document)
-            let target = VerseTarget(track: trackId, document: ObjectIdentifier(document), line: focus.lead)
-            ScrollView {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(document.rows) { row in
-                        rowView(row, document: document, focus: focus)
-                            .id(row.id)
+        GeometryReader { viewport in
+            ScrollViewReader { proxy in
+                let document = cache.document(for: lines)
+                let focus = currentFocus(document)
+                let target = VerseTarget(track: trackId, document: ObjectIdentifier(document), line: focus.lead)
+                let geometry = LyricRowGeometry(viewportWidth: viewport.size.width, compact: phoneColumn, duet: document.duet)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(document.rows) { row in
+                            rowView(row, document: document, focus: focus, geometry: geometry)
+                                .id(row.id)
+                        }
+                    }
+                    .frame(width: geometry.rowWidth, alignment: .leading)
+                    .padding(.horizontal, geometry.documentInset)
+                    .padding(.top, 20 + (translator == nil ? topChromeInset : 0))
+                    .padding(.bottom, 20 + (chromeInsets.map { $0.bottom + sourceCreditHeight } ?? 0))
+                }
+                .scrollIndicators(.never)
+                .modifier(LyricChromeMask(
+                    enabled: chromeInsets != nil,
+                    top: translator == nil ? topChromeInset : 0,
+                    bottom: picking ? 0 : (chromeInsets?.bottom ?? 0) + sourceCreditHeight,
+                    visible: chromeInsets != nil && sourceVisible,
+                    reduceMotion: reduceMotion
+                ))
+                .background {
+                    if document.synced {
+                        LyricsFocusTicker(document: document, clock: clock, offsetMs: offsetMs) { next in
+                            if next != self.focus { self.focus = next }
+                        }
                     }
                 }
-                .padding(.horizontal, phoneColumn ? 12 : 2)
-                .padding(.top, 20 + (translator == nil ? chromeInsets?.top ?? 0 : 0))
-                .padding(.bottom, 20 + (chromeInsets.map { $0.bottom + sourceCreditHeight } ?? 0))
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .scrollIndicators(.never)
-            .modifier(LyricChromeMask(
-                enabled: chromeInsets != nil,
-                top: translator == nil ? chromeInsets?.top ?? 0 : 0,
-                bottom: picking ? 0 : (chromeInsets?.bottom ?? 0) + sourceCreditHeight,
-                visible: chromeInsets != nil && sourceVisible,
-                reduceMotion: reduceMotion
-            ))
-            .background {
-                if document.synced {
-                    LyricsFocusTicker(document: document, clock: clock, offsetMs: offsetMs) { next in
-                        if next != self.focus { self.focus = next }
+                // The lead changes at verse boundaries. A rejoin can also reposition
+                // the same lead if the listener moved the scroll view by hand.
+                .onChange(of: FollowTarget(verse: target, state: follow), initial: true) { old, new in
+                    let newDocument = old.verse.document != new.verse.document || old.verse.track != new.verse.track
+                    if newDocument { follow.replaceDocument() }
+                    guard document.synced, follow.follows else { return }
+
+                    let rejoining = positionedReturn != follow.returnRevision
+                    guard lastPositioned != target || rejoining || old == new else { return }
+
+                    let adjacent = lastPositioned.map { abs($0.line - target.line) <= 3 } ?? false
+                    let animate = !reduceMotion && !newDocument && old != new && (adjacent || rejoining)
+                    withAnimation(animate ? .easeInOut(duration: rejoining ? 0.42 : 0.30) : nil) {
+                        proxy.scrollTo(target.line, anchor: scrollAnchor(viewportHeight: viewport.size.height))
+                    }
+                    lastPositioned = target
+                    positionedReturn = follow.returnRevision
+                }
+                .onScrollPhaseChange { _, phase in
+                    switch phase {
+                    case .tracking:
+                        follow.update(.touching)
+                        onManualScroll?(true)
+                    case .interacting, .decelerating:
+                        follow.update(.moving)
+                        onManualScroll?(true)
+                    case .idle:
+                        follow.update(.resting)
+                        onManualScroll?(false)
+                    default:
+                        break
                     }
                 }
-            }
-            // The lead changes at verse boundaries. A rejoin can also reposition
-            // the same lead if the listener moved the scroll view by hand.
-            .onChange(of: FollowTarget(verse: target, state: follow), initial: true) { old, new in
-                let newDocument = old.verse.document != new.verse.document || old.verse.track != new.verse.track
-                if newDocument { follow.replaceDocument() }
-                guard document.synced, follow.follows else { return }
-
-                let rejoining = positionedReturn != follow.returnRevision
-                guard lastPositioned != target || rejoining || old == new else { return }
-
-                let adjacent = lastPositioned.map { abs($0.line - target.line) <= 3 } ?? false
-                let animate = !reduceMotion && !newDocument && old != new && (adjacent || rejoining)
-                withAnimation(animate ? .easeInOut(duration: rejoining ? 0.42 : 0.30) : nil) {
-                    proxy.scrollTo(target.line, anchor: scrollAnchor)
-                }
-                lastPositioned = target
-                positionedReturn = follow.returnRevision
-            }
-            .onScrollPhaseChange { _, phase in
-                switch phase {
-                case .tracking:
-                    follow.update(.touching)
-                    onManualScroll?(true)
-                case .interacting, .decelerating:
-                    follow.update(.moving)
-                    onManualScroll?(true)
-                case .idle:
+                .onDisappear {
                     follow.update(.resting)
+                    follow.replaceDocument()
                     onManualScroll?(false)
-                default:
-                    break
                 }
+                .task(id: follow.resumeTicket) {
+                    guard let ticket = follow.resumeTicket else { return }
+                    do {
+                        try await Task.sleep(for: .seconds(2.5))
+                        try Task.checkCancellation()
+                        follow.returnToPlayhead(ticket: ticket)
+                    } catch { return }
+                }
+                .simultaneousGesture(
+                    DragGesture(minimumDistance: 8)
+                        .onChanged { value in
+                            let vertical = value.translation.height
+                            guard abs(vertical) > abs(value.translation.width) else { return }
+                            if vertical < -28, sourceVisible { onFocusLyrics?() }
+                            else if vertical > 28, !sourceVisible { onRevealControls?() }
+                        }
+                )
             }
-            .onDisappear {
-                follow.update(.resting)
-                follow.replaceDocument()
-                onManualScroll?(false)
-            }
-            .task(id: follow.resumeTicket) {
-                guard let ticket = follow.resumeTicket else { return }
-                do {
-                    try await Task.sleep(for: .seconds(2.5))
-                    try Task.checkCancellation()
-                    follow.returnToPlayhead(ticket: ticket)
-                } catch { return }
-            }
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 8)
-                    .onChanged { value in
-                        let vertical = value.translation.height
-                        guard abs(vertical) > abs(value.translation.width) else { return }
-                        if vertical < -28, sourceVisible { onFocusLyrics?() }
-                        else if vertical > 28, !sourceVisible { onRevealControls?() }
-                    }
-            )
         }
     }
 
@@ -688,25 +700,22 @@ private struct LyricChromeMask: ViewModifier {
         if enabled {
             content.mask {
                 GeometryReader { geometry in
-                    let available = geometry.size.height
-                    let upper = min(top, available * 0.35)
-                    let lower = min(bottom, available * 0.48)
-                    let edge = min(16, max(0, (available - upper - lower) / 2))
+                    let viewport = LyricViewportGeometry(height: geometry.size.height, topChrome: top, bottomChrome: bottom)
                     VStack(spacing: 0) {
-                        if upper > 0 {
-                            Color.clear.frame(height: upper)
+                        if viewport.topOcclusion > 0 {
+                            Color.clear.frame(height: viewport.topOcclusion)
                             LinearGradient(
                                 colors: [.clear, .white],
                                 startPoint: .top, endPoint: .bottom
-                            ).frame(height: edge)
+                            ).frame(height: viewport.edgeFade)
                         }
                         Color.white
-                        if lower > 0 {
+                        if viewport.bottomOcclusion > 0 {
                             LinearGradient(
                                 colors: [.white, .white.opacity(visible ? 0 : 1)],
                                 startPoint: .top, endPoint: .bottom
-                            ).frame(height: edge)
-                            Color.white.opacity(visible ? 0 : 1).frame(height: lower)
+                            ).frame(height: viewport.edgeFade)
+                            Color.white.opacity(visible ? 0 : 1).frame(height: viewport.bottomOcclusion)
                         }
                     }
                     .animation(LyricStyle.controlsFade(reduceMotion), value: visible)
