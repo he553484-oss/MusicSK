@@ -431,6 +431,14 @@ struct OutputDeviceSheet: View {
     @State private var showPipeline = false
     @State private var routeRevision = 0
 
+    private var appVolumeLabel: LocalizedStringKey {
+        #if os(iOS)
+        "App Volume"
+        #else
+        "Volume"
+        #endif
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -470,14 +478,14 @@ struct OutputDeviceSheet: View {
                             get: { controller.volume },
                             set: { controller.volume = $0 }
                         ), in: 0...1)
-                        .accessibilityLabel("Volume")
+                        .accessibilityLabel(appVolumeLabel)
                         Text("\(Int(controller.volume * 100))%")
                             .monospacedDigit()
                             .foregroundStyle(.secondary)
                             .frame(minWidth: 42, alignment: .trailing)
                     }
                 } header: {
-                    Text("Volume")
+                    Text(appVolumeLabel)
                 }
                 Section {
                     Button { showPipeline = true } label: {

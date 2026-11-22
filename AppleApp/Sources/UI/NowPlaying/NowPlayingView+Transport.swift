@@ -64,15 +64,15 @@ extension NowPlayingView {
         return "-\(Self.timestamp(max(0, controller.duration - controller.position)))"
     }
 
-    /// The iOS volume row: upstream `VolumeRow` in the hairline capsule style
-    /// of `ThinSlider`, bound to the controller's volume with the system
-    /// speaker icons either side. The hardware buttons route through the same
-    /// system volume this writes, so the two never disagree.
     var deckVolumeRow: some View { volumeRow(hugsGlyphs: false) }
 
-    /// `hugsGlyphs` pins the speakers to the row's outer edges, so its ends are
-    /// the speakers' own rather than their 16pt frames'.
     func volumeRow(hugsGlyphs: Bool) -> some View {
+        #if os(iOS)
+        SystemVolumeRow(hugsGlyphs: hugsGlyphs) { editing in
+            volumeDragging = editing
+            if !editing { lyricsControlActivity += 1 }
+        }
+        #else
         HStack(spacing: 10) {
             Image(systemName: controller.volume == 0 ? "speaker.slash.fill" : "speaker.fill")
                 .scaledFont(size: 12, weight: .semibold)
@@ -124,6 +124,7 @@ extension NowPlayingView {
             default: break
             }
         }
+        #endif
     }
 
     /// Music's order: shuffle · previous · play-in-circle · next · repeat.
