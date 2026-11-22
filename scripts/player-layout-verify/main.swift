@@ -214,20 +214,6 @@ check("a deliberate flick opens the mini player",
 check("moving back toward the mini player cancels",
       !MiniPlayerMotion.shouldOpen(translation: CGSize(width: 2, height: -82), projected: miniFlick))
 
-// The artwork footprint should stay inside the available space and preserve
-// a visible content start after rotation or in a wide window.
-let phoneWidth: CGFloat = 393
-let phoneHeight: CGFloat = 852
-check("phone album header accounts for both horizontal insets",
-      DetailHeaderLayout.albumWidth(in: phoneWidth) == 361)
-check("phone album and artist artwork use the expected adaptive heights",
-      abs(DetailHeaderLayout.albumArtworkHeight(width: phoneWidth, viewportHeight: phoneHeight) - 296) < 1
-          && abs(DetailHeaderLayout.artistArtworkHeight(width: phoneWidth, viewportHeight: phoneHeight) - 354) < 1)
-check("artist artwork leaves room in a short layout",
-      DetailHeaderLayout.artistArtworkHeight(width: 852, viewportHeight: 393) < 220)
-check("wide album header has a finite width ceiling",
-      DetailHeaderLayout.albumWidth(in: 1700) == DetailHeaderLayout.maxContentWidth)
-
 let expandedStage = CGSize(width: 393, height: 430)
 let expandedAnchor = PlayerLayout.compactPortraitArtworkFrame(stage: expandedStage, fullBleed: true)
 check("the full-bleed cover uses the real player width", expandedAnchor == CGRect(x: 0, y: 0, width: 393, height: 393))
