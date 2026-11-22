@@ -25,6 +25,7 @@ struct DetailView: View {
     @State private var error: String?
     @State private var loading = true
     @State private var headerArt: Data?
+    @State private var headerTint: (input: PaletteInput, value: ArtworkPalette.PageTint)?
     @State private var filter = ""
     /// Owned-playlist reordering. A real mode with a control, not a forced
     /// `.active` — see `NowPlayingView.UpNextPane`.
@@ -189,8 +190,16 @@ struct DetailView: View {
         }
     }
 
+    private struct PaletteInput: Equatable, Sendable {
+        var artwork: Data?
+        var seed: Int
+        var dark: Bool
+    }
+
     private func loadedPage(_ page: DetailPageModel) -> some View {
-        let tint = ArtworkPalette.pageTint(from: headerArt, seed: page.title.hashValue, dark: colorScheme == .dark)
+        let input = PaletteInput(artwork: headerArt, seed: page.title.hashValue, dark: colorScheme == .dark)
+        let fallback = ArtworkPalette.pageTint(from: nil, seed: input.seed, dark: input.dark)
+        let tint = headerTint?.input == input ? (headerTint?.value ?? fallback) : fallback
         let kind = kind(of: page)
         let isArtist = kind == .artist
         let immersiveAlbum = usesImmersiveAlbum(kind)
@@ -325,8 +334,18 @@ struct DetailView: View {
             }
         }
         .task(id: page.thumbnailUrl) {
-            headerArt = await loadHeaderArt(page.thumbnailUrl)
+            let art = await loadHeaderArt(page.thumbnailUrl)
+            guard !Task.isCancelled else { return }
+            headerArt = art
             await loadCanvas(page)
+        }
+        .task(id: input) {
+            guard input.artwork != nil else { return }
+            let tint = await Task.detached(priority: .utility) {
+                ArtworkPalette.pageTint(from: input.artwork, seed: input.seed, dark: input.dark)
+            }.value
+            guard !Task.isCancelled else { return }
+            headerTint = (input, tint)
         }
     }
 
@@ -1582,7 +1601,7 @@ struct DetailView: View {
         let json: String? = await withCheckedContinuation { cont in
             CanvasBridge.shared.lookupAlbum(album: title, artist: credit, callback: DetailCanvasCB { cont.resume(returning: $0) })
         }
-        guard let json, let data = json.data(using: .utf8),
+        guard !Task.isCancelled, let json, let data = json.data(using: .utf8),
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let url = (obj["url"] as? String).flatMap(URL.init(string:)) else { return }
         canvasURL = url

@@ -21,38 +21,38 @@ struct LibraryLandingView: View {
     @State private var dataGeneration: Int64?
     @State private var loading = true
     @State private var error: String?
-    @State private var contentWidth: CGFloat = 354
+    private struct ArtworkGrid {
+        let width: CGFloat
+        let count: Int
+        private let spacing: CGFloat = 14
 
-    private let gridSpacing: CGFloat = 14
+        init(viewportWidth: CGFloat, accessibilitySize: Bool) {
+            width = min(860, max(1, viewportWidth - 40))
+            let minimum: CGFloat = accessibilitySize ? 192 : 105
+            count = max(1, min(4, Int((width + spacing) / (minimum + spacing))))
+        }
 
-    private var columnCount: Int {
-        let minimum: CGFloat = dynamicTypeSize.isAccessibilitySize ? 192 : 136
-        return max(1, min(4, Int((contentWidth + gridSpacing) / (minimum + gridSpacing))))
-    }
+        var side: CGFloat { floor((width - spacing * CGFloat(count - 1)) / CGFloat(count)) }
 
-    private var coverSide: CGFloat {
-        floor((contentWidth - gridSpacing * CGFloat(columnCount - 1)) / CGFloat(columnCount))
-    }
-
-    private var columns: [GridItem] {
-        Array(repeating: GridItem(.fixed(coverSide), spacing: gridSpacing, alignment: .topLeading), count: columnCount)
+        var columns: [GridItem] {
+            Array(repeating: GridItem(.fixed(side), spacing: spacing, alignment: .topLeading), count: count)
+        }
     }
 
     var body: some View {
-        ScrollView {
-            LazyVStack(alignment: .leading, spacing: 26) {
-                collection
-                categories
-                onDeviceShelf
-                ReplayHeroSection { page in appModel.openReplay(at: page) }
+        GeometryReader { viewport in
+            let grid = ArtworkGrid(viewportWidth: viewport.size.width, accessibilitySize: dynamicTypeSize.isAccessibilitySize)
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 26) {
+                    collection(grid: grid)
+                    categories
+                    onDeviceShelf
+                    ReplayHeroSection { page in appModel.openReplay(at: page) }
+                }
+                .frame(width: grid.width)
+                .padding(.vertical, 16)
+                .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: 860)
-            .onGeometryChange(for: CGFloat.self) { floor($0.size.width) } action: { width in
-                if width > 0 { contentWidth = width }
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .frame(maxWidth: .infinity)
         }
         .refreshable {
             downloadStore.refresh()
@@ -65,28 +65,28 @@ struct LibraryLandingView: View {
     }
 
     @ViewBuilder
-    private var collection: some View {
+    private func collection(grid: ArtworkGrid) -> some View {
         let savedShelves = pinnedShelves(shelves).filter { !$0.items.isEmpty }
 
         if auth.signedIn && loading && savedShelves.isEmpty {
-            LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {
-                ForEach(0..<min(columnCount * 2, 6), id: \.self) { _ in
+            LazyVGrid(columns: grid.columns, alignment: .leading, spacing: 18) {
+                ForEach(0..<min(grid.count * 2, 6), id: \.self) { _ in
                     VStack(alignment: .leading, spacing: 8) {
-                        SkeletonBlock(height: coverSide, cornerRadius: 10)
-                        SkeletonBlock(height: 14, cornerRadius: 4).frame(width: coverSide * 0.72)
+                        SkeletonBlock(height: grid.side, cornerRadius: 10)
+                        SkeletonBlock(height: 14, cornerRadius: 4).frame(width: grid.side * 0.72)
                     }
                 }
             }
             .accessibilityLabel("Loading Library")
         } else if auth.signedIn && !savedShelves.isEmpty {
             ForEach(savedShelves) { shelf in
-                shelfSection(shelf)
+                shelfSection(shelf, grid: grid)
             }
         } else {
-            let offline = offlineTracks()
+            let offline = offlineTracks(limit: min(grid.count * 2, 6))
             if !offline.isEmpty {
                 heading("On this device")
-                LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {
+                LazyVGrid(columns: grid.columns, alignment: .leading, spacing: 18) {
                     ForEach(offline) { track in
                         LocalTrackCard(track: track) {
                             controller.play(
@@ -116,8 +116,7 @@ struct LibraryLandingView: View {
         }
     }
 
-    private func offlineTracks() -> [LocalTrack] {
-        let limit = min(columnCount * 2, 6)
+    private func offlineTracks(limit: Int) -> [LocalTrack] {
         let downloads = downloadStore.items.prefix(limit).map { track in
             LocalTrack(
                 path: track.path, title: track.title, artist: track.artist, album: track.album,
@@ -278,9 +277,9 @@ struct LibraryLandingView: View {
         )
     }
 
-    private func shelfSection(_ shelf: FeedShelf) -> some View {
+    private func shelfSection(_ shelf: FeedShelf, grid: ArtworkGrid) -> some View {
         let isPlaylists = isPlaylistsShelf(shelf)
-        let items = displayItems(shelf)
+        let items = displayItems(shelf, count: grid.count)
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Text(shelf.title)
@@ -298,9 +297,9 @@ struct LibraryLandingView: View {
                     }
                 }
             }
-            LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {
+            LazyVGrid(columns: grid.columns, alignment: .leading, spacing: 18) {
                 ForEach(items) { card in
-                    ShelfCardView(card: card, artworkSide: coverSide)
+                    ShelfCardView(card: card, artworkSide: grid.side)
                 }
             }
         }
@@ -320,9 +319,9 @@ struct LibraryLandingView: View {
         }
     }
 
-    private func displayItems(_ shelf: FeedShelf) -> [ShelfCard] {
+    private func displayItems(_ shelf: FeedShelf, count: Int) -> [ShelfCard] {
         var seen = Set<String>()
-        return Array(shelf.items.lazy.filter { seen.insert($0.id).inserted }.prefix(columnCount))
+        return Array(shelf.items.lazy.filter { seen.insert($0.id).inserted }.prefix(count))
     }
 
     private func isPlaylistsShelf(_ shelf: FeedShelf) -> Bool {

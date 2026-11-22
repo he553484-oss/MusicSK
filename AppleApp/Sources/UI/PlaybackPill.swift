@@ -16,6 +16,9 @@ struct PlaybackPill: View {
     /// Squeezed between the tab button and Search after the iPhone's tab bar
     /// minimizes on scroll (iOS 26's inline bottom accessory, as in Music).
     var inline = false
+    /// The native bottom accessory provides the shell. A pill mounted in a
+    /// safe-area inset or above the keyboard must draw its own.
+    var usesSystemChrome = false
 
     @Environment(PlaybackController.self) private var controller
     @Environment(AppModel.self) private var appModel
@@ -82,7 +85,10 @@ struct PlaybackPill: View {
         }
         .padding(.horizontal, inline ? 8 : 12)
         .padding(.vertical, inline ? 4 : 8)
-        .modifier(MiniPlayerChrome(fill: chromeFill, reduceTransparency: reduceTransparency || reduceBlur))
+        .modifier(MiniPlayerChrome(
+            usesSystemChrome: usesSystemChrome,
+            opaque: reduceTransparency || reduceBlur
+        ))
         .overlay(alignment: .bottom) { progressHairline.clipShape(Capsule()) }
         .contentShape(.rect)
         // Long press: what is coming next. Upstream's mini player answers a long
@@ -457,37 +463,13 @@ struct PlaybackPill: View {
         PlatformSettings.shared.getBoolean(key: "reduce_dynamic_blur", default: false)
     }
 
-    /// The pill's fill, honouring both the app's own preference and the system's.
-    ///
-    /// Two settings, and the difference matters: `reduce_dynamic_blur` is a
-    /// preference *this app* offers and someone can turn it off, while Reduce
-    /// Transparency is a system accessibility setting that applies to every
-    /// translucent surface on the device. Reading only the first — which is what
-    /// this did — left the pill as the one surface in the app that stayed
-    /// translucent for someone who had asked the system, everywhere, for it not to
-    /// be.
-    private var chromeFill: AnyShapeStyle {
-        if reduceTransparency || reduceBlur {
-            return AnyShapeStyle(Color.primary.opacity(0.12))
-        }
-        #if os(iOS)
-        if #available(iOS 26.0, *), horizontalSizeClass == .compact {
-            // On compact width (iPhone), the system bottom accessory draws its
-            // own glass shell; a material inside it would be a second, opaque
-            // surface inside the first. On regular width (iPad), the pill is
-            // mounted via safeAreaInset and owns its own glass/material texture.
-            return AnyShapeStyle(.clear)
-        }
-        #endif
-        return AnyShapeStyle(.ultraThinMaterial)
-    }
-
     /// Progress hairline hugging the iOS mini-player's bottom edge.
     private var progressHairline: some View {
         GeometryReader { geo in
-            let progress = controller.duration > 0
+            let rawProgress = controller.duration > 0
                 ? controller.position / controller.duration
                 : 0
+            let progress = rawProgress.isFinite ? min(max(rawProgress, 0), 1) : 0
             Capsule()
                 .fill(.tertiary)
                 .frame(width: geo.size.width * progress, height: 2)
@@ -497,43 +479,21 @@ struct PlaybackPill: View {
     }
 
     #if os(iOS)
-    /// The mini-player's capsule shell — drawn by us everywhere except inside
-    /// iOS 27's bottom accessory on iPhone, whose container draws its own
-    /// pill. Keeping ours there nests a second capsule inside the system's
-    /// (verified by stripping ours in the simulator: the pill still renders
-    /// fully). iPad mounts via inset with no system shell, so it keeps ours,
-    /// as do iOS 26 and the pre-26 fallback.
     private struct MiniPlayerChrome: ViewModifier {
-        var fill: AnyShapeStyle
-        var reduceTransparency: Bool
-        @Environment(\.horizontalSizeClass) private var sizeClass
+        var usesSystemChrome: Bool
+        var opaque: Bool
 
         func body(content: Content) -> some View {
-            if #available(iOS 27.0, *), sizeClass == .compact {
+            if usesSystemChrome {
                 content
-            } else if sizeClass == .regular {
-                // Over the library the pill has artwork under it, so on iPad
-                // (where it floats in a safeAreaInset with no system accessory
-                // container) use regular material with the system background
-                // colour beneath — matching the Mac pill's frosted texture so
-                // album sleeves beneath don't bleed through the controls.
-                content
-                    .background {
-                        if reduceTransparency {
-                            Capsule().fill(Color(uiColor: .secondarySystemBackground))
-                        } else {
-                            Capsule().fill(Color(uiColor: .systemBackground).opacity(0.55))
-                                .background(.regularMaterial, in: Capsule())
-                        }
-                    }
-                    .overlay { Capsule().stroke(.white.opacity(0.12), lineWidth: 0.5) }
-                    .clipShape(Capsule())
-                    .shadow(color: .black.opacity(0.18), radius: 12, y: 5)
+            } else if opaque {
+                content.background(Theme.Materials.opaque, in: Capsule())
+            } else if #available(iOS 26.0, *) {
+                content.chromeGlass(in: Capsule())
             } else {
                 content
-                    .background { Capsule().fill(fill) }
-                    .overlay { Capsule().stroke(.white.opacity(0.10), lineWidth: 0.5) }
-                    .clipShape(Capsule())
+                    .background(.regularMaterial, in: Capsule())
+                    .overlay { Capsule().stroke(Color.primary.opacity(0.07), lineWidth: 0.5) }
             }
         }
     }

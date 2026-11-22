@@ -991,6 +991,7 @@ private final class MacWindowToolbarView: NSView {
 struct PlaybackPillMount: ViewModifier {
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// The keyboard covers the tab bar, and the accessory with it, so while it
     /// is up the iPhone's pill rides on top of it instead (the iPad's per-tab
     /// inset does that on its own).
@@ -1017,19 +1018,16 @@ struct PlaybackPillMount: ViewModifier {
                 .overlay(alignment: .bottom) {
                     if keyboardUp {
                         PlaybackPill()
-                            // The accessory's glass is the tab bar's; out here
-                            // the pill would otherwise have none.
-                            .chromeGlass(in: Capsule())
-                            .padding(.horizontal, 10)
+                            .padding(.horizontal, 12)
                             .padding(.bottom, 8)
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                            .transition(reduceMotion ? .opacity : .offset(y: 12).combined(with: .opacity))
                     }
                 }
-                .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
-                    withAnimation(.smooth(duration: 0.25)) { keyboardUp = true }
+                .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { notification in
+                    updateKeyboard(visible: true, notification: notification)
                 }
-                .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
-                    withAnimation(.smooth(duration: 0.25)) { keyboardUp = false }
+                .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { notification in
+                    updateKeyboard(visible: false, notification: notification)
                 }
         } else {
             fallbackMount(content)
@@ -1042,6 +1040,13 @@ struct PlaybackPillMount: ViewModifier {
     }
 
     #if os(iOS)
+    private func updateKeyboard(visible: Bool, notification: Notification) {
+        guard keyboardUp != visible else { return }
+        let duration = notification.userInfo?[UIResponder.keyboardAnimationDurationUserInfoKey] as? Double ?? 0.25
+        let limit = reduceMotion ? min(duration, 0.12) : duration
+        withAnimation(.easeInOut(duration: max(0, limit))) { keyboardUp = visible }
+    }
+
     /// The bottom accessory, stood down from 26.1 while the pill rides the
     /// keyboard, so there is only ever one pill (and one zoom source for Now
     /// Playing). On 26.0 the covered one stays mounted.
@@ -1056,6 +1061,7 @@ struct PlaybackPillMount: ViewModifier {
             content.tabViewBottomAccessory {
                 PlaybackAccessory()
                     .environment(\.nowPlayingZoomNamespace, keyboardUp ? nil : zoomNamespace)
+                    .allowsHitTesting(!keyboardUp)
                     .accessibilityHidden(keyboardUp)
             }
         }
@@ -1083,7 +1089,7 @@ private struct PlaybackAccessory: View {
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
 
     var body: some View {
-        PlaybackPill(inline: placement == .inline)
+        PlaybackPill(inline: placement == .inline, usesSystemChrome: true)
     }
 }
 
