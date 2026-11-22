@@ -582,7 +582,7 @@ private final class ModernNowPlaying: MediaSessionRepresentable {
             }
             : nil
         let total = duration > 0 ? MediaDuration.finite(duration) : nil
-        if !animatedClips.isEmpty {
+        if !animatedClips.isEmpty, let staticArtwork {
             let variants = animatedClips
             let sortedShapes = NowPlayingArtworkShape.allCases.filter { variants[$0] != nil }
             let identity = sortedShapes.compactMap { variants[$0]?.id }.joined(separator: "|")
