@@ -161,15 +161,45 @@ enum PlayerLayout {
 
 }
 
-/// The wide player uses the projected drag position to decide whether to
-/// dismiss. A flick must still start downward and along the vertical axis.
+/// Capture the pan's intent once, before either a mini-player skip or a
+/// presentation gesture can consume it.
+enum PlayerPanAxis {
+    case horizontal
+    case vertical
+
+    init?(translation: CGSize, minimum: CGFloat = 10) {
+        guard max(abs(translation.width), abs(translation.height)) >= minimum else { return nil }
+        self = abs(translation.height) > abs(translation.width) ? .vertical : .horizontal
+    }
+}
+
+enum MiniPlayerMotion {
+    static func lift(_ translation: CGSize) -> CGFloat {
+        min(max(-translation.height * 0.5, 0), 64)
+    }
+
+    static func shouldOpen(translation: CGSize, projected: CGSize) -> Bool {
+        // A small, deliberate flick can open the player. Dragging upward and
+        // then reversing commits only if the projected pull still clears it.
+        translation.height <= -12 && projected.height <= -72
+    }
+}
+
+/// The wide cover tracks the accepted pan in window coordinates. The projected
+/// displacement distinguishes slow pulls, flicks and reversed gestures.
 enum PlayerDismissal {
     static func isDownward(_ translation: CGSize) -> Bool {
         translation.height > abs(translation.width)
     }
 
-    static func shouldDismiss(translation: CGSize, projected: CGSize, height: CGFloat) -> Bool {
+    static func shouldDismiss(
+        translation: CGSize,
+        projected: CGSize,
+        height: CGFloat,
+        acceptedDirection: Bool? = nil
+    ) -> Bool {
         let threshold = min(max(height * 0.22, 80), 160)
-        return isDownward(translation) && translation.height >= 12 && projected.height >= threshold
+        return (acceptedDirection ?? isDownward(translation))
+            && translation.height >= 12 && projected.height >= threshold
     }
 }

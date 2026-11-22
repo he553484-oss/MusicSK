@@ -8,7 +8,13 @@ struct PlayerDragDismissal: ViewModifier {
     let dismiss: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @GestureState private var pull: CGFloat = 0
+    private struct Drag: Equatable {
+        var acceptedDirection: Bool?
+        var pull: CGFloat = 0
+    }
+
+    @GestureState private var drag = Drag()
+    @State private var acceptedDirection: Bool?
     @State private var releasedOffset: CGFloat?
 
     func body(content: Content) -> some View {
@@ -16,8 +22,14 @@ struct PlayerDragDismissal: ViewModifier {
             GeometryReader { geometry in
                 content
                     .overlay(alignment: .top) { grabber(height: geometry.size.height) }
-                    .offset(y: releasedOffset ?? pull)
-                    .animation(pull == 0 && releasedOffset == nil ? Motion.playerDragReturn(reduceMotion) : nil, value: pull)
+                    .offset(y: releasedOffset ?? drag.pull)
+                    .animation(
+                        drag.acceptedDirection == nil && releasedOffset == nil ? Motion.playerDragReturn(reduceMotion) : nil,
+                        value: drag.pull
+                    )
+                    .onChange(of: drag.acceptedDirection) { _, direction in
+                        if direction == nil { acceptedDirection = nil }
+                    }
             }
         } else {
             content
@@ -37,15 +49,26 @@ struct PlayerDragDismissal: ViewModifier {
         .accessibilityLabel("Close")
         .gesture(
             DragGesture(minimumDistance: 10, coordinateSpace: .global)
-                .updating($pull) { value, state, transaction in
+                .updating($drag) { value, state, transaction in
                     transaction.animation = nil
-                    state = PlayerDismissal.isDownward(value.translation) ? travel(value.translation.height) : 0
+                    if state.acceptedDirection == nil {
+                        state.acceptedDirection = PlayerDismissal.isDownward(value.translation)
+                    }
+                    state.pull = state.acceptedDirection == true ? travel(value.translation.height) : 0
+                }
+                .onChanged { value in
+                    if acceptedDirection == nil {
+                        acceptedDirection = PlayerDismissal.isDownward(value.translation)
+                    }
                 }
                 .onEnded { value in
+                    let direction = acceptedDirection
+                    acceptedDirection = nil
                     guard PlayerDismissal.shouldDismiss(
                         translation: value.translation,
                         projected: value.predictedEndTranslation,
-                        height: height
+                        height: height,
+                        acceptedDirection: direction
                     ) else { return }
                     // Hold the release position while SwiftUI hands the cover
                     // back to its presentation controller.

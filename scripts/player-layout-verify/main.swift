@@ -199,5 +199,17 @@ check("a deliberate pull closes a short cover",
 check("a pull followed by a reversal stays open",
       !PlayerDismissal.shouldDismiss(translation: deliberate, projected: .zero, height: 440))
 
+check("a horizontal drag stays rejected after curving down",
+      !PlayerDismissal.shouldDismiss(translation: deliberate, projected: deliberate, height: 440, acceptedDirection: false))
+check("a vertical drag remains engaged after drifting sideways",
+      PlayerDismissal.shouldDismiss(translation: sideways, projected: deliberate, height: 440, acceptedDirection: true))
+check("the mini player ignores a stationary press", PlayerPanAxis(translation: CGSize(width: 2, height: 6)) == nil)
+check("the mini player locks the dominant pan axis", PlayerPanAxis(translation: CGSize(width: 4, height: -18)) == .vertical)
+let miniFlick = CGSize(width: 2, height: -22)
+check("a deliberate flick opens the mini player",
+      MiniPlayerMotion.shouldOpen(translation: miniFlick, projected: CGSize(width: 2, height: -104)))
+check("moving back toward the mini player cancels",
+      !MiniPlayerMotion.shouldOpen(translation: CGSize(width: 2, height: -82), projected: miniFlick))
+
 print(failures == 0 ? "\nall \(checks) checks passed" : "\n\(failures) of \(checks) checks FAILED")
 exit(failures == 0 ? 0 : 1)

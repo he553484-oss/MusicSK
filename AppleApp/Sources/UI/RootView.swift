@@ -1147,9 +1147,11 @@ struct NowPlayingTakeover: ViewModifier {
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
                     .presentationCornerRadius(24)
+                    .presentationBackground(.black)
             }
             .fullScreenCover(isPresented: binding(for: .cover)) {
                 player(in: .cover)
+                    .presentationBackground(.black)
             }
             .onChange(of: isPresented, initial: true) { _, presented in
                 activePresentation = presented ? (activePresentation ?? preferredPresentation) : nil

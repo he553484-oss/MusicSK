@@ -35,30 +35,23 @@ struct PlaybackPill: View {
 
     // ---- iOS: mini-player above the tab bar --------------------------------
     #if os(iOS)
-    private enum PillDragAxis: Equatable {
-        case horizontal
-        case vertical
-    }
-
     private struct PillDragState: Equatable {
-        var axis: PillDragAxis? = nil
+        var axis: PlayerPanAxis? = nil
         var translation = CGSize.zero
 
         mutating func track(_ translation: CGSize) {
-            if axis == nil, max(abs(translation.width), abs(translation.height)) >= 10 {
-                axis = abs(translation.height) > abs(translation.width) ? .vertical : .horizontal
-            }
+            if axis == nil { axis = PlayerPanAxis(translation: translation) }
             self.translation = translation
         }
     }
 
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     @GestureState private var pillDrag = PillDragState()
-    @State private var lockedPillDrag: (start: CGPoint, axis: PillDragAxis)?
+    @State private var lockedPillDrag: (start: CGPoint, axis: PlayerPanAxis)?
     private var isRegularWidth: Bool { horizontalSizeClass == .regular }
     private var pillPullLift: CGFloat {
         guard !reduceMotion, pillDrag.axis == .vertical, pillDrag.translation.height < 0 else { return 0 }
-        return min(max(-pillDrag.translation.height * 0.5, 0), 72)
+        return MiniPlayerMotion.lift(pillDrag.translation)
     }
 
     private var iOSPill: some View {
@@ -110,40 +103,33 @@ struct PlaybackPill: View {
         // One detector resolves the axis after the system's touch slop: an
         // upward pull opens Now Playing, while a 72 pt horizontal swipe skips.
         .gesture(
-            DragGesture(minimumDistance: 10)
-                .updating($pillDrag) { value, state, _ in
+            DragGesture(minimumDistance: 10, coordinateSpace: .global)
+                .updating($pillDrag) { value, state, transaction in
+                    transaction.animation = nil
                     state.track(value.translation)
                 }
                 .onChanged { value in
                     if let lockedPillDrag, lockedPillDrag.start != value.startLocation {
                         self.lockedPillDrag = nil
                     }
-                    if lockedPillDrag == nil,
-                       max(abs(value.translation.width), abs(value.translation.height)) >= 10 {
-                        lockedPillDrag = (
-                            start: value.startLocation,
-                            axis: abs(value.translation.height) > abs(value.translation.width)
-                                ? .vertical
-                                : .horizontal
-                        )
+                    if lockedPillDrag == nil, let axis = PlayerPanAxis(translation: value.translation) {
+                        lockedPillDrag = (start: value.startLocation, axis: axis)
                     }
                 }
                 .onEnded { value in
                     let dx = value.translation.width
-                    let dy = value.translation.height
-                    let axis = lockedPillDrag?.axis
-                        ?? (abs(dy) > abs(dx) ? PillDragAxis.vertical : .horizontal)
+                    let axis = lockedPillDrag?.axis ?? PlayerPanAxis(translation: value.translation)
                     lockedPillDrag = nil
                     if axis == .vertical {
-                        guard dy < -10 else { return }
-                        let heldPull = min(max(-dy * 0.5, 0), 72)
-                        let flickedUp = value.predictedEndTranslation.height < dy - 72
-                        guard flickedUp || heldPull > 36 else { return }
+                        guard MiniPlayerMotion.shouldOpen(
+                            translation: value.translation,
+                            projected: value.predictedEndTranslation
+                        ) else { return }
                         Haptics.play(.tap)
                         appModel.nowPlayingPresented = true
                         return
                     }
-                    guard abs(dx) >= 72 else { return }
+                    guard axis == .horizontal, abs(dx) >= 72 else { return }
                     guard !PartyStore.shared.state.controlsLocked else {
                         Haptics.play(.tap)
                         return
@@ -159,6 +145,9 @@ struct PlaybackPill: View {
                     }
                 }
         )
+        .onChange(of: pillDrag.axis) { _, axis in
+            if axis == nil { lockedPillDrag = nil }
+        }
     }
     #endif
 
