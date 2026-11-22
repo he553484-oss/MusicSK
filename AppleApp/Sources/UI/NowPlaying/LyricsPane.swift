@@ -131,20 +131,14 @@ struct LyricsPane: View {
 
     /// How a row sits in the stack, by its distance from the line being sung.
     private func look(for row: LyricRow, document: PreparedLyrics, focus: LyricFocusState, active: Bool) -> LyricRowLook {
-        guard document.synced else { return LyricRowLook(alpha: 0.95, blur: 0, scale: 1) }
-        guard row.timed else { return LyricRowLook(alpha: 0.9, blur: 0, scale: 1) }
-        if active { return LyricRowLook(alpha: 1, blur: 0, scale: 1) }
-        let scale = reduceMotion ? 1 : LyricStyle.inactiveScale
-        if reading { return LyricRowLook(alpha: LyricStyle.browsingAlpha, blur: 0, scale: scale) }
-        let falloff = phoneColumn ? LyricStyle.falloffAlphaPhone : LyricStyle.falloffAlpha
-        let distance = abs(row.id - focus.lead)
-        let blur = lyricsBlur && !reduceMotion
-            ? LyricStyle.falloffBlur[min(distance, LyricStyle.falloffBlur.count - 1)]
-            : 0
-        return LyricRowLook(
-            alpha: falloff[min(distance, falloff.count - 1)],
-            blur: blur,
-            scale: scale
+        LyricRowLook.forLine(
+            timed: row.timed,
+            synced: document.synced,
+            active: active,
+            distance: abs(row.id - focus.lead),
+            compact: phoneColumn,
+            browsing: reading,
+            blurEnabled: lyricsBlur
         )
     }
 
@@ -238,7 +232,7 @@ struct LyricsPane: View {
                         let document = cache.document(for: lines)
                         let focus = currentFocus(document)
                         ScrollView {
-                            LazyVStack(alignment: .leading, spacing: 6) {
+                            VStack(alignment: .leading, spacing: 6) {
                                 ForEach(document.rows) { row in
                                     rowView(row, document: document, focus: focus)
                                         .id(row.id)

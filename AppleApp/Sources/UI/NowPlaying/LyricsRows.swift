@@ -266,11 +266,13 @@ final class PreparedLyrics {
 
     /// The words as one `Text`, each carrying its timing for the renderer.
     private static func swept(_ words: [LyricWord]) -> Text? {
-        guard !words.isEmpty else { return nil }
+        guard words.contains(where: { $0.endMs > $0.startMs }) else { return nil }
         var text = Text(verbatim: "")
         for (index, word) in words.enumerated() {
-            let piece = Text(verbatim: word.text)
-                .customAttribute(LyricWordTiming(startMs: word.startMs, endMs: word.endMs))
+            let literal = Text(verbatim: word.text)
+            let piece = word.endMs > word.startMs
+                ? literal.customAttribute(LyricWordTiming(startMs: word.startMs, endMs: word.endMs))
+                : literal
             text = index == 0 ? piece : Text("\(text) \(piece)")
         }
         return text
@@ -311,16 +313,8 @@ final class LyricsDocumentCache {
 
 // MARK: - Look
 
-/// Upstream's lyric motion constants (PlayerLyrics.kt), so the two apps move alike.
 enum LyricStyle {
-    static func emphasis(_ reduceMotion: Bool) -> Animation {
-        .easeOut(duration: reduceMotion ? 0.12 : 0.26)
-    }
-    static let falloffAlpha: [Double] = [1, 0.8, 0.7, 0.58, 0.46]
-    static let falloffAlphaPhone: [Double] = [1, 0.74, 0.6, 0.48, 0.4, 0.34]
-    static let falloffBlur: [CGFloat] = [0, 1, 1, 1.7, 2.4]
-    static let inactiveScale: CGFloat = 0.98
-    static let browsingAlpha = 0.8
+    static let emphasis = Animation.easeInOut(duration: 0.32)
     static let unsungAlpha = 0.45
     static let backingAlpha = 0.72
     static let backingScale: CGFloat = 23.0 / 34.0
@@ -332,12 +326,6 @@ enum LyricStyle {
     static let heldNoteMs: Int64 = 900
     static let duetLane: CGFloat = 44
     static let rowInset: CGFloat = 10
-}
-
-struct LyricRowLook: Equatable {
-    var alpha: Double
-    var blur: CGFloat
-    var scale: CGFloat
 }
 
 // MARK: - Sweep
@@ -355,7 +343,8 @@ struct LyricWordTiming: TextAttribute {
 ///
 /// Drawing only: the layout is the `Text`'s own and is not redone per frame.
 struct LyricSweepRenderer: TextRenderer {
-    var ms: Int64
+    /// Nil draws the same attributed glyphs at rest.
+    var ms: Int64?
     var glow: Bool
     var reduceMotion: Bool
 
@@ -366,22 +355,23 @@ struct LyricSweepRenderer: TextRenderer {
 
     func draw(layout: Text.Layout, in context: inout GraphicsContext) {
         for line in layout {
+            guard let ms else {
+                context.draw(line)
+                continue
+            }
             for run in line {
-                guard let timing = run[LyricWordTiming.self] else {
-                    // The spaces between words: nothing to light.
-                    var dim = context
-                    dim.opacity = LyricStyle.unsungAlpha
-                    dim.draw(run)
-                    continue
+                if let timing = run[LyricWordTiming.self] {
+                    draw(run, timing: timing, at: ms, in: context)
+                } else {
+                    // Punctuation and text without provider timing stay legible.
+                    context.draw(run)
                 }
-                draw(run, timing: timing, in: context)
             }
         }
     }
 
-    private func draw(_ run: Text.Layout.Run, timing: LyricWordTiming, in base: GraphicsContext) {
-        let span = max(1, timing.endMs - timing.startMs)
-        let progress = min(1, max(0, Double(ms - timing.startMs) / Double(span)))
+    private func draw(_ run: Text.Layout.Run, timing: LyricWordTiming, at ms: Int64, in base: GraphicsContext) {
+        let progress = LyricWordProgress.at(ms, start: timing.startMs, end: timing.endMs)
         var context = base
         if reduceMotion {
             context.opacity = LyricStyle.unsungAlpha + (1 - LyricStyle.unsungAlpha) * progress
@@ -404,16 +394,7 @@ struct LyricSweepRenderer: TextRenderer {
         guard progress > 0 else { return }
 
         let rect = run.typographicBounds.rect
-        if glow, span >= LyricStyle.heldNoteMs {
-            // Swells and blooms over the note, gone again as it ends.
-            let envelope = sin(Double.pi * progress)
-            var halo = context
-            halo.addFilter(.blur(radius: LyricStyle.glowRadius))
-            halo.opacity = LyricStyle.glowAlpha * envelope
-            halo.draw(run)
-        }
-
-        let feather = LyricStyle.wipeFeather
+        let feather = min(LyricStyle.wipeFeather, max(8, rect.width * 0.55))
         let travel = rect.width + feather
         let rtl = run.layoutDirection == .rightToLeft
         let edge = rtl ? rect.maxX + feather - progress * travel : rect.minX - feather + progress * travel
@@ -428,6 +409,14 @@ struct LyricSweepRenderer: TextRenderer {
                     endPoint: CGPoint(x: rtl ? edge - feather : edge + feather, y: band.midY)
                 )
             )
+        }
+        // The same mask advances both the highlight and the held-note glow.
+        // Unreached characters never light up from the halo.
+        if glow, Double(timing.endMs) - Double(timing.startMs) >= Double(LyricStyle.heldNoteMs) {
+            var halo = lit
+            halo.addFilter(.blur(radius: LyricStyle.glowRadius))
+            halo.opacity = LyricStyle.glowAlpha * LyricWordProgress.glowEnvelope(progress)
+            halo.draw(run)
         }
         lit.draw(run)
     }
@@ -497,8 +486,6 @@ struct LyricRowView: View, Equatable {
                 (lhs.clock.playing == rhs.clock.playing && lhs.clock.pausedPosition == rhs.clock.pausedPosition))
     }
 
-    private var trailingSide: Bool { row.secondVoice != row.rightToLeft }
-
     var body: some View {
         VStack(alignment: row.secondVoice ? .trailing : .leading, spacing: 2) {
             line(row.leadText, swept: row.leadSwept, size: fontSize, glow: true)
@@ -519,22 +506,27 @@ struct LyricRowView: View, Equatable {
         .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .onTapGesture(perform: onTap)
         .environment(\.layoutDirection, row.rightToLeft ? .rightToLeft : .leftToRight)
-        .scaleEffect(look.scale, anchor: trailingSide ? .trailing : .leading)
         .opacity(look.alpha)
         .blur(radius: look.blur)
-        .animation(LyricStyle.emphasis(reduceMotion), value: look)
+        .clipped()
+        .animation(reduceMotion ? nil : LyricStyle.emphasis, value: look)
     }
 
     @ViewBuilder
     private func line(_ plain: String, swept: Text?, size: CGFloat, glow: Bool) -> some View {
         Group {
-            if active, let swept {
-                if clock.playing {
-                    TimelineView(.animation(minimumInterval: 1.0 / (reduceMotion ? 30.0 : 60.0))) { timeline in
-                        sweep(swept, at: timeline.date, glow: glow)
-                    }
-                } else {
-                    sweep(swept, at: Date(), glow: glow)
+            if let swept {
+                // Keep the same attributed Text, wrapping and renderer when
+                // focus changes. Inactive rows do not run a frame clock.
+                TimelineView(.animation(
+                    minimumInterval: 1.0 / (reduceMotion ? 30.0 : 60.0),
+                    paused: !active || !clock.playing
+                )) { timeline in
+                    swept.textRenderer(LyricSweepRenderer(
+                        ms: active ? clock.lyricMs(at: timeline.date, offsetMs: offsetMs) : nil,
+                        glow: glow,
+                        reduceMotion: reduceMotion
+                    ))
                 }
             } else {
                 Text(verbatim: plain)
@@ -546,19 +538,10 @@ struct LyricRowView: View, Equatable {
         .lineSpacing(size * 0.06)
         .fixedSize(horizontal: false, vertical: true)
     }
-
-    private func sweep(_ text: Text, at date: Date, glow: Bool) -> some View {
-        text.textRenderer(LyricSweepRenderer(
-            ms: clock.lyricMs(at: date, offsetMs: offsetMs),
-            glow: glow,
-            reduceMotion: reduceMotion
-        ))
-    }
 }
 
-/// An instrumental break, counted out by three dots that light in turn. The row
-/// only stands open while the break is playing, so the list carries no hole
-/// through the verses either side of it.
+/// A small fixed slot for a provider's instrumental break. The dots fade in
+/// without relaying out the surrounding lyric text during automatic scrolling.
 struct LyricGapRow: View {
     let row: LyricRow
     let open: Bool
@@ -572,30 +555,19 @@ struct LyricGapRow: View {
     private let spacing: CGFloat = 5
 
     var body: some View {
-        ZStack(alignment: row.secondVoice ? .trailing : .leading) {
-            if open {
-                Group {
-                    if clock.playing {
-                        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
-                            dots(through: through(at: timeline.date))
-                        }
-                    } else {
-                        dots(through: through(at: Date()))
-                    }
-                }
-                .transition(.opacity)
-            }
+        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !open || !clock.playing)) { timeline in
+            dots(through: open ? through(at: timeline.date) : 0)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .frame(height: open ? dot + LyricStyle.rowInset * 2 + 16 : 0)
+        .frame(maxWidth: .infinity, alignment: row.secondVoice ? .trailing : .leading)
+        .frame(height: dot + LyricStyle.rowInset * 2)
         .padding(.horizontal, LyricStyle.rowInset)
-        .clipped()
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
-        .opacity(look.alpha)
-        .blur(radius: look.blur)
-        .animation(reduceMotion ? nil : LyricStyle.emphasis(false), value: open)
+        .allowsHitTesting(open)
+        .opacity(open ? look.alpha : 0)
+        .animation(reduceMotion ? nil : LyricStyle.emphasis, value: open)
         .accessibilityLabel("Instrumental")
+        .accessibilityHidden(!open)
     }
 
     private func through(at date: Date) -> Double {
