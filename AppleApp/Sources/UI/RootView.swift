@@ -1128,56 +1128,21 @@ struct iPadPlaybackChrome: ViewModifier {
 #endif
 
 #if os(iOS)
-/// Compact width uses the native zoom sheet and its interactive dismissal.
+/// Keep one native presentation across orientations and window sizes.
 struct NowPlayingTakeover: ViewModifier {
     @Binding var isPresented: Bool
     var zoomNamespace: Namespace.ID
-    @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var activePresentation: Presentation?
-
-    private enum Presentation: Equatable {
-        case sheet, cover
-    }
-
-    private var preferredPresentation: Presentation {
-        sizeClass == .regular ? .cover : .sheet
-    }
 
     func body(content: Content) -> some View {
-        // Both modifiers keep their identity across a width change. An open
-        // player keeps its presentation until it closes.
-        content
-            .sheet(isPresented: binding(for: .sheet)) {
-                player(in: .sheet)
-                    .presentationDetents([.large])
-                    .presentationDragIndicator(.visible)
-                    .presentationCornerRadius(24)
-                    .presentationBackground(.black)
-            }
-            .fullScreenCover(isPresented: binding(for: .cover)) {
-                player(in: .cover)
-                    .presentationBackground(.black)
-            }
-            .onChange(of: isPresented, initial: true) { _, presented in
-                activePresentation = presented ? (activePresentation ?? preferredPresentation) : nil
-            }
-    }
-
-    private func binding(for presentation: Presentation) -> Binding<Bool> {
-        Binding(
-            get: { isPresented && (activePresentation ?? preferredPresentation) == presentation },
-            set: { presented in
-                if (activePresentation ?? preferredPresentation) == presentation {
-                    isPresented = presented
-                }
-            }
-        )
+        content.fullScreenCover(isPresented: $isPresented) {
+            player.presentationBackground(.black)
+        }
     }
 
     @ViewBuilder
-    private func player(in presentation: Presentation) -> some View {
-        let stack = PlayerNavigationStack(usesFullscreenCover: presentation == .cover)
+    private var player: some View {
+        let stack = PlayerNavigationStack(usesFullscreenCover: true)
         if reduceMotion {
             stack
         } else {

@@ -1,8 +1,8 @@
 #if os(iOS)
 import SwiftUI
 
-/// The phone sheet has a system pan recognizer. The full-screen cover uses its
-/// own grabber, outside the scrolling lyrics, queue and transport controls.
+/// Reserve a small safe-area strip for the interactive cover grabber.
+/// Lyrics, queue and transport keep their own gestures below it.
 struct PlayerDragDismissal: ViewModifier {
     let enabled: Bool
     let dismiss: () -> Void
@@ -21,6 +21,7 @@ struct PlayerDragDismissal: ViewModifier {
         if enabled {
             GeometryReader { geometry in
                 content
+                    .padding(.top, 24)
                     .overlay(alignment: .top) { grabber(height: geometry.size.height) }
                     .offset(y: releasedOffset ?? drag.pull)
                     .animation(
@@ -39,7 +40,7 @@ struct PlayerDragDismissal: ViewModifier {
     private func grabber(height: CGFloat) -> some View {
         Button(action: dismiss) {
             Capsule()
-                .fill(.white.opacity(0.35))
+                .fill(.white.opacity(0.58))
                 .frame(width: 42, height: 5)
                 .padding(.top, 10)
                 .frame(width: 96, height: 36, alignment: .top)

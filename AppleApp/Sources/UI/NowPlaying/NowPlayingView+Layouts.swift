@@ -90,7 +90,6 @@ extension NowPlayingView {
         .modifier(PlayerDragDismissal(enabled: usesFullscreenCover, dismiss: { dismiss() }))
         .toolbar(.hidden, for: .navigationBar)
         .toolbarTitleDisplayMode(.inline)
-        .ignoresSafeArea(.container, edges: usesFullscreenCover || isIPad ? [] : .top)
     }
     #endif
 
@@ -130,7 +129,7 @@ extension NowPlayingView {
         let showsDeck = !showsLyrics || lyricsControlsOpen
         return ZStack(alignment: .top) {
             if showsLyrics {
-                panel(lyricsChrome: EdgeInsets(top: lyricsHeaderHeight, leading: 0, bottom: lyricsDeckHeight, trailing: 0))
+                panel(lyricsChrome: EdgeInsets(top: max(lyricsHeaderHeight, PlayerLayout.sleeveCollapsedSide + 22), leading: 0, bottom: lyricsDeckHeight, trailing: 0))
                     .transition(.opacity)
             }
 
@@ -236,7 +235,7 @@ extension NowPlayingView {
                     .transition(.opacity)
             }
         }
-        .allowsHitTesting(main && showMusicVideos)
+        .allowsHitTesting(main && videoShowing)
         .position(x: frame.midX, y: frame.midY)
     }
     #endif

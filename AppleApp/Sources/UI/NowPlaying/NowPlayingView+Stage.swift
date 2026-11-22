@@ -74,7 +74,7 @@ extension NowPlayingView {
             // pinned transport; it is part of the player page, not a nested sheet.
             VStack(spacing: 0) {
                 if pane == .lyrics {
-                    lyricsHeader
+                    lyricsHeader(usesSharedArtwork: false)
                 } else if pane == .main {
                     if isIPad {
                         artworkStage(side: full, collapsed: false)
