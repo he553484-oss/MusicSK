@@ -6,19 +6,19 @@ struct LyricRowLook: Equatable {
     let alpha: Double
     let blur: CGFloat
 
-    private static let compactAlpha = [0.69, 0.58, 0.48, 0.39, 0.33]
-    private static let regularAlpha = [0.85, 0.75, 0.64, 0.55, 0.48]
+    private static let compactAlpha = [0.52, 0.45, 0.38, 0.32, 0.27]
+    private static let regularAlpha = [0.63, 0.54, 0.46, 0.39, 0.33]
     private static let focusBlur: [CGFloat] = [1.3, 2.1, 2.9, 3.6, 4.2]
 
     static func forLine(
         timed: Bool, synced: Bool, active: Bool, distance: Int,
-        compact: Bool, browsing: Bool, blurEnabled: Bool
+        compact: Bool, browsing: Bool, blurEnabled: Bool, upcoming: Bool = false
     ) -> Self {
         guard synced else { return Self(alpha: 0.95, blur: 0) }
         guard timed else { return Self(alpha: 0.9, blur: 0) }
         guard !active else { return Self(alpha: 1, blur: 0) }
         let index = min(max(distance, 1) - 1, focusBlur.count - 1)
-        let alpha = (compact ? compactAlpha : regularAlpha)[index]
+        let alpha = (compact ? compactAlpha : regularAlpha)[index] * (upcoming ? 0.78 : 1)
         let blur = blurEnabled ? focusBlur[index] : 0
         return Self(alpha: browsing ? max(0.8, alpha) : alpha, blur: browsing ? blur * 0.30 : blur)
     }
@@ -177,6 +177,12 @@ struct LyricTimingLine {
     let end: Int64
     let holds: Bool
     let isGap: Bool
+    var secondVoice = false
+
+    static func start(nominal: Int64, firstLead: Int64?, firstBacking: Int64?) -> Int64 {
+        if let firstLead { return min(firstLead, firstBacking ?? firstLead) }
+        return nominal == 0 ? firstBacking ?? nominal : nominal
+    }
 }
 
 /// Playback samples query a prepared index. Most provider sheets are ordered
@@ -228,17 +234,22 @@ struct LyricTimingIndex {
         let latest = lastStarted(by: position)
         var active: [Int] = []
         let currentGap = latest >= 0 && lines[latest].isGap ? latest : nil
-        if latest >= 0, currentGap == nil { active.append(latest) }
-
-        var index = latest - 1
-        while index >= 0, maximumHoldEnd[index] > position {
-            let line = lines[index]
-            if !line.isGap, line.holds, line.start <= position, position < line.end {
-                active.append(index)
+        if latest >= 0, currentGap == nil {
+            let current = lines[latest]
+            // An explicit end releases the lead during silence. When a new
+            // verse starts, only a genuinely overlapping other voice can
+            // keep its emphasis. Inline backing vocals are drawn in one row.
+            if !current.holds || position < current.end { active.append(latest) }
+            var index = latest - 1
+            while index >= 0, maximumHoldEnd[index] > position {
+                let line = lines[index]
+                if !line.isGap, line.start <= position, line.secondVoice != current.secondVoice {
+                    if line.holds, position < line.end { active.insert(index, at: 0) }
+                    break
+                }
+                index -= 1
             }
-            index -= 1
         }
-        active.reverse()
 
         let lead: Int
         if let first = active.first {

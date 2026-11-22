@@ -2,11 +2,11 @@ import Foundation
 
 func appearance(
     _ distance: Int, timed: Bool = true, synced: Bool = true, active: Bool = false,
-    browsing: Bool = false, blurEnabled: Bool = true
+    browsing: Bool = false, blurEnabled: Bool = true, upcoming: Bool = false
 ) -> LyricRowLook {
     LyricRowLook.forLine(
         timed: timed, synced: synced, active: active, distance: distance,
-        compact: true, browsing: browsing, blurEnabled: blurEnabled
+        compact: true, browsing: browsing, blurEnabled: blurEnabled, upcoming: upcoming
     )
 }
 
@@ -24,6 +24,8 @@ precondition(appearance(3, browsing: true).blur > 0)
 precondition(appearance(3, blurEnabled: false).blur == 0)
 precondition(appearance(3, timed: false).blur == 0)
 precondition(appearance(3, synced: false).blur == 0)
+precondition(appearance(1, upcoming: true).alpha < appearance(1).alpha)
+precondition(appearance(1, upcoming: true).blur == appearance(1).blur)
 
 let positions: [Int64] = [200, 1_000, 1_250, 1_500, 1_750, 2_000, 2_400]
 let progress = positions.map { LyricWordProgress.at($0, start: 1_000, end: 2_000) }
@@ -141,10 +143,17 @@ precondition(LyricPlaybackTime.milliseconds(at: .infinity, offsetMs: 0) == 0)
 
 func referenceFocus(in lines: [LyricTimingLine], at position: Int64) -> LyricFocusState {
     let latest = lines.lastIndex { $0.start <= position } ?? -1
-    let active = lines.indices.filter { index in
-        let line = lines[index]
-        return index <= latest && !line.isGap && (index == latest ||
-            (line.holds && line.start <= position && position < line.end))
+    var active: [Int] = []
+    if latest >= 0, !lines[latest].isGap {
+        let line = lines[latest]
+        let otherVoice = lines.indices.last { index in
+            index < latest && !lines[index].isGap && lines[index].start <= position &&
+                lines[index].secondVoice != line.secondVoice
+        }
+        if let otherVoice, lines[otherVoice].holds, position < lines[otherVoice].end {
+            active.append(otherVoice)
+        }
+        if !line.holds || position < line.end { active.append(latest) }
     }
     let preview: Int64
     if latest >= 0, latest + 1 < lines.count {
@@ -159,7 +168,7 @@ func referenceFocus(in lines: [LyricTimingLine], at position: Int64) -> LyricFoc
 let timedLines = [
     LyricTimingLine(start: 0, end: 480, holds: false, isGap: true),
     LyricTimingLine(start: 480, end: 1880, holds: true, isGap: false),
-    LyricTimingLine(start: 760, end: 1610, holds: true, isGap: false),
+    LyricTimingLine(start: 760, end: 1610, holds: true, isGap: false, secondVoice: true),
     LyricTimingLine(start: 760, end: 1900, holds: false, isGap: false),
     LyricTimingLine(start: 1900, end: 5100, holds: false, isGap: true),
     LyricTimingLine(start: 5100, end: 5600, holds: false, isGap: false)
@@ -171,5 +180,22 @@ for lines in [timedLines, [timedLines[3], timedLines[2], timedLines[0]] + Array(
     }
 }
 precondition(LyricTimingIndex(lines: timedLines, synced: false).focus(at: 900, document: nil).active.isEmpty)
+
+let firstActualWord = LyricTimingLine.start(nominal: 2_000, firstLead: 2_350, firstBacking: nil)
+precondition(firstActualWord == 2_350)
+precondition(LyricTimingLine.start(nominal: 2_000, firstLead: nil, firstBacking: nil) == 2_000)
+precondition(LyricTimingLine.start(nominal: 0, firstLead: nil, firstBacking: 2_250) == 2_250)
+let solo = LyricTimingIndex(lines: [
+    LyricTimingLine(start: 1_000, end: 2_800, holds: true, isGap: false),
+    LyricTimingLine(start: firstActualWord, end: 2_700, holds: true, isGap: false)
+], synced: true)
+precondition(solo.focus(at: 2_349, document: nil).active == [0])
+precondition(solo.focus(at: 2_350, document: nil).active == [1])
+precondition(solo.focus(at: 2_700, document: nil).active.isEmpty)
+precondition(solo.focus(at: 2_100, document: nil).active == [0]) // seek back
+let duetIndex = LyricTimingIndex(lines: timedLines, synced: true)
+precondition(duetIndex.focus(at: 760, document: nil).active == [2, 3])
+precondition(duetIndex.focus(at: 1610, document: nil).active == [3])
+precondition(duetIndex.focus(at: 1900, document: nil).active.isEmpty)
 
 print("PASS bounded widths for both voice alignments, header occlusion, real RTL/multiline spans, and focused timeline equivalence")

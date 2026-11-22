@@ -69,12 +69,17 @@ private enum LyricTimeline {
 
     private static let untimedLineMs: Int64 = 4_000
 
-    /// A missing line stamp falls back to the first word's.
+    /// Word-synced rows acquire focus at the first usable word. Some providers
+    /// stamp the paragraph earlier than the first syllable of a verse.
     static func startMs(_ line: LyricLineDto) -> Int64 {
-        guard line.timeMs == 0 else { return line.timeMs }
-        if let first = line.words.map(\.startMs).min() { return first }
-        if let first = line.background?.words.map(\.startMs).min() { return first }
-        return line.timeMs
+        guard !line.isGap else { return line.timeMs }
+        let lead = firstWord(in: line.words)
+        let backing = line.background.flatMap { firstWord(in: $0.words) }
+        return LyricTimingLine.start(nominal: line.timeMs, firstLead: lead, firstBacking: backing)
+    }
+
+    private static func firstWord(in words: [LyricWordDto]) -> Int64? {
+        words.lazy.filter { $0.endMs > $0.startMs }.map(\.startMs).min()
     }
 
 }
@@ -121,7 +126,8 @@ final class PreparedLyrics {
         let starts = LyricTimeline.startTimes(lines)
         timeline = LyricTimingIndex(lines: zip(starts, lines).map { start, line in
             LyricTimingLine(start: start, end: line.endMs,
-                            holds: line.hasKnownEnd || line.background?.hasKnownEnd == true, isGap: line.isGap)
+                            holds: line.endMs > start && (line.hasKnownEnd || line.background?.hasKnownEnd == true),
+                            isGap: line.isGap, secondVoice: line.alignment == .end)
         }, synced: synced)
         for (index, line) in lines.enumerated() {
             rows.append(Self.row(line, at: index, synced: synced,
@@ -243,8 +249,8 @@ enum LyricStyle {
     static let backingScale: CGFloat = 23.0 / 34.0
     static let wipeFeather: CGFloat = 30
     static let wordRise: CGFloat = 2
-    static let glowAlpha = 0.62
-    static let glowRadius: CGFloat = 6
+    static let glowAlpha = 0.30
+    static let glowRadius: CGFloat = 3.5
     /// A note held at least this long glows; quick syllables never do.
     static let heldNoteMs: Int64 = 900
     static let rowInset: CGFloat = 10
@@ -291,8 +297,11 @@ struct LyricSweepRenderer: TextRenderer {
                 if let timing = run[LyricWordTiming.self] {
                     draw(run, timing: timing, at: ms, in: context)
                 } else {
-                    // Punctuation and text without provider timing stay legible.
-                    context.draw(run)
+                    // Unmatched words stay readable at the resting intensity.
+                    // The renderer has no timestamp to justify illuminating them.
+                    var resting = context
+                    resting.opacity *= LyricStyle.unsungAlpha
+                    resting.draw(run)
                 }
             }
         }
@@ -302,7 +311,7 @@ struct LyricSweepRenderer: TextRenderer {
         let progress = LyricWordProgress.at(ms, start: timing.startMs, end: timing.endMs)
         var context = base
         if reduceMotion {
-            context.opacity = LyricStyle.unsungAlpha + (1 - LyricStyle.unsungAlpha) * progress
+            context.opacity *= LyricStyle.unsungAlpha + (1 - LyricStyle.unsungAlpha) * progress
             context.draw(run)
             return
         }
@@ -317,7 +326,7 @@ struct LyricSweepRenderer: TextRenderer {
             return
         }
         var dim = context
-        dim.opacity = LyricStyle.unsungAlpha
+        dim.opacity *= LyricStyle.unsungAlpha
         dim.draw(run)
         guard progress > 0 else { return }
 
@@ -343,7 +352,7 @@ struct LyricSweepRenderer: TextRenderer {
         if glow, Double(timing.endMs) - Double(timing.startMs) >= Double(LyricStyle.heldNoteMs) {
             var halo = lit
             halo.addFilter(.blur(radius: LyricStyle.glowRadius))
-            halo.opacity = LyricStyle.glowAlpha * LyricWordProgress.glowEnvelope(progress)
+            halo.opacity *= LyricStyle.glowAlpha * LyricWordProgress.glowEnvelope(progress)
             halo.draw(run)
         }
         lit.draw(run)
@@ -435,8 +444,11 @@ struct LyricRowView: View, Equatable {
         .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .onTapGesture(perform: onTap)
         .environment(\.layoutDirection, row.rightToLeft ? .rightToLeft : .leftToRight)
-        .animation(reduceMotion ? nil : LyricStyle.emphasis) { content in
-            content.opacity(look.alpha).blur(radius: look.blur)
+        // Commit the intensity with the glyph state. Delaying it would show
+        // the outgoing row's resting glyphs at their old full intensity.
+        .opacity(look.alpha)
+        .animation(reduceMotion || active ? nil : LyricStyle.emphasis) { content in
+            content.blur(radius: look.blur)
         }
     }
 
