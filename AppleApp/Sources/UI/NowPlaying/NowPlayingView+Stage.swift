@@ -89,7 +89,7 @@ extension NowPlayingView {
                 }
                 if collapsed {
                     panel()
-                        .transition(.opacity.combined(with: .move(edge: .bottom)))
+                        .transition(.opacity)
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -100,7 +100,7 @@ extension NowPlayingView {
                         .padding(.bottom, 12)
                 }
             }
-            .animation(.snappy(duration: 0.28), value: pane)
+            .animation(Motion.playerPane(reduceMotion), value: pane)
             // Additive sleeve swipe, upstream's vertical drag: up past 60pt
             // opens Up Next, down while a panel is up returns to the player.
             // The pane buttons stay the primary control; this never replaces

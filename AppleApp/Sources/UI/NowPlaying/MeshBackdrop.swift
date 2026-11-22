@@ -19,6 +19,13 @@ struct MeshBackdrop: View {
     var seed: Int
     var artwork: Data? = nil
 
+    private struct PaletteInput: Equatable {
+        let seed: Int
+        let artwork: Data?
+    }
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var appliedSeed: Int?
     @State private var phase: Double = 0
     @State private var base: Color = .black
     @State private var blob0 = Color.clear
@@ -30,7 +37,7 @@ struct MeshBackdrop: View {
         PlatformSettings.shared.getBoolean(key: "reduce_dynamic_blur", default: false)
     }
     private var reduceAnimation: Bool {
-        PlatformSettings.shared.getBoolean(key: "reduce_animation", default: false)
+        reduceMotion || PlatformSettings.shared.getBoolean(key: "reduce_animation", default: false)
     }
 
     var body: some View {
@@ -49,15 +56,23 @@ struct MeshBackdrop: View {
                     }
                     .ignoresSafeArea()
                     .allowsHitTesting(false)
-                    .onAppear { base = ArtworkPalette.meshBlobs(from: artwork, seed: seed).base }
-                    .onChange(of: seed) { _, new in
-                        base = ArtworkPalette.meshBlobs(from: artwork, seed: new).base
-                    }
-                    .onChange(of: artwork) { _, data in
-                        base = ArtworkPalette.meshBlobs(from: data, seed: seed).base
-                    }
             } else {
                 animatedMesh
+            }
+        }
+        .task(id: PaletteInput(seed: seed, artwork: artwork)) {
+            let input = PaletteInput(seed: seed, artwork: artwork)
+            let palette = await Task.detached(priority: .utility) {
+                ArtworkPalette.meshBlobs(from: input.artwork, seed: input.seed)
+            }.value
+            guard !Task.isCancelled else { return }
+            let trackChanged = appliedSeed != input.seed
+            apply(palette, animated: appliedSeed != nil)
+            appliedSeed = input.seed
+            if trackChanged && !reduceAnimation && !legacyMesh {
+                withAnimation(.timingCurve(0.4, 0.0, 0.2, 1.0, duration: 8)) {
+                    phase += .pi * 0.45
+                }
             }
         }
     }
@@ -68,7 +83,7 @@ struct MeshBackdrop: View {
 
     private var animatedMesh: some View {
         let blobs = [blob0, blob1, blob2, blob3]
-        return Canvas { context, size in
+        return Canvas(rendersAsynchronously: true) { context, size in
             let anchors: [(CGFloat, CGFloat)] = [
                 (0.20, 0.25), (0.80, 0.20), (0.75, 0.80), (0.25, 0.75),
             ]
@@ -104,17 +119,6 @@ struct MeshBackdrop: View {
         .clipped()
         .ignoresSafeArea()
         .allowsHitTesting(false)
-        .onAppear { settle(seed: seed, artwork: artwork, first: true) }
-        .onChange(of: seed) { _, new in settle(seed: new, artwork: artwork, first: false) }
-        .onChange(of: artwork) { _, data in apply(ArtworkPalette.meshBlobs(from: data, seed: seed), animated: true) }
-    }
-
-    private func settle(seed: Int, artwork: Data?, first: Bool) {
-        apply(ArtworkPalette.meshBlobs(from: artwork, seed: seed), animated: !first)
-        guard !reduceAnimation else { return }
-        withAnimation(.timingCurve(0.4, 0.0, 0.2, 1.0, duration: 8)) {
-            phase += .pi * 0.45
-        }
     }
 
     private func apply(_ mesh: ArtworkPalette.MeshBlobs, animated: Bool) {

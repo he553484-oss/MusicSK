@@ -72,7 +72,7 @@ extension NowPlayingView {
                                 .transition(.opacity)
                         }
                     }
-                    .animation(isIPad ? .easeInOut(duration: 0.22) : nil, value: pane)
+                    .animation(Motion.playerPane(reduceMotion), value: pane)
                 }
             }
             // Full-screen covers have no swipe-to-dismiss of their own, so the
@@ -141,10 +141,10 @@ extension NowPlayingView {
             stage
             if pane != .lyrics || lyricsControlsOpen || keepsLyricsPlaybackDeckVisible {
                 deck
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .transition(reduceMotion ? .opacity : .offset(y: 16).combined(with: .opacity))
             }
         }
-        .animation(.easeInOut(duration: 0.22), value: lyricsControlsOpen)
+        .animation(Motion.playerDeck(reduceMotion), value: lyricsControlsOpen)
     }
 
     /// The two-column player: the sleeve and the deck on the left, the open pane
@@ -198,7 +198,7 @@ extension NowPlayingView {
                 }
             }
             .frame(maxWidth: .infinity)
-            .animation(.easeInOut(duration: 0.2), value: pane)
+            .animation(Motion.playerPane(reduceMotion), value: pane)
         }
         .frame(maxWidth: PlayerLayout.landscapeMaxWidth)
         .frame(maxWidth: .infinity)
@@ -308,7 +308,7 @@ extension NowPlayingView {
                 .padding(.trailing, gutter)
                 .padding(.bottom, 12)
         }
-        .animation(.easeInOut(duration: 0.2), value: pane)
+        .animation(Motion.playerPane(reduceMotion), value: pane)
     }
 
     private var landscapePaneSwitcher: some View {

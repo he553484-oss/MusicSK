@@ -81,6 +81,18 @@ enum Theme {
 /// because an `enum` cannot hold an `@Environment` property. Call sites read
 /// `\.accessibilityReduceMotion` into a local and hand it to these.
 enum Motion {
+    static func playerPane(_ reduceMotion: Bool) -> Animation {
+        .easeInOut(duration: reduceMotion ? 0.12 : 0.24)
+    }
+
+    static func playerDeck(_ reduceMotion: Bool) -> Animation {
+        reduceMotion ? .easeOut(duration: 0.12) : .smooth(duration: 0.28)
+    }
+
+    static func playerDragReturn(_ reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : .interactiveSpring(response: 0.34, dampingFraction: 0.88)
+    }
+
     /// A one-shot animation, shortened under Reduce Motion rather than removed.
     ///
     /// Removed entirely would make state changes snap, which reads as a bug

@@ -23,6 +23,7 @@ struct Marquee<Content: View>: View {
     var onOverflowChange: (Bool) -> Void = { _ in }
     @ViewBuilder var content: Content
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var contentWidth: CGFloat = 0
     @State private var boxWidth: CGFloat = 0
     @State private var anchor = Date()
@@ -33,7 +34,7 @@ struct Marquee<Content: View>: View {
     private static var fade: CGFloat { 20 }
 
     private var overflowing: Bool { boxWidth > 0 && contentWidth > boxWidth + 0.5 }
-    private var crawls: Bool { enabled && overflowing }
+    private var crawls: Bool { enabled && overflowing && !reduceMotion }
     private var travel: CGFloat { contentWidth + Self.gap }
     private var passDuration: Double { max(0.4, Double(travel / Self.speed)) }
 

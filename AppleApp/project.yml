@@ -131,6 +131,8 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
+        # Allow system animation scheduling to opt into ProMotion on iPhone.
+        CADisableMinimumFrameDurationOnPhone: true
         UILaunchScreen: {}
         NSMotionUsageDescription: Musicsk uses headphone motion to keep its spatial effect anchored when you turn your head.
         NSPhotoLibraryAddUsageDescription: Musicsk saves the lyric share cards you choose to add to Photos.

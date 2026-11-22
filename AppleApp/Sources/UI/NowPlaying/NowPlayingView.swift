@@ -18,6 +18,7 @@ import AppKit
 /// Music's grabber-plus-swipe dismissal (a sheet can no longer be trusted
 /// full-screen — `.page` sizing presented as a floating card on iPadOS 27).
 struct NowPlayingView: View {
+    @Environment(\.accessibilityReduceMotion) var reduceMotion
     @Environment(PlaybackController.self) var controller
     @Environment(AppModel.self) var appModel
     @Environment(PartyStore.self) var party
@@ -100,13 +101,13 @@ struct NowPlayingView: View {
         }
         .onChange(of: appModel.queueRevealRequested) { _, requested in
             if requested {
-                withAnimation(.easeInOut(duration: 0.2)) { pane = .queue }
+                pane = .queue
                 appModel.queueRevealRequested = false
             }
         }
         .onChange(of: appModel.lyricsRevealRequested) { _, requested in
             if requested {
-                withAnimation(.easeInOut(duration: 0.2)) { pane = .lyrics }
+                pane = .lyrics
                 appModel.lyricsRevealRequested = false
             }
         }
@@ -126,7 +127,7 @@ struct NowPlayingView: View {
                 }
                 guard !Task.isCancelled, pane == .lyrics, lyricsControlsOpen else { return }
                 if lyricsScrubbing { continue }
-                withAnimation(.easeInOut(duration: 0.22)) { lyricsControlsOpen = false }
+                lyricsControlsOpen = false
                 return
             }
         }

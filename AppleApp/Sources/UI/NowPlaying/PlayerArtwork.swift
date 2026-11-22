@@ -21,6 +21,7 @@ struct SleeveArt: View {
     var isPlaying: Bool
     var canvasActive = true
     var side: CGFloat
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -32,8 +33,8 @@ struct SleeveArt: View {
         .frame(width: side, height: side)
         .clipShape(.rect(cornerRadius: 12, style: .continuous))
         .shadow(color: .black.opacity(0.45), radius: 24, y: 10)
-        .scaleEffect(isPlaying ? 1 : 0.86)
-        .animation(.spring(response: 0.85, dampingFraction: 0.75), value: isPlaying)
+        .scaleEffect(isPlaying || reduceMotion ? 1 : 0.86)
+        .animation(reduceMotion ? nil : .smooth(duration: 0.36), value: isPlaying)
         .frame(width: side, height: side)
     }
 }
