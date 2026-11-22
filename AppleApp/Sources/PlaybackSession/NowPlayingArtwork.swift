@@ -9,7 +9,10 @@ enum CanvasVideoFileType: String, CaseIterable {
     static func candidates(pathExtension: String) -> [Self] {
         let ext = pathExtension.lowercased()
         if ext.isEmpty { return allCases }
-        return Self(rawValue: ext).map { [$0] } ?? []
+        guard let expected = Self(rawValue: ext) else { return [] }
+        // A video response can identify a different supported container.
+        // Prefer the old filename, then look for the MIME-derived filename.
+        return [expected] + allCases.filter { $0 != expected }
     }
 
     /// A signed provider URL can omit its extension. Only cache such a

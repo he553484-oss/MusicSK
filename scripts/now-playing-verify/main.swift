@@ -406,6 +406,14 @@ struct Verify {
                         sleeping, invalidation, eligibility, background, backgroundDuringPublication, lostAudio] {
             harness.lifecycle.stop()
         }
-        print("PASS: native command completion, readiness, stale completions, retained sessions, bounded retries, invalidation, identity and foreground-only takeover")
+        precondition(CanvasVideoFileType.candidates(pathExtension: "MP4").first == .mp4)
+        precondition(CanvasVideoFileType.candidates(pathExtension: "mp4").contains(.mov))
+        precondition(CanvasVideoFileType.candidates(pathExtension: "").count == CanvasVideoFileType.allCases.count)
+        precondition(CanvasVideoFileType.candidates(pathExtension: "m3u8").isEmpty)
+        precondition(CanvasVideoFileType(mimeType: "video/quicktime", pathExtension: "mp4") == .mov)
+        precondition(CanvasVideoFileType(mimeType: "application/octet-stream", pathExtension: "m4v") == .m4v)
+        precondition(CanvasVideoFileType(mimeType: "application/vnd.apple.mpegurl", pathExtension: "") == nil)
+        precondition(CanvasVideoFileType(mimeType: "image/jpeg", pathExtension: "mp4") == nil)
+        print("PASS: native command completion, readiness, stale completions, retained sessions, bounded retries, invalidation, identity, foreground-only takeover and artwork container fallback")
     }
 }
