@@ -23,9 +23,13 @@ extension NowPlayingView {
         // two-column layout whose columns cannot hold what they are given.
         GeometryReader { geo in
             ZStack {
-                MeshBackdrop(seed: controller.current?.id.hashValue ?? 0, artwork: controller.current?.artworkData)
-                    .ignoresSafeArea()
-                    .allowsHitTesting(false)
+                if lyricBackdrop == .solid {
+                    LyricBackdrop.solidColor.ignoresSafeArea().allowsHitTesting(false)
+                } else {
+                    MeshBackdrop(seed: controller.current?.id.hashValue ?? 0, artwork: controller.current?.artworkData)
+                        .ignoresSafeArea()
+                        .allowsHitTesting(false)
+                }
                 if usesBlurredArtworkBackdrop(width: geo.size.width, height: geo.size.height) {
                     FullArtworkBlurBackdrop(entry: controller.current)
                         .ignoresSafeArea()

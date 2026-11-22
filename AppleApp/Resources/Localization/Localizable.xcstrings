@@ -1,6 +1,356 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "A line begins": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Empieza un verso"
+          }
+        }
+      }
+    },
+    "App Volume": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volumen de la app"
+          }
+        }
+      }
+    },
+    "Artwork Blur": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portada desenfocada"
+          }
+        }
+      }
+    },
+    "Artwork Colors": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Colores de la portada"
+          }
+        }
+      }
+    },
+    "BitChord Original": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "BitChord Original"
+          }
+        }
+      }
+    },
+    "Blur Intensity": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intensidad de desenfoque"
+          }
+        }
+      }
+    },
+    "Blur Unfocused Lyrics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desenfocar versos inactivos"
+          }
+        }
+      }
+    },
+    "Centered": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Centrada"
+          }
+        }
+      }
+    },
+    "Custom": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personalizado"
+          }
+        }
+      }
+    },
+    "Follow Vocals": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Según las voces"
+          }
+        }
+      }
+    },
+    "Font Weight": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grosor de letra"
+          }
+        }
+      }
+    },
+    "Glow Intensity": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intensidad de brillo"
+          }
+        }
+      }
+    },
+    "Heavy": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muy gruesa"
+          }
+        }
+      }
+    },
+    "Highlight Timed Words": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resaltar palabras sincronizadas"
+          }
+        }
+      }
+    },
+    "Inactive Verse Opacity": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opacidad de versos inactivos"
+          }
+        }
+      }
+    },
+    "Karaoke Preview": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vista previa del karaoke"
+          }
+        }
+      }
+    },
+    "Leading": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Al inicio"
+          }
+        }
+      }
+    },
+    "Lyrics Background": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fondo de letras"
+          }
+        }
+      }
+    },
+    "Lyrics Effects": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Efectos de letras"
+          }
+        }
+      }
+    },
+    "Lyrics Style": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estilo de letras"
+          }
+        }
+      }
+    },
+    "Player, language and visual preferences": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproductor, idioma y preferencias visuales"
+          }
+        }
+      }
+    },
+    "Reduce Lyrics Effects": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reducir efectos de letras"
+          }
+        }
+      }
+    },
+    "Regular": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Normal"
+          }
+        }
+      }
+    },
+    "Reset Custom Style": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restablecer estilo personalizado"
+          }
+        }
+      }
+    },
+    "Semibold": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Seminegrita"
+          }
+        }
+      }
+    },
+    "Solid Dark": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oscuro uniforme"
+          }
+        }
+      }
+    },
+    "Style, synchronization, translation and providers": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Estilo, sincronización, traducción y proveedores"
+          }
+        }
+      }
+    },
+    "Synced Lyrics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letras sincronizadas"
+          }
+        }
+      }
+    },
+    "Text": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Texto"
+          }
+        }
+      }
+    },
+    "Text Alignment": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alineación del texto"
+          }
+        }
+      }
+    },
+    "Text Size": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tamaño de letra"
+          }
+        }
+      }
+    },
+    "The voice answers": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Responde otra voz"
+          }
+        }
+      }
+    },
+    "Trailing": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Al final"
+          }
+        }
+      }
+    },
+    "Transition Softness": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suavidad de transición"
+          }
+        }
+      }
+    },
+    "We sing together": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cantamos juntos"
+          }
+        }
+      }
+    },
     "": {},
     "%@": {},
     "%@ couldn't load": {},

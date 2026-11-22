@@ -108,7 +108,7 @@ struct LyricRow: Identifiable {
 
 /// The lyric document as the pane draws it, rebuilt only when the lines do.
 final class PreparedLyrics {
-    let identity: [ObjectIdentifier]
+    let source: [LyricLineDto]
     let rows: [LyricRow]
     let timeline: LyricTimingIndex
     let synced: Bool
@@ -118,7 +118,7 @@ final class PreparedLyrics {
     let fullyTimed: Bool
 
     init(lines: [LyricLineDto]) {
-        identity = lines.map(ObjectIdentifier.init)
+        source = lines
         let synced = LyricFocus.shared.isSynced(lines: lines)
         self.synced = synced
         var rows: [LyricRow] = []
@@ -226,8 +226,8 @@ final class LyricsDocumentCache {
     private var current: PreparedLyrics?
 
     func document(for lines: [LyricLineDto]) -> PreparedLyrics {
-        if let current, current.identity.count == lines.count,
-           zip(current.identity, lines).allSatisfy({ $0 == ObjectIdentifier($1) }) {
+        if let current, current.source.count == lines.count,
+           zip(current.source, lines).allSatisfy({ $0 === $1 }) {
             return current
         }
         let prepared = PreparedLyrics(lines: lines)
@@ -239,8 +239,6 @@ final class LyricsDocumentCache {
 // MARK: - Look
 
 enum LyricStyle {
-    static let emphasis = Animation.easeInOut(duration: 0.32)
-
     static func controlsFade(_ reduceMotion: Bool) -> Animation {
         .easeInOut(duration: reduceMotion ? 0.12 : 0.24)
     }
@@ -249,8 +247,6 @@ enum LyricStyle {
     static let backingScale: CGFloat = 23.0 / 34.0
     static let wipeFeather: CGFloat = 30
     static let wordRise: CGFloat = 2
-    static let glowAlpha = 0.30
-    static let glowRadius: CGFloat = 3.5
     /// A note held at least this long glows; quick syllables never do.
     static let heldNoteMs: Int64 = 900
     static let rowInset: CGFloat = 10
@@ -278,11 +274,12 @@ struct LyricWordTiming: TextAttribute {
 struct LyricSweepRenderer: TextRenderer {
     /// Nil draws the same attributed glyphs at rest.
     var ms: Int64?
-    var glow: Bool
+    var glowAlpha: Double
+    var glowRadius: CGFloat
     var reduceMotion: Bool
 
     var displayPadding: EdgeInsets {
-        let halo = glow && !reduceMotion ? LyricStyle.glowRadius * 2 : 0
+        let halo = glowAlpha > 0 && !reduceMotion ? glowRadius * 2 : 0
         let lift = reduceMotion ? 0 : LyricStyle.wordRise
         return EdgeInsets(top: halo + lift, leading: halo, bottom: halo, trailing: halo)
     }
@@ -335,7 +332,7 @@ struct LyricSweepRenderer: TextRenderer {
         let travel = rect.width + feather
         let rtl = run.layoutDirection == .rightToLeft
         let edge = rtl ? rect.maxX + feather - progress * travel : rect.minX - feather + progress * travel
-        let band = rect.insetBy(dx: -feather, dy: -LyricStyle.glowRadius)
+        let band = rect.insetBy(dx: -feather, dy: -glowRadius)
         var lit = context
         lit.clipToLayer { mask in
             mask.fill(
@@ -349,10 +346,10 @@ struct LyricSweepRenderer: TextRenderer {
         }
         // The same mask advances both the highlight and the held-note glow.
         // Unreached characters never light up from the halo.
-        if glow, Double(timing.endMs) - Double(timing.startMs) >= Double(LyricStyle.heldNoteMs) {
+        if glowAlpha > 0, Double(timing.endMs) - Double(timing.startMs) >= Double(LyricStyle.heldNoteMs) {
             var halo = lit
-            halo.addFilter(.blur(radius: LyricStyle.glowRadius))
-            halo.opacity *= LyricStyle.glowAlpha * LyricWordProgress.glowEnvelope(progress)
+            halo.addFilter(.blur(radius: glowRadius))
+            halo.opacity *= glowAlpha * LyricWordProgress.glowEnvelope(progress)
             halo.draw(run)
         }
         lit.draw(run)
@@ -406,6 +403,7 @@ struct LyricRowView: View, Equatable {
     let look: LyricRowLook
     let fontSize: CGFloat
     let geometry: LyricRowGeometry
+    let presentation: LyricPresentation
     let picked: Bool
     let picking: Bool
     let tapMode: LyricTapMode
@@ -418,25 +416,34 @@ struct LyricRowView: View, Equatable {
     static func == (lhs: LyricRowView, rhs: LyricRowView) -> Bool {
         lhs.row.id == rhs.row.id && lhs.document == rhs.document && lhs.active == rhs.active &&
             lhs.look == rhs.look && lhs.fontSize == rhs.fontSize && lhs.geometry == rhs.geometry &&
+            lhs.presentation == rhs.presentation &&
             lhs.picked == rhs.picked && lhs.picking == rhs.picking && lhs.tapMode == rhs.tapMode &&
             lhs.offsetMs == rhs.offsetMs && (!lhs.active ||
                 (lhs.clock.playing == rhs.clock.playing && lhs.clock.pausedPosition == rhs.clock.pausedPosition))
     }
 
+    private var position: LyricTextPosition { presentation.alignment.resolved(secondVoice: row.secondVoice) }
+
+    private var scaleAnchor: UnitPoint {
+        if position == .center { return .center }
+        let physicalTrailing = (position == .trailing) != row.rightToLeft
+        return UnitPoint(x: physicalTrailing ? 1 : 0, y: 0.5)
+    }
+
     var body: some View {
-        VStack(alignment: row.secondVoice ? .trailing : .leading, spacing: 2) {
+        VStack(alignment: position.horizontal, spacing: 2) {
             line(row.leadText, swept: row.leadSwept, size: fontSize, glow: true)
             if let backing = row.backingText {
                 line(backing, swept: row.backingSwept, size: fontSize * LyricStyle.backingScale, glow: false)
                     .opacity(LyricStyle.backingAlpha)
             }
         }
-        .frame(width: geometry.textWidth, alignment: row.secondVoice ? .trailing : .leading)
+        .frame(width: geometry.textWidth, alignment: position.frame)
         .padding(.leading, row.secondVoice ? geometry.duetInset : 0)
         .padding(.trailing, row.secondVoice ? 0 : geometry.duetInset)
         .padding(.vertical, LyricStyle.rowInset * 0.8)
         .padding(.horizontal, geometry.effectInset)
-        .frame(width: geometry.rowWidth, alignment: row.secondVoice ? .trailing : .leading)
+        .frame(width: geometry.rowWidth, alignment: position.frame)
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(.white.opacity(picked ? 0.16 : (picking ? 0.05 : 0)))
@@ -447,20 +454,24 @@ struct LyricRowView: View, Equatable {
         // Commit the intensity with the glyph state. Delaying it would show
         // the outgoing row's resting glyphs at their old full intensity.
         .opacity(look.alpha)
-        .animation(reduceMotion || active ? nil : LyricStyle.emphasis) { content in
+        .animation(presentation.emphasis(reduceMotion: reduceMotion)) { content in
+            content.scaleEffect(reduceMotion ? 1 : look.scale, anchor: scaleAnchor)
+        }
+        .animation(active ? nil : presentation.emphasis(reduceMotion: reduceMotion)) { content in
             content.blur(radius: look.blur)
         }
     }
 
     private func line(_ plain: String, swept: Text?, size: CGFloat, glow: Bool) -> some View {
-        LyricGlyphs(plain: plain, swept: swept, active: active, glow: glow, offsetMs: offsetMs, clock: clock)
-            .scaledFont(size: size, weight: .heavy, design: .default)
+        LyricGlyphs(plain: plain, swept: swept, active: active, glow: glow, offsetMs: offsetMs, clock: clock,
+                    presentation: presentation)
+            .scaledFont(size: size, weight: presentation.weight.fontWeight, design: .default)
             .foregroundStyle(.white)
-            .multilineTextAlignment(row.secondVoice ? .trailing : .leading)
+            .multilineTextAlignment(position.text)
             .lineSpacing(size * 0.06)
             .lineLimit(nil)
             .fixedSize(horizontal: false, vertical: true)
-            .frame(width: geometry.textWidth, alignment: row.secondVoice ? .trailing : .leading)
+            .frame(width: geometry.textWidth, alignment: position.frame)
     }
 }
 
@@ -472,26 +483,31 @@ struct LyricGlyphs: View {
     let glow: Bool
     let offsetMs: Int32
     let clock: LyricsClock
+    var presentation: LyricPresentation = .init()
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    private var simpleMotion: Bool { reduceMotion || presentation.reduceEffects }
+
     var body: some View {
-        if let swept {
-            // Inactive words use the same attributed glyph layout with no
-            // frame clock. Switching focus never switches text implementations.
-            TimelineView(.animation(
-                minimumInterval: 1.0 / (reduceMotion ? 30.0 : 60.0),
-                paused: !active || !clock.playing
-            )) { timeline in
-                swept.textRenderer(LyricSweepRenderer(
-                    ms: active ? clock.lyricMs(at: timeline.date, offsetMs: offsetMs) : nil,
-                    glow: glow,
-                    reduceMotion: reduceMotion
-                ))
+        if presentation.wordHighlight, let swept {
+            if active && clock.playing {
+                TimelineView(.animation(minimumInterval: simpleMotion ? 1.0 / 30.0 : nil)) { timeline in
+                    rendered(swept, at: clock.lyricMs(at: timeline.date, offsetMs: offsetMs))
+                }
+            } else {
+                // Keep the same attributed text and renderer padding. Inactive
+                // rows and paused playback don't install a display schedule.
+                rendered(swept, at: active ? clock.lyricMs(at: .now, offsetMs: offsetMs) : nil)
             }
         } else {
             Text(verbatim: plain)
         }
+    }
+
+    private func rendered(_ text: Text, at ms: Int64?) -> some View {
+        text.textRenderer(LyricSweepRenderer(ms: ms, glowAlpha: glow ? presentation.glowAlpha : 0,
+                                              glowRadius: presentation.glowRadius, reduceMotion: simpleMotion))
     }
 }
 
@@ -503,6 +519,7 @@ struct LyricGapRow: View {
     let look: LyricRowLook
     let offsetMs: Int32
     let clock: LyricsClock
+    let presentation: LyricPresentation
     let onTap: () -> Void
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -510,17 +527,23 @@ struct LyricGapRow: View {
     private let spacing: CGFloat = 5
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !open || !clock.playing)) { timeline in
-            dots(through: open ? through(at: timeline.date) : 0)
+        Group {
+            if open && clock.playing {
+                TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                    dots(through: through(at: timeline.date))
+                }
+            } else {
+                dots(through: open ? through(at: .now) : 0)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: row.secondVoice ? .trailing : .leading)
+        .frame(maxWidth: .infinity, alignment: presentation.alignment.resolved(secondVoice: row.secondVoice).frame)
         .frame(height: dot + LyricStyle.rowInset * 2)
         .padding(.horizontal, LyricStyle.rowInset)
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)
         .allowsHitTesting(open)
         .opacity(open ? look.alpha : 0)
-        .animation(reduceMotion ? nil : LyricStyle.emphasis, value: open)
+        .animation(presentation.emphasis(reduceMotion: reduceMotion), value: open)
         .accessibilityLabel("Instrumental")
         .accessibilityHidden(!open)
     }

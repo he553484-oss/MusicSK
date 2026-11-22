@@ -78,7 +78,7 @@ struct LyricsPane: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var focus = LyricFocusState()
     @State private var cache = LyricsDocumentCache()
-    @AppStorage("lyrics_blur") private var lyricsBlur = true
+    private var style = LyricStyleStorage()
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     #endif
@@ -134,14 +134,15 @@ struct LyricsPane: View {
         return max(chromeInsets.top, LyricStyle.minimumHeaderHeight)
     }
 
-    private func scrollAnchor(viewportHeight: CGFloat) -> UnitPoint {
-        guard phoneColumn else { return .center }
-        let vertical = LyricViewportGeometry(height: viewportHeight, topChrome: topChromeInset, bottomChrome: 0)
-        return UnitPoint(x: 0.5, y: vertical.compactFocusAnchor)
+    private func scrollAnchor(viewportHeight: CGFloat, presentation: LyricPresentation) -> CGFloat {
+        guard phoneColumn else { return 0.5 }
+        return LyricViewportGeometry(height: viewportHeight, topChrome: topChromeInset, bottomChrome: 0,
+                                     preferredAnchor: presentation.phoneAnchor).compactFocusAnchor
     }
 
     /// How a row sits in the stack, by its distance from the line being sung.
-    private func look(for row: LyricRow, document: PreparedLyrics, focus: LyricFocusState, active: Bool) -> LyricRowLook {
+    private func look(for row: LyricRow, document: PreparedLyrics, focus: LyricFocusState, active: Bool,
+                      presentation: LyricPresentation) -> LyricRowLook {
         LyricRowLook.forLine(
             timed: row.timed,
             synced: document.synced,
@@ -149,7 +150,7 @@ struct LyricsPane: View {
             distance: abs(row.id - focus.lead),
             compact: phoneColumn,
             browsing: follow.browsing,
-            blurEnabled: lyricsBlur,
+            presentation: presentation,
             upcoming: row.id > focus.lead
         )
     }
@@ -160,7 +161,8 @@ struct LyricsPane: View {
 
     @ViewBuilder
     private func rowView(
-        _ row: LyricRow, document: PreparedLyrics, focus: LyricFocusState, geometry: LyricRowGeometry
+        _ row: LyricRow, document: PreparedLyrics, focus: LyricFocusState, geometry: LyricRowGeometry,
+        presentation: LyricPresentation
     ) -> some View {
         if row.isGap && !document.synced {
             Spacer().frame(height: 14)
@@ -168,9 +170,10 @@ struct LyricsPane: View {
             LyricGapRow(
                 row: row,
                 open: focus.gap == row.id,
-                look: look(for: row, document: document, focus: focus, active: focus.gap == row.id),
+                look: look(for: row, document: document, focus: focus, active: focus.gap == row.id, presentation: presentation),
                 offsetMs: offsetMs,
                 clock: clock,
+                presentation: presentation,
                 onTap: {
                     if !sourceVisible { onRevealControls?() }
                     else if !picking { onSeek?(seekTarget(for: row)) }
@@ -183,9 +186,10 @@ struct LyricsPane: View {
                 row: row,
                 document: ObjectIdentifier(document),
                 active: active,
-                look: look(for: row, document: document, focus: focus, active: active),
-                fontSize: fontSize,
+                look: look(for: row, document: document, focus: focus, active: active, presentation: presentation),
+                fontSize: fontSize * presentation.typeSize,
                 geometry: geometry,
+                presentation: presentation,
                 picked: selection.contains(row.id),
                 picking: picking,
                 tapMode: mode,
@@ -216,6 +220,8 @@ struct LyricsPane: View {
     }
 
     var body: some View {
+        let presentation = style.presentation
+        let document = cache.document(for: lines)
         Group {
             if !hasTrack {
                 Text("Play a song to see lyrics here.")
@@ -246,7 +252,7 @@ struct LyricsPane: View {
                             .padding(.horizontal, 12)
                             .padding(.top, topChromeInset)
                     }
-                    lyricsScroll
+                    lyricsScroll(document: document, presentation: presentation)
                     if picking {
                         shareBar
                             .padding(.horizontal, 12)
@@ -270,6 +276,9 @@ struct LyricsPane: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+            if presentation.background == .solid { LyricBackdrop.solidColor }
+        }
         .contentShape(Rectangle())
         .simultaneousGesture(TapGesture().onEnded {
             if !sourceVisible { onRevealControls?() }
@@ -291,7 +300,7 @@ struct LyricsPane: View {
         .onChange(of: sourceLabel) { _, value in
             if value?.isEmpty != false { sourceCreditHeight = 0 }
         }
-        .onChange(of: lyricsSignature) { _, _ in
+        .onChange(of: SelectionSource(document: ObjectIdentifier(document), label: sourceLabel)) { _, _ in
             clearShareSelection()
             onSharePicking?(false)
         }
@@ -308,16 +317,17 @@ struct LyricsPane: View {
         }
     }
 
-    private var lyricsScroll: some View {
+    private func lyricsScroll(document: PreparedLyrics, presentation: LyricPresentation) -> some View {
         GeometryReader { viewport in
-            let document = cache.document(for: lines)
             let focus = currentFocus(document)
-            let target = VerseTarget(track: trackId, document: ObjectIdentifier(document), line: focus.lead)
-            let geometry = LyricRowGeometry(viewportWidth: viewport.size.width, compact: phoneColumn, duet: document.duet)
+            let target = VerseTarget(track: trackId, document: ObjectIdentifier(document), line: focus.lead,
+                                     anchor: scrollAnchor(viewportHeight: viewport.size.height, presentation: presentation))
+            let geometry = LyricRowGeometry(viewportWidth: viewport.size.width, compact: phoneColumn,
+                                            duet: document.duet, presentation: presentation)
             ScrollView {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(document.rows) { row in
-                        rowView(row, document: document, focus: focus, geometry: geometry)
+                        rowView(row, document: document, focus: focus, geometry: geometry, presentation: presentation)
                             .id(row.id)
                     }
                 }
@@ -355,10 +365,9 @@ struct LyricsPane: View {
                 guard lastPositioned != target || rejoining else { return }
 
                 let sameDocument = lastPositioned?.document == target.document && lastPositioned?.track == target.track
-                let animation: Animation? = !reduceMotion && sameDocument
-                    ? .smooth(duration: rejoining ? 0.44 : 0.36) : nil
+                let animation = sameDocument ? presentation.follow(rejoining: rejoining, reduceMotion: reduceMotion) : nil
                 withAnimation(animation) {
-                    scrollPosition.scrollTo(id: target.line, anchor: scrollAnchor(viewportHeight: viewport.size.height))
+                    scrollPosition.scrollTo(id: target.line, anchor: UnitPoint(x: 0.5, y: target.anchor))
                 }
                 lastPositioned = target
                 positionedReturn = follow.returnRevision
@@ -428,6 +437,7 @@ struct LyricsPane: View {
         let track: String
         let document: ObjectIdentifier
         let line: Int
+        let anchor: CGFloat
     }
 
     private struct FollowTarget: Equatable {
@@ -436,16 +446,11 @@ struct LyricsPane: View {
         let returnRevision: UInt
     }
 
-    /// What makes one lyric document different from another: the line objects
-    /// themselves. A re-fetch or a translation brings new ones, so the share
-    /// card is cleared exactly when the words it quoted may have changed — and
-    /// comparing identities costs nothing per render, where hashing every
-    /// line's text did.
-    private var lyricsSignature: Int {
-        var hasher = Hasher()
-        hasher.combine(sourceLabel)
-        for line in lines { hasher.combine(ObjectIdentifier(line)) }
-        return hasher.finalize()
+    /// A new document or provider clears the selection. A presentation edit
+    /// leaves both intact, so it does not affect sharing or manual following.
+    private struct SelectionSource: Equatable {
+        let document: ObjectIdentifier
+        let label: String?
     }
 
     private func clearShareSelection() {

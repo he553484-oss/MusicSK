@@ -101,6 +101,19 @@ extension SettingsView {
                 }
             }
         }
+        #if os(macOS)
+        rows.row("Show Player in Menu Bar", "menu bar", "player", "status bar", "extra") {
+            Toggle("Show Player in Menu Bar", isOn: $menuBarPlayer)
+        }
+        #endif
+    }
+
+    func buildLyricsRows(_ rows: inout SettingsRows) {
+        rows.row("Lyrics Style", "karaoke", "bitChord", "custom", "font", "glow", "estilo", "brillo") {
+            PushLink { LyricsStyleSettingsPage() } label: {
+                SettingsLine(glyph: .lyrics, title: "Lyrics Style", subtitle: lyricStyle.preset.label) { EmptyView() }
+            }
+        }
         rows.row("Synced Lyrics", "lyrics", "synced", "karaoke", "words") {
             SettingsToggleLine(
                 glyph: .lyrics,
@@ -152,11 +165,6 @@ extension SettingsView {
                 }
             }
         }
-        #if os(macOS)
-        rows.row("Show Player in Menu Bar", "menu bar", "player", "status bar", "extra") {
-            Toggle("Show Player in Menu Bar", isOn: $menuBarPlayer)
-        }
-        #endif
     }
 
     // MARK: - Performance

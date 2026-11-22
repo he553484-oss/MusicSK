@@ -53,6 +53,7 @@ struct NowPlayingView: View {
     /// The one sung line under the title. Off leaves the player to the
     /// artwork, credits and controls; the lyrics pane is untouched.
     @AppStorage("player_lyric_line") var showsLyricLine = true
+    var lyricStyle = LyricStyleStorage()
     @AppStorage("hide_status_bar_in_player") private var hideStatusBarInPlayer = false
     @State var showPipeline = false
     @State var showLyricsOffset = false
@@ -141,9 +142,14 @@ struct NowPlayingView: View {
     /// Upstream uses a cropped, pre-blurred cover behind lyrics and queue, and
     /// throughout landscape / tablet playback. The phone's main player keeps
     /// its seam-aware artwork mesh behind the edge-to-edge sleeve.
+    var lyricBackdrop: LyricBackdrop {
+        pane == .lyrics ? lyricStyle.presentation.background : .artwork
+    }
+
     func usesBlurredArtworkBackdrop(width: CGFloat, height: CGFloat) -> Bool {
-        pane != .main || PlayerLayout.takesLandscapeShape(width: width, height: height) ||
-            width >= PlayerLayout.tabletMinWidth || videoShowing
+        lyricBackdrop == .artwork &&
+            (pane != .main || PlayerLayout.takesLandscapeShape(width: width, height: height) ||
+             width >= PlayerLayout.tabletMinWidth || videoShowing)
     }
 
     /// A music video is on screen. The phone's backdrop is then the blurred

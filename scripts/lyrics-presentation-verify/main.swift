@@ -2,11 +2,12 @@ import Foundation
 
 func appearance(
     _ distance: Int, timed: Bool = true, synced: Bool = true, active: Bool = false,
-    browsing: Bool = false, blurEnabled: Bool = true, upcoming: Bool = false
+    browsing: Bool = false, blurEnabled: Bool = true, upcoming: Bool = false,
+    presentation: LyricPresentation? = nil
 ) -> LyricRowLook {
     LyricRowLook.forLine(
         timed: timed, synced: synced, active: active, distance: distance,
-        compact: true, browsing: browsing, blurEnabled: blurEnabled, upcoming: upcoming
+        compact: true, browsing: browsing, presentation: presentation ?? .init(blurEnabled: blurEnabled), upcoming: upcoming
     )
 }
 
@@ -37,6 +38,35 @@ precondition(LyricWordProgress.glowEnvelope(0.25) < LyricWordProgress.glowEnvelo
 precondition(abs(LyricWordProgress.glowEnvelope(0.25) - LyricWordProgress.glowEnvelope(0.75)) < 0.000001)
 
 print("PASS lyric focus separation, manual reading, blur preference, held word progress and glow")
+
+let original = LyricPresentation(preset: .bitChord)
+precondition(appearance(1, presentation: original) == .init(alpha: 0.74, blur: 1, scale: 0.98))
+precondition(appearance(4, presentation: original) == .init(alpha: 0.4, blur: 2.4, scale: 0.98))
+precondition(appearance(4, browsing: true, presentation: original) == .init(alpha: 0.8, blur: 0, scale: 0.98))
+precondition(appearance(1, upcoming: true, presentation: original).alpha == 0.74)
+precondition(original.phoneAnchor == 0.32 && original.followDuration(rejoining: false) == 0.4)
+precondition(appearance(1, presentation: .init(preset: .bitChord, blurEnabled: false)).blur == 0)
+let originalGeometry = LyricRowGeometry(viewportWidth: 393, compact: true, duet: true, presentation: original)
+precondition(originalGeometry.documentInset == 2 && originalGeometry.effectInset == 10 && originalGeometry.duetInset == 44)
+
+let malformed = Data(#"{"typeSize":-10,"inactiveOpacity":0,"softness":2,"blur":6,"glow":3,"weight":"unknown","alignment":"center","background":"solid","wordHighlight":false}"#.utf8)
+var custom = LyricCustomStyle.restore(malformed)
+precondition(custom.typeSize == 0.8 && custom.inactiveOpacity == 0.38 && custom.softness == 1)
+precondition(custom.glow == 1.5 && custom.blur == 1.25 && custom.weight == .heavy)
+precondition(custom.background == .solid && !custom.wordHighlight)
+let customProfile = LyricPresentation(preset: .custom, custom: custom)
+precondition(customProfile.alignment == .center)
+precondition(LyricRowGeometry(viewportWidth: 393, compact: true, duet: true, presentation: customProfile).duetInset == 0)
+precondition(customProfile.followDuration(rejoining: false) > LyricPresentation().followDuration(rejoining: false))
+custom.reduceEffects = true
+let calm = LyricPresentation(preset: .custom, custom: custom)
+precondition(calm.blurMultiplier == 0 && calm.glowAlpha == 0 && !calm.wordHighlight)
+precondition(calm.followDuration(rejoining: false) <= 0.30)
+let encoded = try JSONEncoder().encode(custom)
+precondition(LyricCustomStyle.restore(encoded) == custom)
+precondition(LyricCustomStyle.restore(Data("corrupt".utf8)) == LyricCustomStyle())
+precondition(LyricPresentation(preset: .musicsk, custom: custom) == LyricPresentation())
+print("PASS original preset geometry and motion, custom limits, persistence, style isolation and reduced effects")
 
 var follow = LyricFollowState()
 precondition(follow.follows)

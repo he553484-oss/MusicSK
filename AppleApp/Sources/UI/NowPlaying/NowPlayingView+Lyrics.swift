@@ -95,6 +95,7 @@ extension NowPlayingView {
                 unavailable: controller.lyricsUnavailable,
                 clock: lyricsClock,
                 offsetMs: lyricsOffsetMs,
+                presentation: lyricStyle.presentation,
                 onOpen: {
                     Haptics.play(.expand)
                     pane = pane == .lyrics ? .main : .lyrics
@@ -122,6 +123,7 @@ private struct CompactLyricStrip: View {
     let unavailable: Bool
     let clock: LyricsClock
     let offsetMs: Int32
+    let presentation: LyricPresentation
     let onOpen: () -> Void
 
     @State private var cache = LyricsDocumentCache()
@@ -141,7 +143,7 @@ private struct CompactLyricStrip: View {
                     HStack(spacing: 6) {
                         LyricGlyphs(
                             plain: row.leadText, swept: row.leadSwept, active: true, glow: false,
-                            offsetMs: offsetMs, clock: clock
+                            offsetMs: offsetMs, clock: clock, presentation: presentation
                         )
                         .foregroundStyle(.white.opacity(0.92))
                         .multilineTextAlignment(.leading)

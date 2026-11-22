@@ -1,26 +1,163 @@
 import Foundation
 
+enum LyricPreset: String, CaseIterable {
+    case musicsk, bitChord, custom
+
+    static let storageKey = "musicsk_lyric_preset"
+}
+
+enum LyricFontWeight: String, Codable, CaseIterable {
+    case regular, semibold, heavy
+}
+
+enum LyricTextPosition: String, Codable, CaseIterable {
+    case automatic, leading, center, trailing
+
+    func resolved(secondVoice: Bool) -> Self {
+        self == .automatic ? (secondVoice ? .trailing : .leading) : self
+    }
+}
+
+enum LyricBackdrop: String, Codable, CaseIterable {
+    case artwork, mesh, solid
+}
+
+struct LyricCustomStyle: Codable, Equatable {
+    static let storageKey = "musicsk_lyric_style_custom"
+    static let typeSizeRange = 0.8...1.25
+    static let blurRange = 0.0...1.25
+    static let glowRange = 0.0...1.5
+    static let inactiveOpacityRange = 0.38...0.74
+    static let softnessRange = 0.0...1.0
+
+    var typeSize = 1.0
+    var weight: LyricFontWeight = .heavy
+    var alignment: LyricTextPosition = .automatic
+    var blur = 1.0
+    var glow = 1.0
+    var inactiveOpacity = 0.52
+    var softness = 0.5
+    var background: LyricBackdrop = .artwork
+    var wordHighlight = true
+    var reduceEffects = false
+
+    static func restore(_ data: Data) -> Self {
+        (try? JSONDecoder().decode(Self.self, from: data))?.bounded ?? Self()
+    }
+
+    var bounded: Self {
+        let defaults = Self()
+        var result = self
+        result.typeSize = Self.clamp(typeSize, to: Self.typeSizeRange, fallback: defaults.typeSize)
+        result.blur = Self.clamp(blur, to: Self.blurRange, fallback: defaults.blur)
+        result.glow = Self.clamp(glow, to: Self.glowRange, fallback: defaults.glow)
+        result.inactiveOpacity = Self.clamp(inactiveOpacity, to: Self.inactiveOpacityRange, fallback: defaults.inactiveOpacity)
+        result.softness = Self.clamp(softness, to: Self.softnessRange, fallback: defaults.softness)
+        return result
+    }
+
+    private static func clamp(_ value: Double, to range: ClosedRange<Double>, fallback: Double) -> Double {
+        value.isFinite ? min(max(value, range.lowerBound), range.upperBound) : fallback
+    }
+}
+
+extension LyricCustomStyle {
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.init()
+        typeSize = (try? values.decode(Double.self, forKey: .typeSize)) ?? typeSize
+        weight = (try? values.decode(LyricFontWeight.self, forKey: .weight)) ?? weight
+        alignment = (try? values.decode(LyricTextPosition.self, forKey: .alignment)) ?? alignment
+        blur = (try? values.decode(Double.self, forKey: .blur)) ?? blur
+        glow = (try? values.decode(Double.self, forKey: .glow)) ?? glow
+        inactiveOpacity = (try? values.decode(Double.self, forKey: .inactiveOpacity)) ?? inactiveOpacity
+        softness = (try? values.decode(Double.self, forKey: .softness)) ?? softness
+        background = (try? values.decode(LyricBackdrop.self, forKey: .background)) ?? background
+        wordHighlight = (try? values.decode(Bool.self, forKey: .wordHighlight)) ?? wordHighlight
+        reduceEffects = (try? values.decode(Bool.self, forKey: .reduceEffects)) ?? reduceEffects
+    }
+}
+
+/// Presentation only. Presets and live edits never change a document's identity
+/// or its line/word timing index.
+struct LyricPresentation: Equatable {
+    let preset: LyricPreset
+    private let custom: LyricCustomStyle
+    let blurEnabled: Bool
+
+    init(preset: LyricPreset = .musicsk, custom: LyricCustomStyle = .init(), blurEnabled: Bool = true) {
+        self.preset = preset
+        self.custom = preset == .custom ? custom.bounded : LyricCustomStyle()
+        self.blurEnabled = blurEnabled
+    }
+
+    var original: Bool { preset == .bitChord }
+    var typeSize: CGFloat { CGFloat(custom.typeSize) }
+    var weight: LyricFontWeight { custom.weight }
+    var alignment: LyricTextPosition { custom.alignment }
+    var background: LyricBackdrop { custom.background }
+    var wordHighlight: Bool { custom.wordHighlight }
+    var reduceEffects: Bool { custom.reduceEffects }
+    var inactiveScale: CGFloat { original ? 0.98 : 1 }
+    var phoneAnchor: CGFloat { original ? 0.32 : 0.27 }
+    var blurMultiplier: CGFloat { blurEnabled && !reduceEffects ? CGFloat(custom.blur) : 0 }
+    var glowAlpha: Double { reduceEffects ? 0 : (original ? 0.62 : 0.30 * custom.glow) }
+    var glowRadius: CGFloat { original ? 6 : CGFloat(3.5 * min(1.3, custom.glow)) }
+    var preservesDuetLanes: Bool { alignment == .automatic }
+
+    var emphasisDuration: Double {
+        original ? 0.4 : 0.22 + 0.20 * custom.softness
+    }
+
+    func followDuration(rejoining: Bool) -> Double {
+        if original { return 0.4 }
+        let duration = 0.24 + 0.24 * custom.softness
+        return (reduceEffects ? min(duration, 0.30) : duration) + (rejoining ? 0.08 : 0)
+    }
+
+    func inactiveAlpha(base: Double, nearby: Double, upcoming: Bool) -> Double {
+        if original { return base }
+        let upcomingScale = upcoming ? 0.78 : 1
+        if preset == .custom {
+            return max(0.26, custom.inactiveOpacity * base / nearby * upcomingScale)
+        }
+        return base * upcomingScale
+    }
+}
+
 /// Opacity describes lyric focus. Blur is independently controlled by the
 /// listener's setting, with a lighter radius while reading by hand.
 struct LyricRowLook: Equatable {
     let alpha: Double
     let blur: CGFloat
+    var scale: CGFloat = 1
 
     private static let compactAlpha = [0.52, 0.45, 0.38, 0.32, 0.27]
     private static let regularAlpha = [0.63, 0.54, 0.46, 0.39, 0.33]
     private static let focusBlur: [CGFloat] = [1.3, 2.1, 2.9, 3.6, 4.2]
+    // The original Apple port's falloffs, after the active row at index zero.
+    private static let originalCompactAlpha = [0.74, 0.60, 0.48, 0.40, 0.34]
+    private static let originalRegularAlpha = [0.80, 0.70, 0.58, 0.46]
+    private static let originalBlur: [CGFloat] = [1.0, 1.0, 1.7, 2.4]
 
     static func forLine(
         timed: Bool, synced: Bool, active: Bool, distance: Int,
-        compact: Bool, browsing: Bool, blurEnabled: Bool, upcoming: Bool = false
+        compact: Bool, browsing: Bool, presentation: LyricPresentation = .init(), upcoming: Bool = false
     ) -> Self {
         guard synced else { return Self(alpha: 0.95, blur: 0) }
         guard timed else { return Self(alpha: 0.9, blur: 0) }
         guard !active else { return Self(alpha: 1, blur: 0) }
-        let index = min(max(distance, 1) - 1, focusBlur.count - 1)
-        let alpha = (compact ? compactAlpha : regularAlpha)[index] * (upcoming ? 0.78 : 1)
-        let blur = blurEnabled ? focusBlur[index] : 0
-        return Self(alpha: browsing ? max(0.8, alpha) : alpha, blur: browsing ? blur * 0.30 : blur)
+        let index = max(distance, 1) - 1
+        let alphaSteps = presentation.original
+            ? (compact ? originalCompactAlpha : originalRegularAlpha)
+            : (compact ? compactAlpha : regularAlpha)
+        let blurSteps = presentation.original ? originalBlur : focusBlur
+        let alpha = presentation.inactiveAlpha(base: alphaSteps[min(index, alphaSteps.count - 1)],
+                                                nearby: alphaSteps[0], upcoming: upcoming)
+        let blur = blurSteps[min(index, blurSteps.count - 1)] * presentation.blurMultiplier
+        return Self(alpha: browsing ? max(0.8, alpha) : alpha,
+                    blur: browsing ? blur * (presentation.original ? 0 : 0.30) : blur,
+                    scale: presentation.inactiveScale)
     }
 }
 
@@ -88,13 +225,13 @@ struct LyricRowGeometry: Equatable {
     let duetInset: CGFloat
     let textWidth: CGFloat
 
-    init(viewportWidth: CGFloat, compact: Bool, duet: Bool) {
+    init(viewportWidth: CGFloat, compact: Bool, duet: Bool, presentation: LyricPresentation = .init()) {
         let viewport = max(0, viewportWidth)
-        documentInset = min(compact ? 12 : 2, viewport * 0.10)
+        documentInset = min(compact && !presentation.original ? 12 : 2, viewport * 0.10)
         rowWidth = viewport - 2 * documentInset
-        effectInset = min(14, rowWidth * 0.10)
+        effectInset = min(presentation.original ? 10 : 14, rowWidth * 0.10)
         let interior = rowWidth - 2 * effectInset
-        duetInset = duet ? min(44, interior * 0.18) : 0
+        duetInset = duet && presentation.preservesDuetLanes ? min(44, interior * 0.18) : 0
         textWidth = interior - duetInset
     }
 }
@@ -107,13 +244,13 @@ struct LyricViewportGeometry {
     let edgeFade: CGFloat
     let compactFocusAnchor: CGFloat
 
-    init(height: CGFloat, topChrome: CGFloat, bottomChrome: CGFloat) {
+    init(height: CGFloat, topChrome: CGFloat, bottomChrome: CGFloat, preferredAnchor: CGFloat = 0.27) {
         let viewport = max(0, height)
         topOcclusion = min(max(0, topChrome), viewport)
         bottomOcclusion = min(max(0, bottomChrome), max(0, viewport - topOcclusion - 64))
         edgeFade = min(16, (viewport - topOcclusion - bottomOcclusion) / 2)
         let belowHeader = viewport > 0 ? (topOcclusion + 24) / viewport : 0
-        compactFocusAnchor = max(0.27, min(0.72, belowHeader))
+        compactFocusAnchor = min(0.72, max(preferredAnchor, belowHeader))
     }
 }
 

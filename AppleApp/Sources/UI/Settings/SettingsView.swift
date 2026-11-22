@@ -40,6 +40,7 @@ struct SettingsView: View {
     @State var reduceAnimation = PlatformSettings.shared.getBoolean(key: "reduce_animation", default: false)
     @State var fullBleed = PlatformSettings.shared.getBoolean(key: "full_bleed_artwork", default: true)
     @AppStorage("lyrics_blur") var lyricsBlur = true
+    var lyricStyle = LyricStyleStorage()
     @AppStorage("player_lyric_line") var playerLyricLine = true
     @AppStorage("show_music_videos") var showMusicVideos = false
     @State var videoOverCellular = PlatformSettings.shared.getBoolean(key: "video_over_cellular", default: false)
@@ -296,7 +297,7 @@ struct SettingsView: View {
     /// beside the section could only describe the section as a whole, which is how
     /// typing "flac" came to mean "show every row in Audio Quality".
     enum SettingsSection: String, CaseIterable, Identifiable {
-        case sources, audioQuality, playback, downloads, appearance, account, advanced, yourData, about
+        case sources, audioQuality, playback, lyrics, downloads, appearance, account, advanced, yourData, about
 
         var id: String { rawValue }
 
@@ -307,6 +308,7 @@ struct SettingsView: View {
             case .audioQuality: return "Sound & Quality"
             case .downloads: return "Downloads & Storage"
             case .playback: return "Playback"
+            case .lyrics: return "Lyrics"
             case .appearance: return "Appearance"
             case .yourData: return "Your Data & Backup"
             case .advanced: return "Advanced Options"
@@ -323,6 +325,7 @@ struct SettingsView: View {
             case .audioQuality: return "waveform"
             case .downloads: return "arrow.down.circle"
             case .playback: return "play.circle"
+            case .lyrics: return "quote.bubble"
             case .appearance: return "paintbrush"
             case .yourData: return "externaldrive"
             case .advanced: return "gearshape.2"
@@ -437,6 +440,7 @@ struct SettingsView: View {
         case .playback:
             buildPlaybackRows(&rows)
             appendMiscRows(&rows, titles: ["Play Next on Swipe", "Don’t Repeat Songs in Current Session", "Show Queue History", "Stop When Backgrounded", "Stop Music on Close"])
+        case .lyrics: buildLyricsRows(&rows)
         case .appearance:
             buildAppearanceRows(&rows)
             appendMiscRows(&rows, titles: ["Hide Volume Bar", "Hide Song Status", "Hide Status Bar in Player", "App Language"])
@@ -475,7 +479,7 @@ struct SettingsView: View {
             Text("Musicsk \(update.currentVersion)")
                 .frame(maxWidth: .infinity)
                 .multilineTextAlignment(.center)
-        case .sources, .account, .appearance, .yourData:
+        case .sources, .account, .appearance, .lyrics, .yourData:
             EmptyView()
         }
     }
@@ -566,8 +570,9 @@ struct SettingsView: View {
             return "\(enabled) enabled" + (attention ? " · needs attention" : "")
         case .audioQuality: return "Requested quality, decoded format, effects and device output"
         case .playback: return "Queue, transitions, speed and background playback"
+        case .lyrics: return "Style, synchronization, translation and providers"
         case .downloads: return "Offline quality, local folders and temporary storage"
-        case .appearance: return "Player, lyrics, language and visual preferences"
+        case .appearance: return "Player, language and visual preferences"
         case .account: return "Sign-in, sharing and connected services"
         case .advanced: return "Models, analysis, performance and version alignment"
         case .yourData: return "Listening history, export and importing a backup"
