@@ -8,8 +8,9 @@ enum PageRequests {
         network: @escaping @Sendable () async throws -> T
     ) async throws -> T {
         let context = PageSession.capture()
-        let value: T = try await PageRequestCoordinator.shared.fetch(name, context: context,
+        let value: T = try await PageRequestCoordinator.shared.fetch(name, context: context, force: force,
             currentGeneration: { PageSession.generation() }, network: network)
+        try Task.checkCancellation()
         guard PageSession.generation() == context.generation else { throw CancellationError() }
         Task { await LaunchReadiness.shared.contentAppeared() }
         return value
