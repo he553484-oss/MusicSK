@@ -10,9 +10,9 @@ spec.loader.exec_module(module)
 
 with tempfile.TemporaryDirectory() as temporary:
     root = Path(temporary)
-    ipa, dmg = root / 'BitChord-build13.ipa', root / 'BitChord-build13.dmg'
+    ipa, dmg = root / 'Musicsk-build13.ipa', root / 'Musicsk-build13.dmg'
     ipa.write_bytes(b'ios fixture'); dmg.write_bytes(b'mac fixture')
-    plist = dict(CFBundleIdentifier='app.bitchord.BitChord', CFBundleShortVersionString='1.0.4', CFBundleVersion='13', BitChordRevision='abc1234')
+    plist = dict(CFBundleIdentifier='app.musicsk.player', CFBundleShortVersionString='1.0.4', CFBundleVersion='13', BitChordRevision='abc1234')
     output = root / 'release'
     manifest = module.prepare(ipa, dmg, plist, plist, output)
     assert manifest['build'] == 13 and len(manifest['artifacts']) == 2

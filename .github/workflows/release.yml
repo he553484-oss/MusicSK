@@ -7,8 +7,8 @@
 # and a new build number, and release-notes/<version>.md must exist on that
 # commit.
 #
-# Only one secret is needed: SPARKLE_ED_PRIVATE_KEY, the EdDSA key that signs
-# Mac updates. Public releases carry no Apple signing identity.
+# Public updates require the SPARKLE_ED_PRIVATE_KEY secret and matching
+# MUSICSK_SPARKLE_PUBLIC_KEY repository variable.
 name: Release
 
 on:
@@ -60,6 +60,9 @@ jobs:
       VERSION: ${{ github.event_name == 'push' && github.ref_name || inputs.version }}
       MODE: ${{ github.event_name == 'push' && 'publish' || inputs.mode }}
       GH_TOKEN: ${{ github.token }}
+      MUSICSK_RELEASE_REPOSITORY: ${{ github.repository }}
+      MUSICSK_SPARKLE_FEED: https://raw.githubusercontent.com/${{ github.repository }}/main/musicsk-appcast.xml
+      MUSICSK_SPARKLE_PUBLIC_KEY: ${{ vars.MUSICSK_SPARKLE_PUBLIC_KEY }}
     steps:
       - name: Normalise the version
         run: |
@@ -80,8 +83,8 @@ jobs:
           if [[ "$MODE" != build ]] && gh release view "$TAG" >/dev/null 2>&1; then
             echo "::error::GitHub release $TAG already exists"; exit 1
           fi
-          if [[ "$MODE" == publish && "$HAS_SPARKLE_KEY" != true ]]; then
-            echo "::error::The SPARKLE_ED_PRIVATE_KEY secret is not set"; exit 1
+          if [[ "$MODE" == publish && ( "$HAS_SPARKLE_KEY" != true || -z "$MUSICSK_SPARKLE_PUBLIC_KEY" ) ]]; then
+            echo "::error::The Sparkle private secret and Musicsk public key variable are required"; exit 1
           fi
 
       - name: Select Xcode 27
@@ -118,7 +121,7 @@ jobs:
       - name: Keep the files as a workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: BitChord-${{ env.VERSION }}
+          name: Musicsk-${{ env.VERSION }}
           path: build/release/
           retention-days: 14
 
@@ -130,11 +133,11 @@ jobs:
           [[ "$MODE" == draft ]] && flags+=(--draft)
           gh release create "$TAG" \
             --target "$GITHUB_SHA" \
-            --title "BitChord $VERSION" \
+            --title "Musicsk $VERSION" \
             --notes-file "$GITHUB_WORKSPACE/release-notes/$VERSION.md" \
             "${flags[@]}" \
-            BitChord-$VERSION-build*-ios-unsigned.ipa \
-            BitChord-$VERSION-build*-mac-arm64.dmg \
+            Musicsk-$VERSION-build*-ios-unsigned.ipa \
+            Musicsk-$VERSION-build*-mac-arm64.dmg \
             release.json SHA256.txt INSTALL.md
 
       - name: Sign the appcast and commit it to main
@@ -143,17 +146,17 @@ jobs:
           SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
         run: |
           spm="$RUNNER_TEMP/spm"
-          xcodebuild -resolvePackageDependencies -project AppleApp/BitChord.xcodeproj -clonedSourcePackagesDirPath "$spm" >/dev/null
+          xcodebuild -resolvePackageDependencies -project AppleApp/Musicsk.xcodeproj -clonedSourcePackagesDirPath "$spm" >/dev/null
           export SPARKLE_GENERATE_APPCAST="$(find "$spm" -path '*/artifacts/sparkle/Sparkle/bin/generate_appcast' -type f -print -quit)"
           key="$RUNNER_TEMP/sparkle-ed-key"
           ( umask 077; printf '%s' "$SPARKLE_ED_PRIVATE_KEY" > "$key" )
           export SPARKLE_ED_KEY_FILE="$key"
           git fetch origin main
           git checkout -B main origin/main
-          scripts/generate-mac-appcast.sh "$TAG" build/release/BitChord-$VERSION-build*-mac-arm64.dmg "release-notes/$VERSION.md"
+          scripts/generate-mac-appcast.sh "$TAG" build/release/Musicsk-$VERSION-build*-mac-arm64.dmg "release-notes/$VERSION.md"
           rm -f "$key"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add appcast.xml
+          git add musicsk-appcast.xml
           git commit -m "release: appcast for $VERSION"
           git push origin main

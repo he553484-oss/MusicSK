@@ -14,13 +14,13 @@ struct ReleaseNotesEntry: Identifiable {
 /// are not plain app versions (the Automix model releases, for example) and
 /// drafts or pre-releases are left out.
 enum ReleaseHistory {
-    private static let listURL = URL(string: "https://api.github.com/repos/bagumamartin/BitChord/releases?per_page=50")!
-
     /// Releases newer than `installed` up to and including `through`.
     static func entries(after installed: String, through: String) async -> [ReleaseNotesEntry]? {
+        guard let repository = ReleaseRepository.path,
+              let listURL = URL(string: "https://api.github.com/repos\(repository)/releases?per_page=50") else { return [] }
         var request = URLRequest(url: listURL, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        request.setValue("BitChord Apple updater", forHTTPHeaderField: "User-Agent")
+        request.setValue("Musicsk Apple updater", forHTTPHeaderField: "User-Agent")
         guard let (data, response) = try? await URLSession.shared.data(for: request),
               let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
               let payloads = try? JSONDecoder().decode([GitHubReleasePayload].self, from: data) else { return nil }
@@ -31,7 +31,8 @@ enum ReleaseHistory {
             guard !payload.draft, !payload.prerelease,
                   payload.tag_name.range(of: #"^[vV]?\d+\.\d+\.\d+$"#, options: .regularExpression) != nil,
                   let page = URL(string: payload.html_url), page.scheme == "https", page.host == "github.com",
-                  page.path.hasPrefix("/bagumamartin/BitChord/releases/tag/") else { return nil }
+                  page.path == "\(repository)/releases/tag/\(payload.tag_name)",
+                  payload.assets.contains(where: { $0.name.hasPrefix("Musicsk-") && $0.url?.path.hasPrefix("\(repository)/releases/download/\(payload.tag_name)/") == true }) else { return nil }
             let version = payload.tag_name.replacingOccurrences(of: "^[vV]", with: "", options: .regularExpression)
             let identity = ReleaseIdentity(version: version, build: nil)
             guard identity.compared(to: lower) == .newer,
@@ -99,9 +100,9 @@ struct ReleaseNotesSections: View {
                 Link("Release page", destination: entry.url).font(.footnote)
             } header: {
                 if let date = entry.publishedAt {
-                    Text("BitChord \(entry.version) · \(date.formatted(date: .abbreviated, time: .omitted))")
+                    Text("Musicsk \(entry.version) · \(date.formatted(date: .abbreviated, time: .omitted))")
                 } else {
-                    Text("BitChord \(entry.version)")
+                    Text("Musicsk \(entry.version)")
                 }
             }
         }
@@ -110,7 +111,7 @@ struct ReleaseNotesSections: View {
 
 /// Renders the Markdown the release notes are written in: headings, bullets,
 /// paragraphs, and inline bold, italics, code and links. The leading
-/// "# BitChord x.y.z" title is dropped because the section header names the
+/// "# Musicsk x.y.z" title is dropped because the section header names the
 /// release, and image lines are skipped.
 struct ReleaseNotesView: View {
     let markdown: String

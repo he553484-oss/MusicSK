@@ -104,7 +104,7 @@ final class DownloadStore {
         if let legacyDirectoryOverride { return legacyDirectoryOverride }
         let base = FileManager.default.urls(for: .musicDirectory, in: .userDomainMask).first
             ?? FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return base.appendingPathComponent("BitChord", isDirectory: true)
+        return base.appendingPathComponent("Musicsk", isDirectory: true)
     }
 
     init(directory: URL? = nil, startWorker: Bool = true, legacyDirectory: URL? = nil, backend: (any DownloadBackend)? = nil) {

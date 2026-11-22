@@ -4,7 +4,7 @@
 # iOS 18 / macOS 15 unlock Tab, TabSection, .tabViewStyle(.sidebarAdaptable),
 # Tab(role: .search) and MeshGradient. iOS 26 / macOS 26-only chrome
 # (.tabViewBottomAccessory, Liquid Glass) is availability-gated at call sites.
-name: BitChord
+name: Musicsk
 attributes:
   LastUpgradeCheck: "1520"
 options:
@@ -20,8 +20,11 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5"
-    MARKETING_VERSION: "1.0.8"
-    CURRENT_PROJECT_VERSION: "17"
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    MUSICSK_RELEASE_REPOSITORY: ""
+    MUSICSK_SPARKLE_FEED: ""
+    MUSICSK_SPARKLE_PUBLIC_KEY: ""
     BITCHORD_BUILD_REVISION: "unknown"
     # Typed asset symbols (Image(.bchHome)) — Xcode 15+ asset codegen.
     ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: "YES"
@@ -42,12 +45,12 @@ packages:
     url: https://github.com/sparkle-project/Sparkle
     from: 2.10.0
 targets:
-  BitChord:
+  Musicsk:
     type: application
     supportedDestinations: [iOS, macOS]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.bitchord.BitChord
+        PRODUCT_BUNDLE_IDENTIFIER: app.musicsk.player
         # The Mac executable lives in Contents/MacOS while embedded frameworks
         # live in Contents/Frameworks; the iOS default runpath omits this parent.
         LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]: "$(inherited) @executable_path/../Frameworks"
@@ -75,7 +78,7 @@ targets:
         type: folder
         buildPhase: resources
     dependencies:
-      - target: BitChordWidget
+      - target: MusicskWidget
         embed: true
       - framework: Frameworks/BitChordShared.xcframework
         embed: true
@@ -93,28 +96,29 @@ targets:
         product: Sparkle
         destinationFilters: [macOS]
     info:
-      path: BitChord-Info.plist
+      path: Musicsk-Info.plist
       properties:
-        CFBundleDisplayName: BitChord
+        CFBundleDisplayName: Musicsk
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         BitChordRevision: "$(BITCHORD_BUILD_REVISION)"
         LSApplicationCategoryType: public.app-category.music
-        SUFeedURL: https://raw.githubusercontent.com/bagumamartin/BitChord/main/appcast.xml
-        SUPublicEDKey: ZoHTuKtTzesqdu6L5WyVZRkdP3v9gHJExOoM9nBEvjU=
+        MusicskReleaseRepository: "$(MUSICSK_RELEASE_REPOSITORY)"
+        SUFeedURL: "$(MUSICSK_SPARKLE_FEED)"
+        SUPublicEDKey: "$(MUSICSK_SPARKLE_PUBLIC_KEY)"
         SUEnableAutomaticChecks: true
         SUAutomaticallyUpdate: false
         SUVerifyUpdateBeforeExtraction: true
         SURequireSignedFeed: true
         CFBundleURLTypes:
-          - CFBundleURLName: app.bitchord.BitChord
-            CFBundleURLSchemes: [bitchord]
+          - CFBundleURLName: app.musicsk.player
+            CFBundleURLSchemes: [musicsk]
         # Handoff of playback: the activity type the payload is carried in. The
         # system only launches this app for an activity it has been told about,
         # so the type is declared here as well as written in
         # `PlaybackHandoffPayload.activityType`.
         NSUserActivityTypes:
-          - app.bitchord.playback
+          - app.musicsk.playback
         UIBackgroundModes:
           - audio
         UISupportedInterfaceOrientations:
@@ -128,11 +132,11 @@ targets:
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
         UILaunchScreen: {}
-        NSMotionUsageDescription: BitChord uses headphone motion to keep its spatial effect anchored when you turn your head.
-        NSPhotoLibraryAddUsageDescription: BitChord saves the lyric share cards you choose to add to Photos.
-        NSSpeechRecognitionUsageDescription: BitChord uses on-device speech recognition to align fetched lyrics with the playing audio. Audio is not sent to a server for alignment.
+        NSMotionUsageDescription: Musicsk uses headphone motion to keep its spatial effect anchored when you turn your head.
+        NSPhotoLibraryAddUsageDescription: Musicsk saves the lyric share cards you choose to add to Photos.
+        NSSpeechRecognitionUsageDescription: Musicsk uses on-device speech recognition to align fetched lyrics with the playing audio. Audio is not sent to a server for alignment.
     entitlements:
-      path: BitChord.entitlements
+      path: Musicsk.entitlements
       properties:
         # Dev-build note: sandbox disabled so the NSOpenPanel runs in-process
         # (remote-hosted sandboxed panels cannot be driven by automated UI
@@ -143,29 +147,29 @@ targets:
         com.apple.security.network.client: true
         com.apple.security.files.user-selected.read-write: true
         com.apple.security.application-groups:
-          - group.app.bitchord.BitChord
+          - group.app.musicsk.player
         # iCloud key-value store: syncs the per-song lyrics provider choice (O1).
         com.apple.developer.ubiquity-kvstore-identifier: $(TeamIdentifierPrefix)$(CFBundleIdentifier)
-  BitChordWidget:
+  MusicskWidget:
     type: app-extension
     supportedDestinations: [iOS, macOS]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: app.bitchord.BitChord.widget
+        PRODUCT_BUNDLE_IDENTIFIER: app.musicsk.player.widget
     sources:
       - Sources/Widget
     info:
-      path: BitChordWidget-Info.plist
+      path: MusicskWidget-Info.plist
       properties:
-        CFBundleDisplayName: BitChord Widget
+        CFBundleDisplayName: Musicsk Widget
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         BitChordRevision: "$(BITCHORD_BUILD_REVISION)"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     entitlements:
-      path: BitChordWidget.entitlements
+      path: MusicskWidget.entitlements
       properties:
         com.apple.security.app-sandbox: true
         com.apple.security.application-groups:
-          - group.app.bitchord.BitChord
+          - group.app.musicsk.player

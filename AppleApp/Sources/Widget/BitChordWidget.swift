@@ -9,7 +9,11 @@ import AppIntents
 // WidgetStatePublisher. The extension never links native-core and never
 // touches the network. Tapping opens the player (deep link §9).
 
-private let groupDefaults = UserDefaults(suiteName: "group.app.bitchord.BitChord")
+private let groupDefaults: UserDefaults? = {
+    let group = "group.app.musicsk.player"
+    guard FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group) != nil else { return nil }
+    return UserDefaults(suiteName: group)
+}()
 
 struct MediaWidgetEntry: TimelineEntry {
     let date: Date
@@ -24,7 +28,7 @@ struct MediaWidgetEntry: TimelineEntry {
     /// Upstream's last-played fallback: the widget is never blank after a
     /// first play, so an empty snapshot renders the placeholder, not nothing.
     static let empty = MediaWidgetEntry(
-        date: .now, title: "BitChord", artist: "Nothing queued",
+        date: .now, title: "Musicsk", artist: "Nothing queued",
         playing: false, canNext: false, canPrevious: false,
         artwork: nil, hasSession: false
     )
@@ -66,7 +70,7 @@ struct MediaWidgetView: View {
 
     var body: some View {
         content
-            .widgetURL(URL(string: "bitchord://open-player"))
+            .widgetURL(URL(string: "musicsk://open-player"))
             .containerBackground(.fill.tertiary, for: .widget)
     }
 
@@ -120,7 +124,7 @@ struct MediaWidgetView: View {
             VStack(spacing: 6) {
                 Image(systemName: "music.note")
                     .foregroundStyle(.secondary)
-                Text("BitChord")
+                Text("Musicsk")
                     .font(.callout.weight(.semibold))
             }
         }
@@ -160,10 +164,10 @@ private extension Image {
 
 struct BitChordMediaWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "BitChordMediaWidget", provider: MediaWidgetProvider()) { entry in
+        StaticConfiguration(kind: "MusicskMediaWidget", provider: MediaWidgetProvider()) { entry in
             MediaWidgetView(entry: entry)
         }
-        .configurationDisplayName("BitChord")
+        .configurationDisplayName("Musicsk")
         .description("Now-playing state, transport controls, and a tap back into the player.")
         // systemSmall ~= upstream square, systemMedium ~= upstream wide (spec §9).
         .supportedFamilies([.systemSmall, .systemMedium])
@@ -178,7 +182,7 @@ struct BitChordWidgetBundle: WidgetBundle {
 }
 
 struct WidgetTransportIntent: AppIntent {
-    static var title: LocalizedStringResource = "BitChord Transport"
+    static var title: LocalizedStringResource = "Musicsk Transport"
     static var isDiscoverable = false
 
     @Parameter(title: "Command")
@@ -188,7 +192,7 @@ struct WidgetTransportIntent: AppIntent {
     init(command: String) { self.command = command }
 
     func perform() async throws -> some IntentResult {
-        UserDefaults(suiteName: "group.app.bitchord.BitChord")?.set(command, forKey: "widget.command")
+        groupDefaults?.set(command, forKey: "widget.command")
         return .result()
     }
 }

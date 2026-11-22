@@ -12,10 +12,15 @@ final class MacUpdateManager {
     static let shared = MacUpdateManager()
 
     let controller: SPUStandardUpdaterController
+    let isConfigured: Bool
 
     private init() {
+        let feed = Bundle.main.object(forInfoDictionaryKey: "SUFeedURL") as? String
+        let key = Bundle.main.object(forInfoDictionaryKey: "SUPublicEDKey") as? String
+        isConfigured = feed.flatMap(URL.init(string:))?.scheme == "https"
+            && key.flatMap { Data(base64Encoded: $0) }?.count == 32
         controller = SPUStandardUpdaterController(
-            startingUpdater: true,
+            startingUpdater: isConfigured,
             updaterDelegate: nil,
             userDriverDelegate: nil
         )
@@ -24,6 +29,7 @@ final class MacUpdateManager {
     var updater: SPUUpdater { controller.updater }
 
     func checkNow() {
+        guard isConfigured else { return }
         controller.checkForUpdates(nil)
     }
 }
@@ -33,6 +39,7 @@ struct UpdateCommands: Commands {
     var body: some Commands {
         CommandGroup(after: .appInfo) {
             Button("Check for Updates…") { MacUpdateManager.shared.checkNow() }
+                .disabled(!MacUpdateManager.shared.isConfigured)
         }
     }
 }

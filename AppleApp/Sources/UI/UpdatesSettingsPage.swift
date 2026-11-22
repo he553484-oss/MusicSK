@@ -22,20 +22,22 @@ struct UpdatesSettingsPage: View {
                     Task { await checker.check() }
                 } label: {
                     if checker.checking { ProgressView("Checking…") } else { Text("Check for Updates") }
-                }.disabled(checker.checking)
+                }.disabled(checker.checking || UpdateChecker.latestReleaseURL == nil)
             }
             if let release = checker.latest {
                 Section("Installation") {
                     ReleaseInstallationView(release: release)
                 }
-            } else {
+            } else if let url = UpdateChecker.latestReleaseURL {
                 Section("Installation") {
                     Text("The latest release page is the single place to find the published iOS IPA and Mac DMG.")
-                    Link("Open Latest Release", destination: UpdateChecker.latestReleaseURL)
+                    Link("Open Latest Release", destination: url)
                 }
             }
             #if os(macOS)
-            Section("Automatic Mac Updates") { MacUpdateSettings() }
+            if MacUpdateManager.shared.isConfigured {
+                Section("Automatic Mac Updates") { MacUpdateSettings() }
+            }
             #endif
         }
         .formStyle(.grouped)

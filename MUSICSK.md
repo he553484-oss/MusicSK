@@ -16,3 +16,9 @@ Revisé README, APPLE_RELEASES, LICENSE y THIRD_PARTY_NOTICES. El port está baj
 
 No encontré capturas de referencia de movimiento en los archivos versionados. No pude observar Apple Music en un iPhone desde el entorno Linux. La referencia orienta el comportamiento general. La paridad visual y temporal requeriría una comparación directa en el dispositivo.
 
+
+## Identidad
+
+Musicsk usa la versión 1.0.0 (build 1). La app y el widget del proyecto compartido usan `app.musicsk.player` y `app.musicsk.player.widget`, con el App Group `group.app.musicsk.player`. Esta identidad también se aplica a la compilación de Mac. El esquema URL registrado es `musicsk` y la actividad Handoff es `app.musicsk.playback`. Los enlaces de Listen Together se convierten al formato del cliente compartido al entrar a la capa Kotlin. Los módulos BitChordShared y NativeCoreFFI, los créditos y las licencias siguen identificados por sus nombres originales.
+
+Una instalación firmada con identidad propia puede convivir con BitChord. Los datos y credenciales de BitChord quedan en su contenedor, por lo que Musicsk requiere iniciar sesión por separado. Las actualizaciones usan un repositorio Musicsk configurado durante el build. Sparkle requiere el feed y la clave pública propios de esa publicación.

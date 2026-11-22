@@ -4,7 +4,7 @@ import Observation
 /// One latest-release record supplies version, notes and the platform download.
 @MainActor @Observable final class UpdateChecker {
     static let shared = UpdateChecker()
-    static let latestReleaseURL = URL(string: "https://github.com/bagumamartin/BitChord/releases/latest")!
+    static let latestReleaseURL = ReleaseRepository.path.flatMap { URL(string: "https://github.com\($0)/releases/latest") }
     private(set) var available: AppReleaseUpdate?
     private(set) var latest: AppReleaseUpdate?
     private(set) var checking = false
@@ -32,6 +32,7 @@ import Observation
     }
     var comparison: ReleaseIdentity.Comparison? { latest?.identity.compared(to: currentIdentity) }
     var status: String {
+        if Self.latestReleaseURL == nil { return "This build has no configured release repository." }
         if checking { return "Checking the latest published release…" }
         if let problem { return problem }
         guard let latest else { return "Latest published version has not been checked yet." }
@@ -49,6 +50,7 @@ import Observation
     }
     @discardableResult func check() async -> AppReleaseUpdate? { await refresh(notify: false) }
     private func refresh(notify: Bool) async -> AppReleaseUpdate? {
+        guard ReleaseRepository.path != nil else { return nil }
         guard !checking else { return available }
         checkedThisSession = true
         checking = true
@@ -73,11 +75,13 @@ import Observation
     }
     private func fetchLatest() async -> AppReleaseUpdate? {
         do {
-            let data = try await fetch(URL(string: "https://api.github.com/repos/bagumamartin/BitChord/releases/latest")!)
+            guard let repository = ReleaseRepository.path,
+                  let api = URL(string: "https://api.github.com/repos\(repository)/releases/latest") else { return nil }
+            let data = try await fetch(api)
             let payload = try JSONDecoder().decode(GitHubReleasePayload.self, from: data)
             guard !payload.draft, !payload.prerelease,
                   let page = URL(string: payload.html_url), page.scheme == "https", page.host == "github.com",
-                  page.path.hasPrefix("/bagumamartin/BitChord/releases/tag/") else { return nil }
+                  page.path == "\(repository)/releases/tag/\(payload.tag_name)" else { return nil }
             let version = payload.tag_name.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "^[vV]", with: "", options: .regularExpression)
             guard ReleaseIdentity(version: version, build: nil).compared(to: currentIdentity) != nil else { return nil }
             #if os(iOS)
@@ -85,7 +89,7 @@ import Observation
             #else
             let platform = "macos"
             #endif
-            let prefix = "/bagumamartin/BitChord/releases/download/\(payload.tag_name)/"
+            let prefix = "\(repository)/releases/download/\(payload.tag_name)/"
             let assets = payload.assets.filter { $0.url?.path.hasPrefix(prefix) == true }
             var manifest: ReleaseManifest?
             let manifests = assets.filter { $0.name == "release.json" }
@@ -102,6 +106,7 @@ import Observation
             let artifact = manifest?.artifact(for: platform, assets: assets)
             let download = artifact.flatMap { item in assets.first { $0.name == item.name } }
                 ?? AppReleaseUpdate.legacyAsset(platform: platform, assets: assets, version: version)
+            guard let download else { return nil }
             return AppReleaseUpdate(identity: ReleaseIdentity(version: version, build: manifest?.build),
                 releaseUrl: page, notes: payload.body, publishedAt: payload.published_at.flatMap { ISO8601DateFormatter().date(from: $0) },
                 download: download, artifact: artifact, revision: manifest?.revision)
@@ -110,7 +115,7 @@ import Observation
     private func fetch(_ url: URL) async throws -> Data {
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-        request.setValue("BitChord Apple updater", forHTTPHeaderField: "User-Agent")
+        request.setValue("Musicsk Apple updater", forHTTPHeaderField: "User-Agent")
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { throw URLError(.badServerResponse) }
         return data
@@ -173,11 +178,13 @@ struct ReleaseInstallationView: View {
                 Link("View older release", destination: release.releaseUrl)
             } else {
                 #if os(macOS)
-                Text("Use BitChord’s Mac updater to download, verify and replace the app. It uses the project’s signed update feed.")
-                Button("Open Mac Updater") { MacUpdateManager.shared.checkNow() }.buttonStyle(.borderedProminent)
-                Text("For a first installation or manual recovery, download the DMG, open it and move BitChord into Applications, replacing the existing app.").font(.footnote).foregroundStyle(.secondary)
+                if MacUpdateManager.shared.isConfigured {
+                    Text("Use Musicsk’s Mac updater to download, verify and replace the app. It uses the project’s signed update feed.")
+                    Button("Open Mac Updater") { MacUpdateManager.shared.checkNow() }.buttonStyle(.borderedProminent)
+                }
+                Text("For a first installation or manual recovery, download the DMG, open it and move Musicsk into Applications, replacing the existing app.").font(.footnote).foregroundStyle(.secondary)
                 #else
-                Text("Download the IPA, then sign and install it with the same signing app and identity used for your current BitChord. Keeping the same app identity preserves its local data.")
+                Text("Download the IPA, then sign and install it with the same signing app and identity used for your current Musicsk. Keeping the same app identity preserves its local data.")
                 #endif
                 if let download = release.download, let url = download.url {
                     Link(destination: url) { Text(download.name.lowercased().hasSuffix(".ipa") ? "Download iOS IPA" : "Download Mac DMG") }

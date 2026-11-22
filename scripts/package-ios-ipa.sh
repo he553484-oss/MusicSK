@@ -9,7 +9,7 @@ Usage:
   scripts/package-ios-ipa.sh <version> [--output-dir DIR] [--overwrite]
 
 The script archives the iOS app with code signing disabled, removes embedded
-provisioning profiles, and writes BitChord-VERSION-buildBUILD-ios-unsigned.ipa.
+provisioning profiles, and writes Musicsk-VERSION-buildBUILD-ios-unsigned.ipa.
 USAGE
 }
 fail() { printf 'Error: %s\n' "$*" >&2; exit 1; }
@@ -36,9 +36,9 @@ mkdir -p "$output_dir"
 output_dir="$(cd "$output_dir" && pwd)"
 stage="$(mktemp -d "${TMPDIR:-/tmp}/bitchord-ipa.XXXXXX")"
 trap 'rm -rf "$stage"' EXIT
-archive="$stage/BitChord.xcarchive"
-app="$archive/Products/Applications/BitChord.app"
-staged_app="$stage/package/Payload/BitChord.app"
+archive="$stage/Musicsk.xcarchive"
+app="$archive/Products/Applications/Musicsk.app"
+staged_app="$stage/package/Payload/Musicsk.app"
 
 # scripts/release-apple.sh passes the revision it checked clean, so the IPA and
 # the Mac archive carry the same stamp even if the tree changes mid-build.
@@ -48,42 +48,49 @@ build_revision="$(git -C "$repo_root" rev-parse --short=12 HEAD)"
 if ! git -C "$repo_root" diff --quiet HEAD -- || [[ -n "$(git -C "$repo_root" ls-files --others --exclude-standard)" ]]; then build_revision="$build_revision-dirty"; fi
 fi
 xcodebuild \
-  -project "$repo_root/AppleApp/BitChord.xcodeproj" \
-  -scheme BitChord \
+  -project "$repo_root/AppleApp/Musicsk.xcodeproj" \
+  -scheme Musicsk \
   -configuration Release \
   -sdk iphoneos \
   -destination 'generic/platform=iOS' \
   -archivePath "$archive" \
   -derivedDataPath "$stage/DerivedData" \
   archive \
+  MUSICSK_RELEASE_REPOSITORY="${MUSICSK_RELEASE_REPOSITORY:-}" \
+  MUSICSK_SPARKLE_FEED="${MUSICSK_SPARKLE_FEED:-}" \
+  MUSICSK_SPARKLE_PUBLIC_KEY="${MUSICSK_SPARKLE_PUBLIC_KEY:-}" \
   BITCHORD_BUILD_REVISION="$build_revision" \
   CODE_SIGNING_ALLOWED=NO \
   CODE_SIGNING_REQUIRED=NO \
   CODE_SIGN_IDENTITY=
-[[ -d "$app" ]] || fail "archive did not contain BitChord.app: $app"
+[[ -d "$app" ]] || fail "archive did not contain Musicsk.app: $app"
 plist="$app/Info.plist"
+bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")"
+[[ "$bundle_id" == app.musicsk.player ]] || fail "Unexpected app bundle identifier: $bundle_id"
+widget_plist="$app/PlugIns/MusicskWidget.appex/Info.plist"
+[[ -f "$widget_plist" ]] || fail 'Archive is missing MusicskWidget.appex'
+widget_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$widget_plist")"
+[[ "$widget_id" == "$bundle_id.widget" ]] || fail "Unexpected widget bundle identifier: $widget_id"
 short_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")"
 [[ "$short_version" == "$version" ]] || fail "archive is version $short_version, not requested version $version"
 build_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist")"
 [[ "$build_version" =~ ^[0-9]+$ ]] || fail 'archive has no numeric build number'
-ipa="$output_dir/BitChord-$version-build$build_version-ios-unsigned.ipa"
+ipa="$output_dir/Musicsk-$version-build$build_version-ios-unsigned.ipa"
 [[ ! -e "$ipa" || "$overwrite" -eq 1 ]] || fail "IPA already exists: $ipa (pass --overwrite to replace it)"
 mkdir -p "$stage/package/Payload"
-ditto "$app" "$stage/package/Payload/BitChord.app"
-find "$stage/package/Payload/BitChord.app" -name embedded.mobileprovision -type f -delete
+ditto "$app" "$stage/package/Payload/Musicsk.app"
+find "$stage/package/Payload/Musicsk.app" -name embedded.mobileprovision -type f -delete
 # A release IPA is deliberately unsigned; don't leave export/archive profiles
 # behind even if Xcode emitted one for a nested extension.
-find "$stage/package/Payload/BitChord.app" -name embedded.provisionprofile -type f -delete
+find "$stage/package/Payload/Musicsk.app" -name embedded.provisionprofile -type f -delete
 # zip updates an existing archive instead of clearing entries that disappeared
 # from a rebuilt app, so start fresh when the caller explicitly allows overwrite.
 rm -f "$ipa"
 (cd "$stage/package" && /usr/bin/zip -qry "$ipa" Payload)
 zipinfo -1 "$ipa" > "$stage/ipa-list.txt"
-grep -Fxq 'Payload/BitChord.app/Info.plist' "$stage/ipa-list.txt" || fail 'IPA archive is missing Payload/BitChord.app'
-grep -Fxq 'Payload/BitChord.app/BitChord' "$stage/ipa-list.txt" || fail 'IPA archive is missing the BitChord executable'
-if [[ -d "$app/PlugIns/BitChordWidget.appex" ]]; then
-  grep -E '^Payload/BitChord\.app/PlugIns/BitChordWidget\.appex(/|$)' "$stage/ipa-list.txt" >/dev/null || fail 'IPA archive is missing BitChordWidget.appex'
-fi
+grep -Fxq 'Payload/Musicsk.app/Info.plist' "$stage/ipa-list.txt" || fail 'IPA archive is missing Payload/Musicsk.app'
+grep -Fxq 'Payload/Musicsk.app/Musicsk' "$stage/ipa-list.txt" || fail 'IPA archive is missing the Musicsk executable'
+grep -Fxq 'Payload/Musicsk.app/PlugIns/MusicskWidget.appex/Info.plist' "$stage/ipa-list.txt" || fail 'IPA archive is missing MusicskWidget.appex'
 if grep -E '(^|/)embedded\.(mobileprovision|provisionprofile)$' "$stage/ipa-list.txt" >/dev/null; then
   fail 'IPA archive contains an embedded provisioning profile'
 fi

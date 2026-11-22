@@ -1,3 +1,5 @@
+> **Musicsk 1.0** deriva de este port de BitChord. La [guía de Musicsk](MUSICSK.md) contiene los pasos de compilación, firma e instalación de esta variante. Los enlaces de descarga de abajo corresponden al proyecto original.
+
 <div align="center">
 
 <img src="artwork/readme/icon.png" alt="BitChord app icon" width="112" height="112">
@@ -128,10 +130,10 @@ rustup target add aarch64-apple-darwin aarch64-apple-ios aarch64-apple-ios-sim
 ./scripts/build-shared-framework.sh
 ./scripts/build-native-core.sh
 xcodegen generate --spec AppleApp/project.yml
-open AppleApp/BitChord.xcodeproj
+open AppleApp/Musicsk.xcodeproj
 ```
 
-In Xcode, select the `BitChord` scheme, choose a Mac, iPhone, iPad, or Apple Silicon Simulator destination, then select your Apple Developer Team under the app and widget targets' **Signing & Capabilities**. The Team is per-developer and is not stored in the shared project configuration. For device signing, register and enable the App Group entitlement for both targets with your developer account. The current entitlements are configured for development; review them, including the app sandbox setting, before preparing a distributed macOS build. The generated frameworks, Swift bindings, and Xcode project are build outputs and are ignored by Git.
+In Xcode, select the `Musicsk` scheme, choose a Mac, iPhone, iPad, or Apple Silicon Simulator destination, then select your Apple Developer Team under the app and widget targets' **Signing & Capabilities**. The Team is per-developer and is not stored in the shared project configuration. For device signing, register and enable the App Group entitlement for both targets with your developer account. The current entitlements are configured for development; review them, including the app sandbox setting, before preparing a distributed macOS build. The generated frameworks, Swift bindings, and Xcode project are build outputs and are ignored by Git.
 
 `build-shared-framework.sh` builds the Debug framework by default. For a Release shared framework, run:
 

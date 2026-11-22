@@ -548,7 +548,7 @@ struct LyricsPane: View {
         Task { @MainActor in
             let authorization = await PHPhotoLibrary.requestAuthorization(for: .addOnly)
             guard authorization == .authorized else {
-                photoSaveMessage = "Allow BitChord to add photos in Settings to save this card."
+                photoSaveMessage = "Allow Musicsk to add photos in Settings to save this card."
                 showPhotoSaveAlert = true
                 return
             }
@@ -569,12 +569,12 @@ struct LyricsPane: View {
     private var attribution: String? {
         guard let sourceLabel, !sourceLabel.isEmpty else { return nil }
         if alignmentInProgress { return "Lyrics by \(sourceLabel) · syncing words…" }
-        // Claim only what the audio actually timed. "Synced by BitChord" used
+        // Claim only what the audio actually timed. "Synced by Musicsk" used
         // to appear when a single line matched; a part-timed lyric now says
         // how much, and a pass that matched nothing claims nothing.
         if let coverage = alignedLocally, coverage.timed > 0 {
-            if coverage.fraction >= 0.8 { return "Lyrics by \(sourceLabel) · Synced by BitChord" }
-            return "Lyrics by \(sourceLabel) · BitChord synced \(coverage.timed) of \(coverage.total) lines"
+            if coverage.fraction >= 0.8 { return "Lyrics by \(sourceLabel) · Synced by Musicsk" }
+            return "Lyrics by \(sourceLabel) · Musicsk synced \(coverage.timed) of \(coverage.total) lines"
         }
         let document = cache.document(for: lines)
         guard document.synced else { return "Lyrics by \(sourceLabel) · unsynced" }

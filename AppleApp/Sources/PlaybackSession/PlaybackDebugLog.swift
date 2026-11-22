@@ -85,13 +85,13 @@ final class PlaybackDebugLog: @unchecked Sendable {
     }
     func saveReport(snapshot: String) throws -> URL {
         try writer.sync {
-            var report = "BitChord diagnostic report\n\(Date().ISO8601Format())\n\nENGINE SNAPSHOT\n\(Self.sanitize(snapshot))\n"
+            var report = "Musicsk diagnostic report\n\(Date().ISO8601Format())\n\nENGINE SNAPSHOT\n\(Self.sanitize(snapshot))\n"
             for file in runFiles() {
                 let text = (try? String(contentsOf: file, encoding: .utf8)) ?? "unavailable"
                 let state = file == runFile ? "current" : (text.contains("RUN CLEAN EXIT") ? "clean exit" : "interrupted; no clean-exit marker")
                 report += "\nRUN \(file.lastPathComponent) (\(state))\n" + Self.sanitize(text, limit: nil)
             }
-            let target = FileManager.default.temporaryDirectory.appendingPathComponent("BitChord-Diagnostics-\(UUID().uuidString).txt")
+            let target = FileManager.default.temporaryDirectory.appendingPathComponent("Musicsk-Diagnostics-\(UUID().uuidString).txt")
             try Data(report.utf8).write(to: target, options: .atomic)
             return target
         }

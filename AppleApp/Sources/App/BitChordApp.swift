@@ -234,11 +234,11 @@ struct BitChordApp: App {
                     }
                     // Handling lives here, on the scene, rather than on `RootView`.
                     // It was installed in both places, so whichever ran second
-                    // consumed the link and the other was dead — a `bitchord://`
+                    // consumed the link and the other was dead — a `musicsk://`
                     // link reached the player only by accident of ordering. On the
                     // scene it runs before the view hierarchy exists, which is what
                     // a cold launch from a link actually needs.
-                    if url.absoluteString.contains("open-player") {
+                    if url.scheme?.lowercased() == "musicsk", url.host?.lowercased() == "open-player" {
                         let requestedScreen = URLComponents(url: url, resolvingAgainstBaseURL: false)?
                             .queryItems?.first(where: { $0.name == "screen" })?.value
                         if requestedScreen?.caseInsensitiveCompare("lyrics") == .orderedSame {
@@ -252,11 +252,12 @@ struct BitChordApp: App {
                     // to *look*, not to join. The screen carries its own server editor,
                     // so a link pointing at somebody else's server needs no trip
                     // through Settings to get there.
-                    if JamInviteLink.shared.looksLikeInvite(value: url.absoluteString) {
-                        appModel.pendingPartyInvite = url.absoluteString
+                    let sharedLink = PartyStore.sharedLink(from: url)
+                    if JamInviteLink.shared.looksLikeInvite(value: sharedLink) {
+                        appModel.pendingPartyInvite = sharedLink
                         appModel.listenTogetherPresented = true
                     }
-                    _ = MusicLink.shared.submitUrl(url: url.absoluteString)
+                    _ = MusicLink.shared.submitUrl(url: sharedLink)
                     consumeMusicLink(appModel: appModel, controller: controller)
                 }
                 // Handoff: the receiving half, plus the two changes that keep the
