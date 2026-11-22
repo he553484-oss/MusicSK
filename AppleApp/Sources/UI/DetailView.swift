@@ -15,6 +15,7 @@ struct DetailView: View {
     let initialTitle: String
     @Environment(PlaybackController.self) private var controller
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dismiss) private var dismiss
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -52,6 +53,8 @@ struct DetailView: View {
     @State private var privacyPresented = false
     @State private var canvasURL: URL?
     @State private var canvasFallbackURL: URL?
+    @State private var albumArtVisible = false
+    @State private var measuredHeaderHeight: CGFloat = 0
     @State private var pinned = false
     @State private var scrolledPastHeader = false
     /// Narrows the track list in place, like upstream's search circle in the
@@ -92,6 +95,7 @@ struct DetailView: View {
                 // arriving (upstream `detailSkeleton(isArtist:)`).
                 DetailSkeleton(
                     isArtist: preLoadKind == .artist,
+                    immersiveAlbum: usesImmersiveAlbum(preLoadKind),
                     wide: isWide
                 )
             } else if let error {
@@ -186,7 +190,9 @@ struct DetailView: View {
 
     private func loadedPage(_ page: DetailPageModel) -> some View {
         let tint = ArtworkPalette.pageTint(from: headerArt, seed: page.title.hashValue, dark: colorScheme == .dark)
-        let isArtist = kind(of: page) == .artist
+        let kind = kind(of: page)
+        let isArtist = kind == .artist
+        let immersiveAlbum = usesImmersiveAlbum(kind)
 
         return GeometryReader { geo in
             let width = geo.size.width
@@ -194,18 +200,18 @@ struct DetailView: View {
             // Upstream's ARTIST_PHOTO_RATIO = 0.95, capped against the window
             // height so the tracks aren't buried under a portrait hero.
             let artHeight = min(width / 0.95, height * 0.55)
-            // Where the title takes over the navigation bar. The release header
-            // is a stack rather than a fixed box, so its height is estimated from
-            // the sleeve it just laid out.
-            let headerHeight = isArtist ? artHeight + 44 : releaseSleeve(width) + 170
-
             ScrollView {
                 VStack(spacing: 0) {
-                    if isArtist {
-                        artistHeader(page, tint: tint, artHeight: artHeight)
-                    } else {
-                        releaseHeader(page, tint: tint, width: width)
+                    Group {
+                        if isArtist {
+                            artistHeader(page, tint: tint, artHeight: artHeight)
+                        } else if immersiveAlbum {
+                            albumHeader(page, tint: tint, width: width, height: height)
+                        } else {
+                            releaseHeader(page, tint: tint, width: width)
+                        }
                     }
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { measuredHeaderHeight = $0 }
 
                     if isArtist, let shelf = latestReleaseShelf(page), let card = shelf.items.first {
                         latestReleaseCard(card)
@@ -303,12 +309,10 @@ struct DetailView: View {
                 .padding(.bottom, 36)
             }
             .onScrollGeometryChange(for: Bool.self) { geo in
-                geo.contentOffset.y > (headerHeight - 50)
+                measuredHeaderHeight > 0 && geo.contentOffset.y + geo.contentInsets.top > measuredHeaderHeight - 50
             } action: { _, isScrolled in
-                if scrolledPastHeader != isScrolled {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        scrolledPastHeader = isScrolled
-                    }
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.18)) {
+                    scrolledPastHeader = isScrolled
                 }
             }
             #if os(iOS)
@@ -471,6 +475,108 @@ struct DetailView: View {
         .frame(height: artHeight + 44) // Upstream's HEADER_DROP = 44dp
     }
 
+    private func usesImmersiveAlbum(_ kind: Kind) -> Bool {
+        #if os(iOS)
+        kind == .album
+        #else
+        false
+        #endif
+    }
+
+    private func albumHeader(
+        _ page: DetailPageModel,
+        tint: ArtworkPalette.PageTint,
+        width: CGFloat,
+        height: CGFloat
+    ) -> some View {
+        let artworkWidth = DetailHeaderLayout.albumWidth(in: width)
+        let artworkHeight = DetailHeaderLayout.albumArtworkHeight(width: width, viewportHeight: height)
+        let credit = headerLines(page).credit.ifBlank { page.songs.first?.artist ?? "" }
+        let info = releaseInfoLine(page)
+
+        return VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 0) {
+                ZStack(alignment: .bottom) {
+                    ArtworkView(url: page.thumbnailUrl, data: headerArt, side: artworkWidth, fill: true)
+                    if let canvasURL, albumArtVisible, !reduceMotion {
+                        CanvasPlayer(url: canvasURL, fallbackURL: canvasFallbackURL, isPlaying: true)
+                            .allowsHitTesting(false)
+                    }
+                    LinearGradient(
+                        stops: [.init(color: .clear, location: 0.62), .init(color: .black, location: 1)],
+                        startPoint: .top, endPoint: .bottom
+                    )
+                    .allowsHitTesting(false)
+                }
+                .frame(width: artworkWidth, height: artworkHeight)
+                .clipped()
+                .onScrollVisibilityChange(threshold: 0.12) { albumArtVisible = $0 }
+
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(page.title.isEmpty ? initialTitle : page.title)
+                        .font(.largeTitle.bold())
+                        .accessibilityAddTraits(.isHeader)
+                        .lineLimit(3)
+
+                    if !credit.isEmpty {
+                        if let artistId = page.songs.first?.artistId {
+                            PushLink(destination: DetailView(browseId: artistId, initialTitle: credit)) {
+                                Text(credit).font(.headline)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityAddTraits(.isLink)
+                        } else {
+                            Text(credit).font(.headline)
+                        }
+                    }
+
+                    if !info.isEmpty {
+                        Text(info)
+                            .font(.footnote)
+                            .foregroundStyle(.white.opacity(0.78))
+                    }
+                }
+                .foregroundStyle(.white)
+                .padding(.horizontal, 18)
+                .padding(.top, 4)
+                .padding(.bottom, 18)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background {
+                    Color.black.overlay(alignment: .bottom) {
+                        LinearGradient(colors: [.clear, tint.wash.opacity(0.47)], startPoint: .top, endPoint: .bottom)
+                    }
+                }
+            }
+            .clipShape(.rect(cornerRadius: 20, style: .continuous))
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    albumPlaybackActions(page)
+                    Spacer(minLength: 4)
+                    releaseSecondaryActions(page, tint: tint)
+                }
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) { albumPlaybackActions(page) }
+                    HStack(spacing: 8) { releaseSecondaryActions(page, tint: tint) }
+                }
+            }
+        }
+        .frame(width: artworkWidth)
+        .frame(maxWidth: .infinity)
+        .padding(.top, 8)
+        .padding(.bottom, 16)
+    }
+
+    @ViewBuilder
+    private func albumPlaybackActions(_ page: DetailPageModel) -> some View {
+        if !page.songs.isEmpty {
+            PlayPill(iconOnly: false, isPlaying: controller.isPlaybackContextPlaying(browseId)) {
+                playContext(page)
+            }
+            ShufflePill { playContext(page, shuffled: true) }
+        }
+    }
+
     /// A release header: the sleeve centred on its own shadow, the title, a
     /// tappable credit, the "year · songs · length" line, then Play and Shuffle.
     ///
@@ -618,34 +724,41 @@ struct DetailView: View {
                     }
                 }
 
-                if auth.signedIn, page.libraryPlaylistId != nil {
-                    CircleIconButton(
-                        icon: Image(systemName: saved ? "checkmark" : "plus"),
-                        label: saved ? "Remove from Library" : "Add to Library",
-                        active: saved,
-                        activeColor: tint.accent,
-                        disabled: saving
-                    ) {
-                        Task { await toggleSave(page) }
-                    }
-                }
-
-                CircleIconButton(
-                    icon: Image(systemName: searching ? "xmark" : "magnifyingglass"),
-                    label: searching ? "Close search" : "Search this list",
-                    active: searching,
-                    activeColor: tint.accent
-                ) {
-                    withAnimation(.easeInOut(duration: 0.2)) {
-                        if searching { filter = "" }
-                        searching.toggle()
-                    }
-                }
-
-                releaseMoreMenu(page)
+                releaseSecondaryActions(page, tint: tint)
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
+    }
+
+    @ViewBuilder
+    private func releaseSecondaryActions(_ page: DetailPageModel, tint: ArtworkPalette.PageTint) -> some View {
+        if auth.signedIn, page.libraryPlaylistId != nil {
+            CircleIconButton(
+                icon: Image(systemName: saved ? "checkmark" : "plus"),
+                label: saved ? "Remove from Library" : "Add to Library",
+                active: saved,
+                activeColor: tint.accent,
+                disabled: saving
+            ) {
+                Task { await toggleSave(page) }
+            }
+        }
+
+        if !page.songs.isEmpty {
+            CircleIconButton(
+                icon: Image(systemName: searching ? "xmark" : "magnifyingglass"),
+                label: searching ? "Close search" : "Search this list",
+                active: searching,
+                activeColor: tint.accent
+            ) {
+                withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) {
+                    if searching { filter = "" }
+                    searching.toggle()
+                }
+            }
+        }
+
+        releaseMoreMenu(page)
     }
 
     /// Plays or pauses this page as a context, with the current shuffle state.
@@ -1115,9 +1228,10 @@ struct DetailView: View {
     @ViewBuilder
     private func trackList(_ page: DetailPageModel, width: CGFloat) -> some View {
         let fallback = page.thumbnailUrl
-        let songs = page.songs.filter {
-            filter.isEmpty || $0.title.localizedCaseInsensitiveContains(filter) || $0.artist.localizedCaseInsensitiveContains(filter)
+        let rows = page.songs.enumerated().filter { _, song in
+            filter.isEmpty || song.title.localizedCaseInsensitiveContains(filter) || song.artist.localizedCaseInsensitiveContains(filter)
         }
+        let songs = rows.map(\.element)
         let owned = page.playlistOwned == true && filter.isEmpty
 
         if kind(of: page) == .artist {
@@ -1190,13 +1304,13 @@ struct DetailView: View {
                 .rowKeyboardNavigation(ids: songs.map { toEntry($0, fallbackArt: fallback).id })
             } else {
                 LazyVStack(spacing: 0) {
-                    ForEach(Array(songs.enumerated()), id: \.element.videoId) { index, song in
+                    ForEach(rows, id: \.offset) { index, song in
                         SongRow(
                             entry: toEntry(song, fallbackArt: fallback),
                             play: {
                                 controller.play(
                                     page.songs.map { toEntry($0, fallbackArt: fallback) },
-                                    at: page.songs.firstIndex(where: { $0.videoId == song.videoId }) ?? index,
+                                    at: index,
                                     context: page.title, contextID: browseId,
                                     shuffleRequested: controller.shuffleEnabled,
                                     boundedContext: true, continuationToken: handoffContinuation(page)
@@ -1207,8 +1321,13 @@ struct DetailView: View {
                             playlistBrowseId: browseId,
                             playlistOwned: page.playlistOwned == true
                         )
+                        .overlay(alignment: .bottom) {
+                            if kind(of: page) == .album, index != rows.last?.offset {
+                                Divider().padding(.leading, 56).allowsHitTesting(false)
+                            }
+                        }
                         .onAppear {
-                            if song.videoId == songs.last?.videoId {
+                            if index == rows.last?.offset {
                                 requestMoreIfNeeded()
                             }
                         }
@@ -1586,6 +1705,7 @@ private final class DetailCanvasCB: CanvasBridgeCanvasCallback {
 /// the action row's controls and the song rows beneath.
 private struct DetailSkeleton: View {
     var isArtist: Bool
+    var immersiveAlbum: Bool
     var wide: Bool
 
     var body: some View {
@@ -1594,6 +1714,8 @@ private struct DetailSkeleton: View {
             ScrollView {
                 if isArtist {
                     artist(width: width, height: geo.size.height)
+                } else if immersiveAlbum {
+                    album(width: width, height: geo.size.height)
                 } else {
                     release(width: width)
                 }
@@ -1640,6 +1762,30 @@ private struct DetailSkeleton: View {
             .frame(maxWidth: 860, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
+    }
+
+    private func album(width: CGFloat, height: CGFloat) -> some View {
+        let artworkWidth = DetailHeaderLayout.albumWidth(in: width)
+        return VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 0) {
+                SkeletonBlock(height: DetailHeaderLayout.albumArtworkHeight(width: width, viewportHeight: height), cornerRadius: 0)
+                VStack(alignment: .leading, spacing: 8) {
+                    SkeletonBlock(height: 32, cornerRadius: 6).frame(width: min(artworkWidth * 0.70, 300))
+                    SkeletonBlock(height: 17, cornerRadius: 5).frame(width: min(artworkWidth * 0.48, 190))
+                    SkeletonBlock(height: 13, cornerRadius: 4).frame(width: min(artworkWidth * 0.53, 230))
+                }
+                .padding(18)
+            }
+            .background(.quaternary.opacity(0.35))
+            .clipShape(.rect(cornerRadius: 20, style: .continuous))
+            HStack(spacing: 8) {
+                SkeletonBlock(height: 46, cornerRadius: 23).frame(width: 96)
+                SkeletonBlock(height: 46, cornerRadius: 23).frame(width: 110)
+            }
+            ForEach(0..<4, id: \.self) { _ in SkeletonSongRow() }
+        }
+        .frame(width: artworkWidth)
+        .padding(.top, 8)
     }
 
     /// `releaseHeader`'s stack: the sleeve (`releaseSleeve`), title, credit and
