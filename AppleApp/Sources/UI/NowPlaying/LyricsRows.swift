@@ -23,11 +23,12 @@ import BitChordShared
 /// whole pane every time it moved.
 struct LyricsClock {
     var playing: Bool
+    var pausedPosition: Double? = nil
     var read: (Date) -> Double
 
     /// The lyric clock in milliseconds: the transport, `offsetMs` behind.
     func lyricMs(at date: Date, offsetMs: Int32) -> Int64 {
-        max(0, Int64(read(date) * 1000) - Int64(offsetMs))
+        max(0, Int64((pausedPosition ?? read(date)) * 1000) - Int64(offsetMs))
     }
 }
 
@@ -312,8 +313,9 @@ final class LyricsDocumentCache {
 
 /// Upstream's lyric motion constants (PlayerLyrics.kt), so the two apps move alike.
 enum LyricStyle {
-    /// One curve for the dim, the blur, the scale and the scroll.
-    static let settle = Animation.timingCurve(0.41, 0, 0.12, 0.99, duration: 0.4)
+    static func emphasis(_ reduceMotion: Bool) -> Animation {
+        .easeOut(duration: reduceMotion ? 0.12 : 0.26)
+    }
     static let falloffAlpha: [Double] = [1, 0.8, 0.7, 0.58, 0.46]
     static let falloffAlphaPhone: [Double] = [1, 0.74, 0.6, 0.48, 0.4, 0.34]
     static let falloffBlur: [CGFloat] = [0, 1, 1, 1.7, 2.4]
@@ -355,9 +357,10 @@ struct LyricWordTiming: TextAttribute {
 struct LyricSweepRenderer: TextRenderer {
     var ms: Int64
     var glow: Bool
+    var reduceMotion: Bool
 
     var displayPadding: EdgeInsets {
-        let room = LyricStyle.glowRadius * 2
+        let room = reduceMotion ? 0 : LyricStyle.glowRadius * 2
         return EdgeInsets(top: room, leading: room, bottom: room, trailing: room)
     }
 
@@ -380,6 +383,11 @@ struct LyricSweepRenderer: TextRenderer {
         let span = max(1, timing.endMs - timing.startMs)
         let progress = min(1, max(0, Double(ms - timing.startMs) / Double(span)))
         var context = base
+        if reduceMotion {
+            context.opacity = LyricStyle.unsungAlpha + (1 - LyricStyle.unsungAlpha) * progress
+            context.draw(run)
+            return
+        }
         if progress > 0 {
             // Up in the first third of the word, and it stays up for the rest of
             // the line.
@@ -436,17 +444,26 @@ struct LyricsFocusTicker: View {
     let onChange: (LyricFocusState) -> Void
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !clock.playing)) { timeline in
-            let focus = document.timeline.focus(
-                at: clock.lyricMs(at: timeline.date, offsetMs: offsetMs),
-                document: ObjectIdentifier(document)
-            )
-            Color.clear
-                .onChange(of: focus, initial: true) { _, focus in onChange(focus) }
+        Group {
+            if clock.playing {
+                TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                    sample(at: timeline.date)
+                }
+            } else {
+                sample(at: Date())
+            }
         }
         .frame(width: 0, height: 0)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
+    }
+
+    private func sample(at date: Date) -> some View {
+        let focus = document.timeline.focus(
+            at: clock.lyricMs(at: date, offsetMs: offsetMs),
+            document: ObjectIdentifier(document)
+        )
+        return Color.clear.onChange(of: focus, initial: true) { _, focus in onChange(focus) }
     }
 }
 
@@ -470,11 +487,14 @@ struct LyricRowView: View, Equatable {
     let clock: LyricsClock
     let onTap: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     static func == (lhs: LyricRowView, rhs: LyricRowView) -> Bool {
         lhs.row.id == rhs.row.id && lhs.document == rhs.document && lhs.active == rhs.active &&
             lhs.look == rhs.look && lhs.fontSize == rhs.fontSize && lhs.duet == rhs.duet &&
             lhs.picked == rhs.picked && lhs.picking == rhs.picking && lhs.tapMode == rhs.tapMode &&
-            lhs.offsetMs == rhs.offsetMs && (!lhs.active || lhs.clock.playing == rhs.clock.playing)
+            lhs.offsetMs == rhs.offsetMs && (!lhs.active ||
+                (lhs.clock.playing == rhs.clock.playing && lhs.clock.pausedPosition == rhs.clock.pausedPosition))
     }
 
     private var trailingSide: Bool { row.secondVoice != row.rightToLeft }
@@ -502,18 +522,19 @@ struct LyricRowView: View, Equatable {
         .scaleEffect(look.scale, anchor: trailingSide ? .trailing : .leading)
         .opacity(look.alpha)
         .blur(radius: look.blur)
-        .animation(LyricStyle.settle, value: look)
+        .animation(LyricStyle.emphasis(reduceMotion), value: look)
     }
 
     @ViewBuilder
     private func line(_ plain: String, swept: Text?, size: CGFloat, glow: Bool) -> some View {
         Group {
             if active, let swept {
-                TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: !clock.playing)) { timeline in
-                    swept.textRenderer(LyricSweepRenderer(
-                        ms: clock.lyricMs(at: timeline.date, offsetMs: offsetMs),
-                        glow: glow
-                    ))
+                if clock.playing {
+                    TimelineView(.animation(minimumInterval: 1.0 / (reduceMotion ? 30.0 : 60.0))) { timeline in
+                        sweep(swept, at: timeline.date, glow: glow)
+                    }
+                } else {
+                    sweep(swept, at: Date(), glow: glow)
                 }
             } else {
                 Text(verbatim: plain)
@@ -524,6 +545,14 @@ struct LyricRowView: View, Equatable {
         .multilineTextAlignment(row.secondVoice ? .trailing : .leading)
         .lineSpacing(size * 0.06)
         .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private func sweep(_ text: Text, at date: Date, glow: Bool) -> some View {
+        text.textRenderer(LyricSweepRenderer(
+            ms: clock.lyricMs(at: date, offsetMs: offsetMs),
+            glow: glow,
+            reduceMotion: reduceMotion
+        ))
     }
 }
 
@@ -538,16 +567,23 @@ struct LyricGapRow: View {
     let clock: LyricsClock
     let onTap: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let dot: CGFloat = 13
     private let spacing: CGFloat = 5
 
     var body: some View {
         ZStack(alignment: row.secondVoice ? .trailing : .leading) {
             if open {
-                TimelineView(.animation(minimumInterval: 1.0 / 30.0, paused: !clock.playing)) { timeline in
-                    dots(through: through(at: timeline.date))
+                Group {
+                    if clock.playing {
+                        TimelineView(.animation(minimumInterval: 1.0 / 30.0)) { timeline in
+                            dots(through: through(at: timeline.date))
+                        }
+                    } else {
+                        dots(through: through(at: Date()))
+                    }
                 }
-                .transition(.opacity.combined(with: .scale(scale: 0.76, anchor: .leading)))
+                .transition(.opacity)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -558,7 +594,7 @@ struct LyricGapRow: View {
         .onTapGesture(perform: onTap)
         .opacity(look.alpha)
         .blur(radius: look.blur)
-        .animation(LyricStyle.settle, value: open)
+        .animation(reduceMotion ? nil : LyricStyle.emphasis(false), value: open)
         .accessibilityLabel("Instrumental")
     }
 

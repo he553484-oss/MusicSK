@@ -411,7 +411,7 @@ private struct MacLyricsInspector: View {
                 lines: controller.displayedLyrics,
                 originalLines: controller.lyrics,
                 loading: controller.lyricsLoading,
-                clock: LyricsClock(playing: controller.isPlaying) { [controller] in
+                clock: LyricsClock(playing: controller.isPlaying, pausedPosition: controller.isPlaying ? nil : controller.position) { [controller] in
                     controller.livePosition(at: $0)
                 },
                 fontSize: 24,

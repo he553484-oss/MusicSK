@@ -40,7 +40,7 @@ extension NowPlayingView {
     }
 
     var lyricsClock: LyricsClock {
-        LyricsClock(playing: controller.isPlaying) { [controller] in controller.livePosition(at: $0) }
+        LyricsClock(playing: controller.isPlaying, pausedPosition: controller.isPlaying ? nil : controller.position) { [controller] in controller.livePosition(at: $0) }
     }
 
     /// Everything above the deck: the artwork, or whichever panel is open.
@@ -120,9 +120,10 @@ extension NowPlayingView {
                             Haptics.play(.tap)
                             pane = .main
                         }
-                    }
+                    },
+                including: pane == .lyrics ? .subviews : .all
             )
-            .accessibilityHint("Swipe up for Up Next, swipe down to return to the player.")
+            .accessibilityHint(pane == .lyrics ? "" : "Swipe up for Up Next, swipe down to return to the player.")
         }
     }
 

@@ -70,6 +70,8 @@ struct LyricsPane: View {
     /// True while the listener is scrolling the list themselves, which stands the
     /// auto-scroll down until they have been still for a moment.
     @State private var reading = false
+    @State private var resumeFollow = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var focus = LyricFocusState()
     @State private var cache = LyricsDocumentCache()
     @AppStorage("lyrics_blur") private var lyricsBlur = true
@@ -132,16 +134,17 @@ struct LyricsPane: View {
         guard document.synced else { return LyricRowLook(alpha: 0.95, blur: 0, scale: 1) }
         guard row.timed else { return LyricRowLook(alpha: 0.9, blur: 0, scale: 1) }
         if active { return LyricRowLook(alpha: 1, blur: 0, scale: 1) }
-        if reading { return LyricRowLook(alpha: LyricStyle.browsingAlpha, blur: 0, scale: LyricStyle.inactiveScale) }
+        let scale = reduceMotion ? 1 : LyricStyle.inactiveScale
+        if reading { return LyricRowLook(alpha: LyricStyle.browsingAlpha, blur: 0, scale: scale) }
         let falloff = phoneColumn ? LyricStyle.falloffAlphaPhone : LyricStyle.falloffAlpha
         let distance = abs(row.id - focus.lead)
-        let blur = lyricsBlur
+        let blur = lyricsBlur && !reduceMotion
             ? LyricStyle.falloffBlur[min(distance, LyricStyle.falloffBlur.count - 1)]
             : 0
         return LyricRowLook(
             alpha: falloff[min(distance, falloff.count - 1)],
             blur: blur,
-            scale: LyricStyle.inactiveScale
+            scale: scale
         )
     }
 
@@ -235,7 +238,7 @@ struct LyricsPane: View {
                         let document = cache.document(for: lines)
                         let focus = currentFocus(document)
                         ScrollView {
-                            VStack(alignment: .leading, spacing: 6) {
+                            LazyVStack(alignment: .leading, spacing: 6) {
                                 ForEach(document.rows) { row in
                                     rowView(row, document: document, focus: focus)
                                         .id(row.id)
@@ -247,52 +250,60 @@ struct LyricsPane: View {
                         }
                         .scrollIndicators(.never)
                         .background {
-                            LyricsFocusTicker(document: document, clock: clock, offsetMs: offsetMs) { next in
-                                if next != self.focus { self.focus = next }
+                            if document.synced {
+                                LyricsFocusTicker(document: document, clock: clock, offsetMs: offsetMs) { next in
+                                    if next != self.focus { self.focus = next }
+                                }
                             }
                         }
                         // Following the *lead* line rather than the last one that
                         // has started: across a duet those differ, and scrolling
                         // to the answer would push the lead off the top while it
                         // was still the line being sung.
-                        .onAppear {
-                            proxy.scrollTo(focus.lead, anchor: scrollAnchor)
+                        .onChange(of: FollowTarget(track: trackId, document: ObjectIdentifier(document), line: focus.lead, reading: reading), initial: true) { previous, next in
+                            let newTrack = previous.track != next.track
+                            if newTrack {
+                                resumeFollow = false
+                                if next.reading {
+                                    reading = false
+                                    return
+                                }
+                            }
+                            guard document.synced, !next.reading else { return }
+                            let sameDocument = previous.document == next.document
+                            let animate = previous != next && !newTrack && sameDocument && !reduceMotion
+                            let animation: Animation? = animate ? .smooth(duration: 0.36) : nil
+                            withAnimation(animation) { proxy.scrollTo(next.line, anchor: scrollAnchor) }
                         }
-                        .onChange(of: trackId) { _, _ in
-                            reading = false
-                            proxy.scrollTo(focus.lead, anchor: scrollAnchor)
-                        }
-                        .onChange(of: focus.lead) { _, index in
-                            // Not while the listener is reading. A list that
-                            // snaps back to the playhead as soon as they let go
-                            // is a list nobody can look anything up in.
-                            guard !reading else { return }
-                            withAnimation(LyricStyle.settle) {
-                                proxy.scrollTo(index, anchor: scrollAnchor)
+                        .onScrollPhaseChange { _, phase in
+                            switch phase {
+                            case .tracking, .interacting, .decelerating:
+                                resumeFollow = false
+                                reading = true
+                            case .idle:
+                                resumeFollow = reading
+                            default:
+                                break
                             }
                         }
-                        // The reader's own scroll stands the auto-scroll down
-                        // until they have been still for a moment. This is a
-                        // separate gesture rather than a `DragGesture` on the
-                        // ScrollView so it does not compete with the scroll
-                        // itself — simultaneous, and only asked whether a finger
-                        // is down.
+                        .task(id: resumeFollow) {
+                            guard resumeFollow else { return }
+                            do {
+                                try await Task.sleep(for: .seconds(2.5))
+                                try Task.checkCancellation()
+                                reading = false
+                                resumeFollow = false
+                            } catch { return }
+                        }
+                        // The deck reacts to the direction of a finger drag;
+                        // scroll phases own the follow state, including momentum.
                         .simultaneousGesture(
                             DragGesture(minimumDistance: 4)
                                 .onChanged { value in
-                                    reading = true
-                                    // Advancing through the transcript (finger
-                                    // moves up) gives the lyrics the whole view;
-                                    // scrolling back reveals the deck again.
                                     if value.translation.height < -20, sourceVisible {
                                         onFocusLyrics?()
                                     } else if value.translation.height > 20, !sourceVisible {
                                         onRevealControls?()
-                                    }
-                                }
-                                .onEnded { _ in
-                                    withAnimation(.easeOut(duration: 1.6).delay(2.5)) {
-                                        reading = false
                                     }
                                 }
                         )
@@ -348,6 +359,13 @@ struct LyricsPane: View {
         } message: {
             Text(photoSaveMessage)
         }
+    }
+
+    private struct FollowTarget: Equatable {
+        let track: String
+        let document: ObjectIdentifier
+        let line: Int
+        let reading: Bool
     }
 
     /// What makes one lyric document different from another: the line objects
