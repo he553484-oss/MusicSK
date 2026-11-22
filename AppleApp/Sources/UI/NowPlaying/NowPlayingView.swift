@@ -41,6 +41,9 @@ struct NowPlayingView: View {
     #endif
     @State var lyricsControlsOpen = true
     @State var lyricsControlActivity = 0
+    @State var lyricsManualScroll = false
+    @State var lyricsHeaderHeight: CGFloat = 0
+    @State var lyricsDeckHeight: CGFloat = 0
     @State var lyricsScrubbing = false
     @State var volumeDragging = false
     @State var showOutputDevice = false
@@ -115,24 +118,24 @@ struct NowPlayingView: View {
         }
         .onChange(of: pane) { _, value in
             PlatformSettings.shared.putString(key: "last_player_screen", value: value.persistedValue)
-            if value == .lyrics {
-                lyricsControlsOpen = true
-                lyricsControlActivity += 1
-            }
+            if value == .lyrics { revealLyricsControls() }
+            else { lyricsManualScroll = false }
         }
-        .task(id: lyricsControlActivity) {
-            while pane == .lyrics, lyricsControlsOpen {
-                do {
-                    try await Task.sleep(for: .seconds(5))
-                } catch {
-                    return
-                }
-                guard !Task.isCancelled, pane == .lyrics, lyricsControlsOpen else { return }
-                if lyricsScrubbing { continue }
-                lyricsControlsOpen = false
-                return
-            }
+        .task(id: lyricsControlTimer) {
+            guard let timer = lyricsControlTimer else { return }
+            do {
+                try await Task.sleep(for: .seconds(5))
+                try Task.checkCancellation()
+            } catch { return }
+            if lyricsControlTimer == timer { lyricsControlsOpen = false }
         }
+    }
+
+    private var lyricsControlTimer: Int? {
+        guard pane == .lyrics, !keepsLyricsPlaybackDeckVisible, lyricsControlsOpen,
+              !lyricsScrubbing, !lyricsManualScroll, !volumeDragging, !sharePicking,
+              !showLyricsOffset, !showLyricsSources, !showOutputDevice, !showPipeline else { return nil }
+        return lyricsControlActivity
     }
 
     /// Upstream uses a cropped, pre-blurred cover behind lyrics and queue, and

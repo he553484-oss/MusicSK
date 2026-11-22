@@ -42,6 +42,8 @@ struct LyricsPane: View {
     /// The listener's timing correction, in milliseconds. See [LyricsOffsetBridge].
     var offsetMs: Int32 = 0
     var sourceVisible: Bool = true
+    /// Measured top and bottom playback overlays in the phone lyrics layout.
+    var chromeInsets: EdgeInsets? = nil
     /// True while the header's share entry has picking armed. The pane shows
     /// the quote bar for an empty pick so there is somewhere to aim, and
     /// reports back so the header can stop being the way out.
@@ -50,6 +52,7 @@ struct LyricsPane: View {
     var onChangeSource: (() -> Void)? = nil
     var onRevealControls: (() -> Void)? = nil
     var onFocusLyrics: (() -> Void)? = nil
+    var onManualScroll: ((Bool) -> Void)? = nil
     /// Whether lines are being picked for a share card: armed from the header,
     /// or merely because something is already picked. While it holds, a line
     /// tap toggles the pick instead of seeking.
@@ -67,10 +70,10 @@ struct LyricsPane: View {
     @State private var storyCardFormat = false
     @State private var showPhotoSaveAlert = false
     @State private var photoSaveMessage = ""
-    /// True while the listener is scrolling the list themselves, which stands the
-    /// auto-scroll down until they have been still for a moment.
-    @State private var reading = false
-    @State private var resumeFollow = false
+    @State private var follow = LyricFollowState()
+    @State private var lastPositioned: VerseTarget?
+    @State private var positionedReturn: UInt = 0
+    @State private var sourceCreditHeight: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var focus = LyricFocusState()
     @State private var cache = LyricsDocumentCache()
@@ -126,7 +129,7 @@ struct LyricsPane: View {
     }
 
     private var scrollAnchor: UnitPoint {
-        phoneColumn ? UnitPoint(x: 0.5, y: 0.32) : .center
+        phoneColumn ? UnitPoint(x: 0.5, y: 0.27) : .center
     }
 
     /// How a row sits in the stack, by its distance from the line being sung.
@@ -137,7 +140,7 @@ struct LyricsPane: View {
             active: active,
             distance: abs(row.id - focus.lead),
             compact: phoneColumn,
-            browsing: reading,
+            browsing: follow.browsing,
             blurEnabled: lyricsBlur
         )
     }
@@ -157,7 +160,10 @@ struct LyricsPane: View {
                 look: look(for: row, document: document, focus: focus, active: focus.gap == row.id),
                 offsetMs: offsetMs,
                 clock: clock,
-                onTap: { if !picking { onSeek?(seekTarget(for: row)) } }
+                onTap: {
+                    if !sourceVisible { onRevealControls?() }
+                    else if !picking { onSeek?(seekTarget(for: row)) }
+                }
             )
         } else {
             let active = focus.active.contains(row.id)
@@ -227,108 +233,41 @@ struct LyricsPane: View {
                     if let translator {
                         LyricsTranslationNote(outcome: translator.outcome)
                             .padding(.horizontal, 12)
+                            .padding(.top, chromeInsets?.top ?? 0)
                     }
-                    ScrollViewReader { proxy in
-                        let document = cache.document(for: lines)
-                        let focus = currentFocus(document)
-                        ScrollView {
-                            VStack(alignment: .leading, spacing: 6) {
-                                ForEach(document.rows) { row in
-                                    rowView(row, document: document, focus: focus)
-                                        .id(row.id)
-                                }
-                            }
-                            .padding(.horizontal, 2)
-                            .padding(.vertical, 20)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .scrollIndicators(.never)
-                        .background {
-                            if document.synced {
-                                LyricsFocusTicker(document: document, clock: clock, offsetMs: offsetMs) { next in
-                                    if next != self.focus { self.focus = next }
-                                }
-                            }
-                        }
-                        // Following the *lead* line rather than the last one that
-                        // has started: across a duet those differ, and scrolling
-                        // to the answer would push the lead off the top while it
-                        // was still the line being sung.
-                        .onChange(of: FollowTarget(track: trackId, document: ObjectIdentifier(document), line: focus.lead, reading: reading), initial: true) { previous, next in
-                            let newTrack = previous.track != next.track
-                            if newTrack {
-                                resumeFollow = false
-                                if next.reading {
-                                    reading = false
-                                    return
-                                }
-                            }
-                            guard document.synced, !next.reading else { return }
-                            let sameDocument = previous.document == next.document
-                            let animate = previous != next && !newTrack && sameDocument && !reduceMotion
-                            let animation: Animation? = animate ? .smooth(duration: 0.36) : nil
-                            withAnimation(animation) { proxy.scrollTo(next.line, anchor: scrollAnchor) }
-                        }
-                        .onScrollPhaseChange { _, phase in
-                            switch phase {
-                            case .tracking, .interacting, .decelerating:
-                                resumeFollow = false
-                                reading = true
-                            case .idle:
-                                resumeFollow = reading
-                            default:
-                                break
-                            }
-                        }
-                        .task(id: resumeFollow) {
-                            guard resumeFollow else { return }
-                            do {
-                                try await Task.sleep(for: .seconds(2.5))
-                                try Task.checkCancellation()
-                                reading = false
-                                resumeFollow = false
-                            } catch { return }
-                        }
-                        // The deck reacts to the direction of a finger drag;
-                        // scroll phases own the follow state, including momentum.
-                        .simultaneousGesture(
-                            DragGesture(minimumDistance: 4)
-                                .onChanged { value in
-                                    if value.translation.height < -20, sourceVisible {
-                                        onFocusLyrics?()
-                                    } else if value.translation.height > 20, !sourceVisible {
-                                        onRevealControls?()
-                                    }
-                                }
-                        )
-                    }
-                    if !selection.isEmpty || sharePicking {
+                    lyricsScroll
+                    if picking {
                         shareBar
                             .padding(.horizontal, 12)
+                            .padding(.bottom, chromeInsets?.bottom ?? 0)
                     }
-                    if sourceVisible, let credit = attribution {
-                        HStack(spacing: 8) {
-                            Text(credit)
-                                .font(.subheadline.weight(.medium))
-                                .foregroundStyle(.white.opacity(0.72))
-                            if let onChangeSource {
-                                Button("Change", action: onChangeSource)
-                                    .buttonStyle(.plain)
-                                    .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(.white)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 3)
-                                    .background(.white.opacity(0.14), in: Capsule())
-                            }
-                            Spacer(minLength: 0)
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 4)
+                    if chromeInsets == nil, sourceVisible, let credit = attribution {
+                        sourceCredit(credit)
+                    }
+                }
+                .overlay(alignment: .bottom) {
+                    if let chromeInsets, let credit = attribution {
+                        sourceCredit(credit)
+                            .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { sourceCreditHeight = $0 }
+                            .padding(.bottom, chromeInsets.bottom)
+                            .opacity(sourceVisible && !picking ? 1 : 0)
+                            .allowsHitTesting(sourceVisible && !picking)
+                            .accessibilityHidden(!sourceVisible || picking)
+                            .animation(LyricStyle.controlsFade(reduceMotion), value: sourceVisible)
                     }
                 }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .contentShape(Rectangle())
+        .simultaneousGesture(TapGesture().onEnded {
+            if !sourceVisible { onRevealControls?() }
+        })
+        .accessibilityActions {
+            if !sourceVisible, let onRevealControls {
+                Button("Show Playback Controls", action: onRevealControls)
+            }
+        }
         // A share card belongs to the song and the lyric it quoted. A new track,
         // or a different lyric source for the same one, makes the old card
         // describe something else — and it would still be sitting in the share
@@ -337,6 +276,9 @@ struct LyricsPane: View {
         .onChange(of: trackId) { _, _ in
             clearShareSelection()
             onSharePicking?(false)
+        }
+        .onChange(of: sourceLabel) { _, value in
+            if value?.isEmpty != false { sourceCreditHeight = 0 }
         }
         .onChange(of: lyricsSignature) { _, _ in
             clearShareSelection()
@@ -355,11 +297,126 @@ struct LyricsPane: View {
         }
     }
 
-    private struct FollowTarget: Equatable {
+    private var lyricsScroll: some View {
+        ScrollViewReader { proxy in
+            let document = cache.document(for: lines)
+            let focus = currentFocus(document)
+            let target = VerseTarget(track: trackId, document: ObjectIdentifier(document), line: focus.lead)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(document.rows) { row in
+                        rowView(row, document: document, focus: focus)
+                            .id(row.id)
+                    }
+                }
+                .padding(.horizontal, phoneColumn ? 12 : 2)
+                .padding(.top, 20 + (translator == nil ? chromeInsets?.top ?? 0 : 0))
+                .padding(.bottom, 20 + (chromeInsets.map { $0.bottom + sourceCreditHeight } ?? 0))
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .scrollIndicators(.never)
+            .modifier(LyricChromeMask(
+                enabled: chromeInsets != nil,
+                top: translator == nil ? chromeInsets?.top ?? 0 : 0,
+                bottom: picking ? 0 : (chromeInsets?.bottom ?? 0) + sourceCreditHeight,
+                visible: chromeInsets != nil && sourceVisible,
+                reduceMotion: reduceMotion
+            ))
+            .background {
+                if document.synced {
+                    LyricsFocusTicker(document: document, clock: clock, offsetMs: offsetMs) { next in
+                        if next != self.focus { self.focus = next }
+                    }
+                }
+            }
+            // The lead changes at verse boundaries. A rejoin can also reposition
+            // the same lead if the listener moved the scroll view by hand.
+            .onChange(of: FollowTarget(verse: target, state: follow), initial: true) { old, new in
+                let newDocument = old.verse.document != new.verse.document || old.verse.track != new.verse.track
+                if newDocument { follow.replaceDocument() }
+                guard document.synced, follow.follows else { return }
+
+                let rejoining = positionedReturn != follow.returnRevision
+                guard lastPositioned != target || rejoining || old == new else { return }
+
+                let adjacent = lastPositioned.map { abs($0.line - target.line) <= 3 } ?? false
+                let animate = !reduceMotion && !newDocument && old != new && (adjacent || rejoining)
+                withAnimation(animate ? .easeInOut(duration: rejoining ? 0.42 : 0.30) : nil) {
+                    proxy.scrollTo(target.line, anchor: scrollAnchor)
+                }
+                lastPositioned = target
+                positionedReturn = follow.returnRevision
+            }
+            .onScrollPhaseChange { _, phase in
+                switch phase {
+                case .tracking:
+                    follow.update(.touching)
+                    onManualScroll?(true)
+                case .interacting, .decelerating:
+                    follow.update(.moving)
+                    onManualScroll?(true)
+                case .idle:
+                    follow.update(.resting)
+                    onManualScroll?(false)
+                default:
+                    break
+                }
+            }
+            .onDisappear {
+                follow.update(.resting)
+                follow.replaceDocument()
+                onManualScroll?(false)
+            }
+            .task(id: follow.resumeTicket) {
+                guard let ticket = follow.resumeTicket else { return }
+                do {
+                    try await Task.sleep(for: .seconds(2.5))
+                    try Task.checkCancellation()
+                    follow.returnToPlayhead(ticket: ticket)
+                } catch { return }
+            }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 8)
+                    .onChanged { value in
+                        let vertical = value.translation.height
+                        guard abs(vertical) > abs(value.translation.width) else { return }
+                        if vertical < -28, sourceVisible { onFocusLyrics?() }
+                        else if vertical > 28, !sourceVisible { onRevealControls?() }
+                    }
+            )
+        }
+    }
+
+    private func sourceCredit(_ credit: String) -> some View {
+        HStack(spacing: 8) {
+            Text(credit)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.white.opacity(0.72))
+            if let onChangeSource {
+                Button("Change", action: onChangeSource)
+                    .buttonStyle(.plain)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 3)
+                    .background(.white.opacity(0.14), in: Capsule())
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 12)
+        .padding(.trailing, chromeInsets == nil ? 0 : 54)
+        .padding(.vertical, 4)
+    }
+
+    private struct VerseTarget: Equatable {
         let track: String
         let document: ObjectIdentifier
         let line: Int
-        let reading: Bool
+    }
+
+    private struct FollowTarget: Equatable {
+        let verse: VerseTarget
+        let state: LyricFollowState
     }
 
     /// What makes one lyric document different from another: the line objects
@@ -473,6 +530,10 @@ struct LyricsPane: View {
             let nextTotal = selectedCharacterCount + shareText(at: index).count
             if selection.isEmpty || nextTotal <= maxSharedCharacters {
                 selection.insert(index)
+                if !sharePicking {
+                    onRevealControls?()
+                    onSharePicking?(true)
+                }
             }
         }
         Haptics.play(.select)
@@ -612,3 +673,47 @@ func lyricTextIsRightToLeft(_ text: String) -> Bool {
 /// [LyricsSourcesSheet] (the fuller superset: try-order, PaxSeniX key,
 /// word-sync preference, reset). The player's More menu presents that same
 /// sheet rather than a local copy, so the two can never drift.
+
+/// Only the viewport's edge opacity changes with the overlaid controls. The
+/// scroll view bounds, line positions and scroll position stay the same.
+private struct LyricChromeMask: ViewModifier {
+    let enabled: Bool
+    let top: CGFloat
+    let bottom: CGFloat
+    let visible: Bool
+    let reduceMotion: Bool
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if enabled {
+            content.mask {
+                GeometryReader { geometry in
+                    let available = geometry.size.height
+                    let upper = min(top, available * 0.35)
+                    let lower = min(bottom, available * 0.48)
+                    let edge = min(16, max(0, (available - upper - lower) / 2))
+                    VStack(spacing: 0) {
+                        if upper > 0 {
+                            Color.clear.frame(height: upper)
+                            LinearGradient(
+                                colors: [.clear, .white],
+                                startPoint: .top, endPoint: .bottom
+                            ).frame(height: edge)
+                        }
+                        Color.white
+                        if lower > 0 {
+                            LinearGradient(
+                                colors: [.white, .white.opacity(visible ? 0 : 1)],
+                                startPoint: .top, endPoint: .bottom
+                            ).frame(height: edge)
+                            Color.white.opacity(visible ? 0 : 1).frame(height: lower)
+                        }
+                    }
+                    .animation(LyricStyle.controlsFade(reduceMotion), value: visible)
+                }
+            }
+        } else {
+            content
+        }
+    }
+}

@@ -104,16 +104,51 @@ extension NowPlayingView {
         )
     }
 
-    /// The portrait player: stage above, pinned deck below.
+    /// The ordinary portrait panes keep their pinned transport. Phone lyrics
+    /// get an uninterrupted viewport with independently fading controls.
+    @ViewBuilder
     var portraitPlayer: some View {
-        VStack(spacing: 0) {
-            stage
-            if pane != .lyrics || lyricsControlsOpen || keepsLyricsPlaybackDeckVisible {
+        if pane == .lyrics && !keepsLyricsPlaybackDeckVisible {
+            immersiveLyricsPlayer
+                .transition(portraitPaneTransition)
+        } else {
+            VStack(spacing: 0) {
+                stage
                 deck
-                    .transition(reduceMotion ? .opacity : .offset(y: 16).combined(with: .opacity))
             }
+            .transition(portraitPaneTransition)
         }
-        .animation(Motion.playerDeck(reduceMotion), value: lyricsControlsOpen)
+    }
+
+    /// One layer clears before the next becomes visible. Fading both over
+    /// each other put the album sleeve and the ordinary credits behind verses.
+    private var portraitPaneTransition: AnyTransition {
+        if reduceMotion {
+            return .asymmetric(insertion: .opacity.animation(.easeIn(duration: 0.12)), removal: .identity)
+        }
+        return .asymmetric(
+            insertion: .opacity.animation(.easeOut(duration: 0.16).delay(0.10)),
+            removal: .opacity.animation(.easeIn(duration: 0.10))
+        )
+    }
+
+    private var immersiveLyricsPlayer: some View {
+        panel(lyricsChrome: EdgeInsets(top: lyricsHeaderHeight, leading: 0, bottom: lyricsDeckHeight, trailing: 0))
+            .overlay(alignment: .top) {
+                lyricsHeader
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { lyricsHeaderHeight = $0 }
+            }
+            .overlay(alignment: .bottom) {
+                deck
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { lyricsDeckHeight = $0 }
+                    .modifier(LyricPlaybackChrome(visible: lyricsControlsOpen, reduceMotion: reduceMotion))
+            }
+            .overlay(alignment: .bottomTrailing) {
+                lyricsToolsButton
+                    .padding(.trailing, 20)
+                    .padding(.bottom, lyricsDeckHeight + 8)
+                    .modifier(LyricPlaybackChrome(visible: lyricsControlsOpen, reduceMotion: reduceMotion))
+            }
     }
 
     /// The two-column player: the sleeve and the deck on the left, the open pane
@@ -318,5 +353,19 @@ extension NowPlayingView {
         .menuIndicator(.hidden)
         .help("Lyrics options")
         .accessibilityLabel("Lyrics options")
+    }
+}
+
+
+private struct LyricPlaybackChrome: ViewModifier {
+    let visible: Bool
+    let reduceMotion: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(visible ? 1 : 0)
+            .allowsHitTesting(visible)
+            .accessibilityHidden(!visible)
+            .animation(LyricStyle.controlsFade(reduceMotion), value: visible)
     }
 }

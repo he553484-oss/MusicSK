@@ -202,7 +202,7 @@ extension NowPlayingView {
     /// The selected content pane, filling the portrait stage or the requested
     /// portion of a compact landscape layout.
     @ViewBuilder
-    func panel(showsQueueCurrentTrackHeader: Bool = true) -> some View {
+    func panel(showsQueueCurrentTrackHeader: Bool = true, lyricsChrome: EdgeInsets? = nil) -> some View {
         switch pane {
         case .main:
             Color.clear
@@ -226,12 +226,14 @@ extension NowPlayingView {
                 translator: controller.lyricsTranslator,
                 trackId: controller.current?.id ?? "",
                 offsetMs: lyricsOffsetMs,
-                sourceVisible: lyricsControlsOpen,
+                sourceVisible: lyricsChrome == nil || lyricsControlsOpen,
+                chromeInsets: lyricsChrome,
                 sharePicking: sharePicking,
                 onSharePicking: { sharePicking = $0 },
                 onChangeSource: { showLyricsSources = true },
-                onRevealControls: { revealLyricsControls() },
-                onFocusLyrics: { hideLyricsControls() },
+                onRevealControls: lyricsChrome == nil ? nil : { revealLyricsControls() },
+                onFocusLyrics: lyricsChrome == nil ? nil : { hideLyricsControls() },
+                onManualScroll: lyricsChrome == nil ? nil : { scrolling in lyricsManualScroll = scrolling },
                 trackTitle: controller.current?.title ?? "",
                 trackArtist: controller.current?.artist ?? "",
                 artworkData: controller.current?.artworkData,

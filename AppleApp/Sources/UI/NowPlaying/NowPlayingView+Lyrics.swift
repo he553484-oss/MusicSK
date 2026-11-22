@@ -13,8 +13,8 @@ import AppKit
 
 // The lyrics header, the current-line strip, and showing their controls.
 extension NowPlayingView {
-    /// Compact credits row that stays at the head of the lyrics surface while
-    /// the playback deck can independently slide away for focused reading.
+    /// Compact credits and return to artwork. This row stays accessible while
+    /// the phone's transport fades out beneath the lyrics.
     var lyricsHeader: some View {
         HStack(spacing: 12) {
             Button {
@@ -179,6 +179,7 @@ extension NowPlayingView {
     }
 
     func hideLyricsControls() {
+        guard !lyricsScrubbing, !volumeDragging, !sharePicking else { return }
         lyricsControlsOpen = false
     }
 }

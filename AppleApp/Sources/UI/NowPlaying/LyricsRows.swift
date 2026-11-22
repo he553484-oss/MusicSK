@@ -315,6 +315,10 @@ final class LyricsDocumentCache {
 
 enum LyricStyle {
     static let emphasis = Animation.easeInOut(duration: 0.32)
+
+    static func controlsFade(_ reduceMotion: Bool) -> Animation {
+        .easeInOut(duration: reduceMotion ? 0.12 : 0.24)
+    }
     static let unsungAlpha = 0.45
     static let backingAlpha = 0.72
     static let backingScale: CGFloat = 23.0 / 34.0

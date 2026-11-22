@@ -35,3 +35,42 @@ precondition(LyricWordProgress.glowEnvelope(0.25) < LyricWordProgress.glowEnvelo
 precondition(abs(LyricWordProgress.glowEnvelope(0.25) - LyricWordProgress.glowEnvelope(0.75)) < 0.000001)
 
 print("PASS lyric focus separation, manual reading, blur preference, held word progress and glow")
+
+var follow = LyricFollowState()
+precondition(follow.follows)
+follow.update(.touching)
+precondition(!follow.follows && !follow.browsing)
+follow.update(.resting)
+precondition(follow.follows && follow.resumeTicket == nil)
+
+follow.update(.touching)
+follow.update(.moving)
+precondition(follow.browsing && !follow.follows && follow.resumeTicket == nil)
+follow.update(.moving) // Drag followed by native momentum.
+precondition(follow.resumeTicket == nil)
+follow.update(.resting)
+let firstReturn = follow.resumeTicket!
+follow.update(.touching)
+follow.returnToPlayhead(ticket: firstReturn)
+precondition(follow.browsing && !follow.follows && follow.resumeTicket == nil)
+follow.update(.resting)
+let secondReturn = follow.resumeTicket!
+precondition(secondReturn != firstReturn)
+follow.returnToPlayhead(ticket: secondReturn)
+precondition(!follow.browsing && follow.follows && follow.returnRevision == 1)
+follow.returnToPlayhead(ticket: secondReturn)
+precondition(follow.returnRevision == 1)
+
+follow.update(.moving)
+follow.update(.resting)
+let staleDocument = follow.resumeTicket!
+follow.replaceDocument()
+follow.returnToPlayhead(ticket: staleDocument)
+precondition(follow.follows && follow.returnRevision == 1)
+follow.update(.moving)
+follow.replaceDocument()
+precondition(!follow.follows) // Document changes respect ongoing user contact.
+follow.update(.resting)
+precondition(follow.follows)
+
+print("PASS lyric follow waits for momentum, rejects stale timers and distinguishes a tap from a drag")

@@ -6,9 +6,9 @@ struct LyricRowLook: Equatable {
     let alpha: Double
     let blur: CGFloat
 
-    private static let compactAlpha = [0.78, 0.68, 0.56, 0.47, 0.39]
+    private static let compactAlpha = [0.69, 0.58, 0.48, 0.39, 0.33]
     private static let regularAlpha = [0.85, 0.75, 0.64, 0.55, 0.48]
-    private static let focusBlur: [CGFloat] = [0.7, 1.3, 1.9, 2.5, 3.1]
+    private static let focusBlur: [CGFloat] = [1.3, 2.1, 2.9, 3.6, 4.2]
 
     static func forLine(
         timed: Bool, synced: Bool, active: Bool, distance: Int,
@@ -37,5 +37,44 @@ enum LyricWordProgress {
     static func glowEnvelope(_ progress: Double) -> Double {
         guard progress > 0, progress < 1 else { return 0 }
         return sin(.pi * progress)
+    }
+}
+
+/// Separates touching the scroll view from actually reading away from the
+/// playhead. Only a real drag or momentum starts the return delay.
+struct LyricFollowState: Equatable {
+    enum Scroll {
+        case resting, touching, moving
+    }
+
+    private(set) var scroll: Scroll = .resting
+    private(set) var browsing = false
+    private(set) var returnRevision: UInt = 0
+    private(set) var resumeTicket: UInt?
+    private var nextTicket: UInt = 0
+
+    var follows: Bool { scroll == .resting && !browsing }
+
+    mutating func update(_ scroll: Scroll) {
+        guard self.scroll != scroll else { return }
+        self.scroll = scroll
+        resumeTicket = nil
+        if scroll == .moving { browsing = true }
+        if scroll == .resting, browsing {
+            nextTicket &+= 1
+            resumeTicket = nextTicket
+        }
+    }
+
+    mutating func returnToPlayhead(ticket: UInt) {
+        guard resumeTicket == ticket, scroll == .resting else { return }
+        browsing = false
+        resumeTicket = nil
+        returnRevision &+= 1
+    }
+
+    mutating func replaceDocument() {
+        browsing = false
+        resumeTicket = nil
     }
 }
