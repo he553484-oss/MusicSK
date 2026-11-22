@@ -20,9 +20,9 @@ on:
         description: 'Version to build, e.g. 1.0.6 (must match AppleApp/project.yml)'
         required: true
       mode:
-        description: 'build = files only (workflow artifact); draft = draft GitHub release; publish = public release + appcast'
+        description: 'build-ios = unsigned IPA only; build = IPA and DMG; draft = draft release; publish = public release + appcast'
         type: choice
-        options: [build, draft, publish]
+        options: [build-ios, build, draft, publish]
         default: build
 
 permissions:
@@ -80,7 +80,7 @@ jobs:
           HAS_SPARKLE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY != '' }}
         run: |
           [[ -f "release-notes/musicsk/$VERSION.md" ]] || { echo "::error::release-notes/musicsk/$VERSION.md is missing"; exit 1; }
-          if [[ "$MODE" != build ]] && gh release view "$TAG" >/dev/null 2>&1; then
+          if [[ "$MODE" == draft || "$MODE" == publish ]] && gh release view "$TAG" >/dev/null 2>&1; then
             echo "::error::GitHub release $TAG already exists"; exit 1
           fi
           if [[ "$MODE" == publish && ( "$HAS_SPARKLE_KEY" != true || -z "$MUSICSK_SPARKLE_PUBLIC_KEY" ) ]]; then
@@ -103,7 +103,8 @@ jobs:
       - name: Install Rust targets and tools
         run: |
           rustup target add aarch64-apple-darwin aarch64-apple-ios
-          brew install xcodegen create-dmg
+          brew install xcodegen
+          if [[ "$MODE" != build-ios ]]; then brew install create-dmg; fi
 
       - uses: actions/cache@v4
         with:
@@ -115,7 +116,16 @@ jobs:
           key: build-${{ runner.os }}-${{ hashFiles('native-core/Cargo.lock', '*.gradle.kts', 'shared/*.gradle.kts','gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: build-${{ runner.os }}-
 
-      - name: Build the release files
+      - name: Build the unsigned iOS IPA
+        if: env.MODE == 'build-ios'
+        run: |
+          NATIVE_TARGETS="aarch64-apple-darwin aarch64-apple-ios" scripts/build-native-core.sh
+          CONFIG=release scripts/build-shared-framework.sh
+          xcodegen generate --spec AppleApp/project.yml
+          scripts/package-ios-ipa.sh "$VERSION" --output-dir build/release
+
+      - name: Build the paired release files
+        if: env.MODE != 'build-ios'
         run: scripts/release-apple.sh "$VERSION" --output-dir build/release
 
       - name: Keep the files as a workflow artifact
@@ -124,9 +134,10 @@ jobs:
           name: Musicsk-${{ env.VERSION }}
           path: build/release/
           retention-days: 14
+          if-no-files-found: error
 
       - name: Create the GitHub release
-        if: env.MODE != 'build'
+        if: env.MODE == 'draft' || env.MODE == 'publish'
         run: |
           cd build/release
           flags=()
