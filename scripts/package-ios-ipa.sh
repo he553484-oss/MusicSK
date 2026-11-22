@@ -30,12 +30,23 @@ while [[ $# -gt 0 ]]; do
 done
 command -v xcodebuild >/dev/null 2>&1 || fail 'xcodebuild is required'
 command -v ditto >/dev/null 2>&1 || fail 'ditto is required'
-command -v zipinfo >/dev/null 2>&1 || fail 'zipinfo is required'
 command -v codesign >/dev/null 2>&1 || fail 'codesign is required'
+command -v python3 >/dev/null 2>&1 || fail 'python3 is required'
+spec_version="$(sed -n 's/^ *MARKETING_VERSION: "\(.*\)"$/\1/p' "$repo_root/AppleApp/project.yml")"
+build_version="$(sed -n 's/^ *CURRENT_PROJECT_VERSION: "\(.*\)"$/\1/p' "$repo_root/AppleApp/project.yml")"
+[[ "$spec_version" == "$version" ]] || fail "AppleApp/project.yml says $spec_version, not $version"
+[[ "$build_version" =~ ^[1-9][0-9]*$ ]] || fail 'AppleApp/project.yml has no positive numeric build'
 mkdir -p "$output_dir"
 output_dir="$(cd "$output_dir" && pwd)"
-stage="$(mktemp -d "${TMPDIR:-/tmp}/bitchord-ipa.XXXXXX")"
-trap 'rm -rf "$stage"' EXIT
+ipa="$output_dir/Musicsk-$version-build$build_version-ios-unsigned.ipa"
+[[ ! -e "$ipa" || "$overwrite" -eq 1 ]] || fail "IPA already exists: $ipa (pass --overwrite to replace it)"
+stage="$(mktemp -d "${TMPDIR:-/tmp}/musicsk-ipa.XXXXXX")"
+output_stage=""
+cleanup() {
+  rm -rf "$stage"
+  if [[ -n "$output_stage" ]]; then rm -rf "$output_stage"; fi
+}
+trap cleanup EXIT
 archive="$stage/Musicsk.xcarchive"
 app="$archive/Products/Applications/Musicsk.app"
 staged_app="$stage/package/Payload/Musicsk.app"
@@ -64,42 +75,33 @@ xcodebuild \
   CODE_SIGNING_REQUIRED=NO \
   CODE_SIGN_IDENTITY=
 [[ -d "$app" ]] || fail "archive did not contain Musicsk.app: $app"
-plist="$app/Info.plist"
-bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$plist")"
-[[ "$bundle_id" == app.musicsk.player ]] || fail "Unexpected app bundle identifier: $bundle_id"
-widget_plist="$app/PlugIns/MusicskWidget.appex/Info.plist"
-[[ -f "$widget_plist" ]] || fail 'Archive is missing MusicskWidget.appex'
-widget_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$widget_plist")"
-[[ "$widget_id" == "$bundle_id.widget" ]] || fail "Unexpected widget bundle identifier: $widget_id"
-short_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$plist")"
-[[ "$short_version" == "$version" ]] || fail "archive is version $short_version, not requested version $version"
-build_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$plist")"
-[[ "$build_version" =~ ^[0-9]+$ ]] || fail 'archive has no numeric build number'
-ipa="$output_dir/Musicsk-$version-build$build_version-ios-unsigned.ipa"
-[[ ! -e "$ipa" || "$overwrite" -eq 1 ]] || fail "IPA already exists: $ipa (pass --overwrite to replace it)"
 mkdir -p "$stage/package/Payload"
-ditto "$app" "$stage/package/Payload/Musicsk.app"
-find "$stage/package/Payload/Musicsk.app" -name embedded.mobileprovision -type f -delete
-# A release IPA is deliberately unsigned; don't leave export/archive profiles
-# behind even if Xcode emitted one for a nested extension.
-find "$stage/package/Payload/Musicsk.app" -name embedded.provisionprofile -type f -delete
-# zip updates an existing archive instead of clearing entries that disappeared
-# from a rebuilt app, so start fresh when the caller explicitly allows overwrite.
-rm -f "$ipa"
-(cd "$stage/package" && /usr/bin/zip -qry "$ipa" Payload)
-zipinfo -1 "$ipa" > "$stage/ipa-list.txt"
-grep -Fxq 'Payload/Musicsk.app/Info.plist' "$stage/ipa-list.txt" || fail 'IPA archive is missing Payload/Musicsk.app'
-grep -Fxq 'Payload/Musicsk.app/Musicsk' "$stage/ipa-list.txt" || fail 'IPA archive is missing the Musicsk executable'
-grep -Fxq 'Payload/Musicsk.app/PlugIns/MusicskWidget.appex/Info.plist' "$stage/ipa-list.txt" || fail 'IPA archive is missing MusicskWidget.appex'
-if grep -E '(^|/)embedded\.(mobileprovision|provisionprofile)$' "$stage/ipa-list.txt" >/dev/null; then
-  fail 'IPA archive contains an embedded provisioning profile'
-fi
-signature_info="$stage/codesign-info.txt"
-if codesign -dv --verbose=4 "$staged_app" >"$signature_info" 2>&1; then
-  grep -Fq 'Signature=adhoc' "$signature_info" || fail 'staged app has a non-ad-hoc signature'
-  if grep -q '^Authority=' "$signature_info"; then fail 'staged app unexpectedly has a signing authority'; fi
+ditto "$app" "$staged_app"
+find "$staged_app" -type f \( -name embedded.mobileprovision -o -name embedded.provisionprofile \) -delete
+
+for bundle in "$staged_app" "$staged_app/PlugIns/MusicskWidget.appex"; do
+  [[ -d "$bundle" ]] || fail "Archive is missing $(basename "$bundle")"
+  signature_info="$stage/codesign-info.txt"
+  if codesign -dv --verbose=4 "$bundle" >"$signature_info" 2>&1; then
+    grep -Fq 'Signature=adhoc' "$signature_info" || fail "$(basename "$bundle") has a non-ad-hoc signature"
+    if grep -q '^Authority=' "$signature_info"; then fail "$(basename "$bundle") has a signing authority"; fi
+  else
+    grep -Fq 'code object is not signed at all' "$signature_info" ||
+      fail "could not confirm $(basename "$bundle") is unsigned or ad-hoc signed"
+  fi
+done
+
+# Validate the finished ZIP before exposing it under its final name. The
+# temporary output shares the destination filesystem, including during retries.
+output_stage="$(mktemp -d "$output_dir/.musicsk-ipa.XXXXXX")"
+candidate="$output_stage/$(basename "$ipa")"
+(cd "$stage/package" && /usr/bin/zip -qry "$candidate" Payload)
+python3 "$repo_root/scripts/verify-ios-ipa.py" "$candidate" \
+  --version "$version" --build "$build_version" --revision "$build_revision"
+if [[ "$overwrite" -eq 1 ]]; then
+  mv -f "$candidate" "$ipa"
 else
-  grep -Fq 'code object is not signed at all' "$signature_info" || fail 'could not confirm staged app is unsigned or ad-hoc signed'
+  ln "$candidate" "$ipa" || fail "Could not install verified IPA at $ipa"
 fi
 printf 'Created unsigned IPA: %s\n' "$ipa"
 printf 'No developer signature or provisioning profile is included. iCloud sync requires signing with your own team and the relevant iCloud capabilities.\n'

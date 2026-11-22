@@ -20,16 +20,16 @@ on:
         description: 'Version to build, e.g. 1.0.6 (must match AppleApp/project.yml)'
         required: true
       mode:
-        description: 'build-ios = unsigned IPA only; build = IPA and DMG; draft = draft release; publish = public release + appcast'
+        description: 'build-ios = unsigned IPA only; capture-ios = simulator screenshots; build = IPA and DMG; draft = draft release; publish = public release + appcast'
         type: choice
-        options: [build-ios, build, draft, publish]
+        options: [build-ios, capture-ios, build, draft, publish]
         default: build
 
 permissions:
   contents: write
 
 concurrency:
-  group: release
+  group: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'capture-ios' && 'capture-ios' || 'release' }}
   cancel-in-progress: false
 
 jobs:
@@ -104,7 +104,11 @@ jobs:
         run: |
           rustup target add aarch64-apple-darwin aarch64-apple-ios
           brew install xcodegen
-          if [[ "$MODE" != build-ios ]]; then brew install create-dmg; fi
+          case "$MODE" in
+            capture-ios) rustup target add aarch64-apple-ios-sim ;;
+            build-ios) ;;
+            *) brew install create-dmg ;;
+          esac
 
       - uses: actions/cache@v4
         with:
@@ -116,13 +120,19 @@ jobs:
           key: build-${{ runner.os }}-${{ hashFiles('native-core/Cargo.lock', '*.gradle.kts', 'shared/*.gradle.kts','gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: build-${{ runner.os }}-
 
-      - name: Verify presentation and Now Playing contracts
+      - name: Verify presentation, playback and package contracts
         if: env.MODE == 'build-ios'
         run: |
           bash scripts/check-player-layout.sh
+          bash scripts/check-detail-header.sh
           bash scripts/check-lyrics-presentation.sh
           bash scripts/check-lyrics.sh --source-only
           bash scripts/check-now-playing.sh
+          bash scripts/check-queue.sh
+          bash scripts/check-transport.sh
+          bash scripts/check-local-library.sh
+          bash scripts/check-menus.sh
+          python3 scripts/release-verify/check-ios-ipa.py
 
       - name: Build the unsigned iOS IPA
         if: env.MODE == 'build-ios'
@@ -135,15 +145,33 @@ jobs:
             cd build/release
             ipas=(Musicsk-"$VERSION"-build*-ios-unsigned.ipa)
             [[ ${#ipas[@]} -eq 1 && -f "${ipas[0]}" ]]
-            unzip -tq "${ipas[0]}"
-            shasum -a 256 "${ipas[0]}" > SHA256.txt
+            shasum -a 256 "${ipas[0]}" | tee SHA256.txt
+            shasum -a 256 -c SHA256.txt
           )
 
+      - name: Capture Musicsk on an iOS simulator
+        if: env.MODE == 'capture-ios'
+        run: |
+          NATIVE_TARGETS="aarch64-apple-darwin aarch64-apple-ios-sim" scripts/build-native-core.sh
+          CONFIG=release scripts/build-shared-framework.sh
+          xcodegen generate --spec AppleApp/project.yml
+          bash scripts/capture-ios-simulator.sh build/simulator-captures
+
+      - name: Keep the simulator capture files
+        if: env.MODE == 'capture-ios'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Musicsk-${{ env.VERSION }}-simulator
+          path: build/simulator-captures/
+          retention-days: 14
+          if-no-files-found: error
+
       - name: Build the paired release files
-        if: env.MODE != 'build-ios'
+        if: env.MODE != 'build-ios' && env.MODE != 'capture-ios'
         run: scripts/release-apple.sh "$VERSION" --output-dir build/release
 
       - name: Keep the files as a workflow artifact
+        if: env.MODE != 'capture-ios'
         uses: actions/upload-artifact@v4
         with:
           name: Musicsk-${{ env.VERSION }}
