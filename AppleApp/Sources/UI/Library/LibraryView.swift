@@ -49,6 +49,9 @@ struct LibraryView: View {
             } else {
                 LibraryLandingView(onPickFolder: { pickFolder() })
                 .navigationTitle("Library")
+                #if os(iOS)
+                .navigationBarTitleDisplayMode(.large)
+                #endif
                 .toolbar {
                     #if os(iOS)
                     TopBarLeadingItems()

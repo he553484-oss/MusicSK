@@ -7,55 +7,52 @@ import UIKit
 import BitChordShared
 import UniformTypeIdentifiers
 
-/// Upstream's unified Library landing page (`LibraryScreen.kt`):
-/// 1. Replay hero banner
-/// 2. "On device" shelf: horizontal scroll with cards for Downloads, Local Music, WebDAV, History
-/// 3. Signed-out prompt (if signed out)
-/// 4. Signed-in shelves (if signed in): Playlists (with NewPlaylistTile and pinned first), Albums, Artists
+/// Music saved to the account or the device, with browsing destinations and
+/// device utilities below the collection preview.
 struct LibraryLandingView: View {
     var onPickFolder: () -> Void
     @Environment(AuthController.self) private var auth
     @Environment(AppModel.self) private var appModel
     @Environment(PlaybackController.self) private var controller
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var downloadStore = DownloadStore.shared
     @State private var local = LocalLibrary.shared
     @State private var shelves: [FeedShelf] = []
     @State private var dataGeneration: Int64?
     @State private var loading = true
     @State private var error: String?
+    @State private var contentWidth: CGFloat = 354
+
+    private let gridSpacing: CGFloat = 14
+
+    private var columnCount: Int {
+        let minimum: CGFloat = dynamicTypeSize.isAccessibilitySize ? 192 : 136
+        return max(1, min(4, Int((contentWidth + gridSpacing) / (minimum + gridSpacing))))
+    }
+
+    private var coverSide: CGFloat {
+        floor((contentWidth - gridSpacing * CGFloat(columnCount - 1)) / CGFloat(columnCount))
+    }
+
+    private var columns: [GridItem] {
+        Array(repeating: GridItem(.fixed(coverSide), spacing: gridSpacing, alignment: .topLeading), count: columnCount)
+    }
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 26) {
-                // 1. Replay hero: cards when there is listening data, banner before.
-                ReplayHeroSection { page in appModel.openReplay(at: page) }
-
-                // 2. On Device Shelf
+                collection
+                categories
                 onDeviceShelf
-
-                // 3. Signed-out prompt or Signed-in shelves
-                if !auth.signedIn {
-                    signedInPrompt
-                    // Upstream keeps the Playlists row visible signed out, so the
-                    // page still says where playlists will live and how to start
-                    // one — its New Playlist tile asks for a sign-in instead of
-                    // opening a picker that could not save anything.
-                    shelfSection(FeedShelf(title: "Playlists", items: []))
-                } else if loading {
-                    FeedSkeleton(padded: false)
-                } else if let error, shelves.isEmpty {
-                    EmptyStateView(
-                        icon: Image(.bchLibrary),
-                        title: "Library couldn't load",
-                        subtitle: error,
-                        buttonTitle: "Retry"
-                    ) { Task { await loadShelves() } }
-                } else {
-                    signedInShelves
-                }
+                ReplayHeroSection { page in appModel.openReplay(at: page) }
             }
-            .padding(.horizontal, 24)
+            .frame(maxWidth: 860)
+            .onGeometryChange(for: CGFloat.self) { floor($0.size.width) } action: { width in
+                if width > 0 { contentWidth = width }
+            }
+            .padding(.horizontal, 20)
             .padding(.vertical, 16)
+            .frame(maxWidth: .infinity)
         }
         .refreshable {
             downloadStore.refresh()
@@ -65,6 +62,127 @@ struct LibraryLandingView: View {
             downloadStore.refresh()
             await loadShelves()
         }
+    }
+
+    @ViewBuilder
+    private var collection: some View {
+        let savedShelves = pinnedShelves(shelves).filter { !$0.items.isEmpty }
+
+        if auth.signedIn && loading && savedShelves.isEmpty {
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {
+                ForEach(0..<min(columnCount * 2, 6), id: \.self) { _ in
+                    VStack(alignment: .leading, spacing: 8) {
+                        SkeletonBlock(height: coverSide, cornerRadius: 10)
+                        SkeletonBlock(height: 14, cornerRadius: 4).frame(width: coverSide * 0.72)
+                    }
+                }
+            }
+            .accessibilityLabel("Loading Library")
+        } else if auth.signedIn && !savedShelves.isEmpty {
+            ForEach(savedShelves) { shelf in
+                shelfSection(shelf)
+            }
+        } else {
+            let offline = offlineTracks()
+            if !offline.isEmpty {
+                heading("On this device")
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {
+                    ForEach(offline) { track in
+                        LocalTrackCard(track: track) {
+                            controller.play(
+                                [QueueEntry.from(track)],
+                                context: track.title,
+                                contextID: "local:\(track.path)"
+                            )
+                        }
+                    }
+                }
+            }
+
+            if !auth.signedIn {
+                signedInPrompt
+            } else if let error {
+                EmptyStateView(
+                    icon: Image(.bchLibrary), title: "Library couldn't load",
+                    subtitle: error, buttonTitle: "Retry"
+                ) { Task { await loadShelves() } }
+            } else if offline.isEmpty {
+                EmptyStateView(
+                    icon: Image(.bchLibrary), title: "No saved music",
+                    subtitle: "Save an album or playlist in YouTube Music, or choose a music folder on this device.",
+                    buttonTitle: "Choose Folder", action: onPickFolder
+                )
+            }
+        }
+    }
+
+    private func offlineTracks() -> [LocalTrack] {
+        let limit = min(columnCount * 2, 6)
+        let downloads = downloadStore.items.prefix(limit).map { track in
+            LocalTrack(
+                path: track.path, title: track.title, artist: track.artist, album: track.album,
+                durationSeconds: 0, artwork: track.artwork, dateAdded: nil,
+                dateModified: nil, artworkURL: track.artworkURL
+            )
+        }
+        let paths = Set(downloads.map(\.path))
+        let scanned = local.tracks.lazy.filter { !paths.contains($0.path) }
+        return downloads + Array(scanned.prefix(limit - downloads.count))
+    }
+
+    private var categories: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            heading("Browse Library").padding(.bottom, 6)
+            category("Songs", image: "music.note") {
+                UnifiedSongsView(title: "Songs", onPickFolder: onPickFolder)
+            }
+            category("Albums", image: "square.stack") {
+                UnifiedAlbumsView(title: "Albums", onPickFolder: onPickFolder)
+            }
+            category("Artists", image: "music.mic") {
+                UnifiedArtistsView(title: "Artists", onPickFolder: onPickFolder)
+            }
+            category("Playlists", image: "music.note.list") {
+                SavedPlaylistsView()
+            }
+            if auth.signedIn {
+                category("Recent", image: "clock.arrow.circlepath") {
+                    YoutubeLibraryView()
+                }
+            }
+        }
+    }
+
+    private func category<Destination: View>(
+        _ title: LocalizedStringKey,
+        image: String,
+        @ViewBuilder destination: @escaping () -> Destination
+    ) -> some View {
+        PushLink(destination: destination) {
+            HStack(spacing: 12) {
+                Image(systemName: image)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.tint)
+                    .frame(width: 28)
+                Text(title)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(.primary)
+                Spacer()
+                Image(systemName: "chevron.forward")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 10)
+            .frame(minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func heading(_ title: LocalizedStringKey) -> some View {
+        Text(title)
+            .font(.title3.weight(.bold))
+            .accessibilityAddTraits(.isHeader)
     }
 
     private var onDeviceShelf: some View {
@@ -160,63 +278,30 @@ struct LibraryLandingView: View {
         )
     }
 
-    private var signedInShelves: some View {
-        LazyVStack(alignment: .leading, spacing: 26) {
-            let sortedShelves = pinnedShelves(shelves)
-            let hasPlaylists = sortedShelves.contains { isPlaylistsShelf($0) }
-
-            // Upstream parity: fresh account has no Playlists shelf yet, but
-            // needs the New Playlist tile to start one.
-            if !hasPlaylists {
-                shelfSection(FeedShelf(title: "Playlists", items: []))
-            }
-
-            ForEach(sortedShelves) { shelf in
-                shelfSection(shelf)
-            }
-        }
-    }
-
     private func shelfSection(_ shelf: FeedShelf) -> some View {
         let isPlaylists = isPlaylistsShelf(shelf)
-        let totalCount = shelf.items.count + (isPlaylists ? 1 : 0)
+        let items = displayItems(shelf)
         return VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(shelf.title).font(.title3.weight(.bold))
+                Text(shelf.title)
+                    .font(.title3.weight(.bold))
+                    .accessibilityAddTraits(.isHeader)
                 Spacer()
-                if totalCount > 5 {
+                if shelf.items.count > items.count {
                     PushLink {
                         LibraryGridView(title: shelf.title, items: shelf.items, isPlaylists: isPlaylists)
                     } label: {
-                        HStack(spacing: 2) {
-                            Text("Show all")
-                            Image(systemName: "chevron.right")
-                                .font(.caption.weight(.semibold))
-                        }
-                        .font(.callout)
-                        .foregroundStyle(.tint)
+                        Label("Show all", systemImage: "chevron.forward")
+                            .labelStyle(.titleOnly)
+                            .font(.callout)
+                            .foregroundStyle(.tint)
                     }
                 }
             }
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .top, spacing: 14) {
-                    if isPlaylists {
-                        NewPlaylistTile {
-                            // Signed out there is nothing to save into: ask for the
-                            // sign-in the page is already about, rather than opening
-                            // a picker whose create button cannot work.
-                            if auth.signedIn {
-                                appModel.playlistPicker = PlaylistPickerRequest(videoId: "", title: "")
-                            } else {
-                                auth.loginPresented = true
-                            }
-                        }
-                    }
-                    ForEach(displayItems(shelf)) { card in
-                        ShelfCardView(card: card)
-                    }
+            LazyVGrid(columns: columns, alignment: .leading, spacing: 18) {
+                ForEach(items) { card in
+                    ShelfCardView(card: card, artworkSide: coverSide)
                 }
-                .padding(.vertical, 2)
             }
         }
     }
@@ -236,8 +321,8 @@ struct LibraryLandingView: View {
     }
 
     private func displayItems(_ shelf: FeedShelf) -> [ShelfCard] {
-        let cap = isPlaylistsShelf(shelf) ? 4 : 5
-        return Array(shelf.items.prefix(cap))
+        var seen = Set<String>()
+        return Array(shelf.items.lazy.filter { seen.insert($0.id).inserted }.prefix(columnCount))
     }
 
     private func isPlaylistsShelf(_ shelf: FeedShelf) -> Bool {
