@@ -85,21 +85,27 @@ extension NowPlayingView {
 
     private func playerBackdrop(width: CGFloat, continuation: Bool, compact: Bool, blurred: Bool) -> some View {
         let fill = Color(red: 0.09, green: 0.09, blue: 0.10)
-        return ZStack {
-            MeshBackdrop(seed: controller.current?.id.hashValue ?? 0, artwork: controller.current?.artworkData,
-                         initialBase: fill)
-            if continuation {
-                ArtworkContinuation(entry: controller.current, seam: width)
-                    .opacity(pane == .main && !videoShowing ? 1 : 0)
-                    .animation(Motion.playerPane(reduceMotion), value: blurred)
-            }
-            if compact || blurred {
-                FullArtworkBlurBackdrop(entry: controller.current)
-                    .opacity(blurred ? 1 : 0)
-                    .animation(Motion.playerPane(reduceMotion), value: blurred)
+        return Group {
+            if lyricBackdrop == .solid {
+                LyricBackdrop.solidColor
+            } else {
+                ZStack {
+                    MeshBackdrop(seed: controller.current?.id.hashValue ?? 0, artwork: controller.current?.artworkData,
+                                 initialBase: fill)
+                    if continuation {
+                        ArtworkContinuation(entry: controller.current, seam: width)
+                            .opacity(pane == .main && !videoShowing ? 1 : 0)
+                            .animation(Motion.playerPane(reduceMotion), value: blurred)
+                    }
+                    if lyricBackdrop == .artwork && (compact || blurred) {
+                        FullArtworkBlurBackdrop(entry: controller.current)
+                            .opacity(blurred ? 1 : 0)
+                            .animation(Motion.playerPane(reduceMotion), value: blurred)
+                    }
+                }
+                .background(fill)
             }
         }
-        .background(fill)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
