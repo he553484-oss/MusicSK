@@ -200,9 +200,9 @@ struct DetailView: View {
         let input = PaletteInput(artwork: headerArt, seed: page.title.hashValue, dark: colorScheme == .dark)
         let fallback = ArtworkPalette.pageTint(from: nil, seed: input.seed, dark: input.dark)
         let tint = headerTint?.input == input ? (headerTint?.value ?? fallback) : fallback
-        let kind = kind(of: page)
-        let isArtist = kind == .artist
-        let immersiveAlbum = usesImmersiveAlbum(kind)
+        let pageKind = kind(of: page)
+        let isArtist = pageKind == .artist
+        let immersiveAlbum = usesImmersiveAlbum(pageKind)
 
         return GeometryReader { geo in
             let width = geo.size.width
@@ -248,7 +248,7 @@ struct DetailView: View {
                                     .padding(.bottom, 8)
                             }
                         } else if page.sections.isEmpty {
-                            if kind(of: page) == .playlist, page.playlistOwned == true, auth.signedIn {
+                            if pageKind == .playlist, page.playlistOwned == true, auth.signedIn {
                                 // An empty playlist of one's own: deleting it is
                                 // the likeliest thing to want, so it is a button
                                 // here rather than only a row in the menu.
