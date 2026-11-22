@@ -1,0 +1,18 @@
+import Foundation
+
+let phone = CGSize(width: 393, height: 852)
+precondition(DetailHeaderLayout.albumWidth(in: phone.width) == phone.width)
+precondition(DetailHeaderLayout.albumArtworkHeight(width: phone.width, viewportHeight: phone.height) == phone.width)
+let artist = DetailHeaderLayout.artistArtworkHeight(width: phone.width, viewportHeight: phone.height)
+precondition(artist > phone.width && artist < phone.height)
+precondition(DetailHeaderLayout.artistArtworkHeight(width: 852, viewportHeight: 393) < 260)
+let field = CGSize(width: 393, height: 350)
+precondition(DetailHeaderLayout.artworkSize(in: field, sourceAspect: 1, hero: .album) == field)
+let tall = DetailHeaderLayout.artworkSize(in: field, sourceAspect: 0.5, hero: .album)
+precondition(tall.width == 175 && tall.height == field.height)
+precondition(DetailHeaderLayout.identityOverlap(artHeight: 393, usesExpandedText: true) == 0)
+let top = DetailHeaderLayout.ScrollChrome(offset: 0, headerHeight: 520)
+let list = DetailHeaderLayout.ScrollChrome(offset: 502, headerHeight: 520)
+precondition(!top.showsInlineTitle && !top.showsToolbarBackground)
+precondition(list.showsInlineTitle && list.showsToolbarBackground)
+print("PASS detalle inmersivo, arte adaptable y cabecera durante scroll")
