@@ -60,9 +60,14 @@ xcodebuild \
 xcrun simctl boot "$device_id"
 xcrun simctl bootstatus "$device_id" -b
 xcrun simctl ui "$device_id" appearance dark
-xcrun simctl status_bar "$device_id" override --time "9:41" --dataNetwork wifi \
+status_bar="valores por defecto del simulador"
+if xcrun simctl status_bar "$device_id" override --time "9:41" --dataNetwork wifi \
     --wifiMode active --wifiBars 3 --cellularMode active --cellularBars 4 \
-    --batteryState unplugged --batteryLevel 100
+    --batteryState discharging --batteryLevel 100; then
+    status_bar="9:41, Wi-Fi, batería al 100 %"
+else
+    printf 'La barra de estado conserva sus valores por defecto.\n' >&2
+fi
 app="$scratch/DerivedData/Build/Products/Release-iphonesimulator/Musicsk.app"
 xcrun simctl install "$device_id" "$app"
 
@@ -123,7 +128,7 @@ Versión y build: $version ($build)
 Herramientas: $toolchain
 Idioma solicitado: es_ES
 Apariencia: oscura
-Barra de estado del simulador: 9:41, Wi‑Fi, batería al 100 %
+Barra de estado del simulador: $status_bar
 
 Las tres primeras capturas mantienen las pantallas y nombres de 1.2.1 para
 comparar el marco del reproductor y el estado vacío de Letras. La cuarta abre
