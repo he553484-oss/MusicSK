@@ -52,27 +52,10 @@ extension NowPlayingView {
                 width: geo.size.width, preferenceEnabled: fullBleedOn
             )
             let blurred = usesBlurredArtworkBackdrop(width: geo.size.width, height: geo.size.height)
-            ZStack {
-                MeshBackdrop(seed: controller.current?.id.hashValue ?? 0, artwork: controller.current?.artworkData)
-                    .ignoresSafeArea()
-                // Keep the prepared backgrounds mounted while changing panes.
-                // The previous branches started a new cover load on each reveal.
-                if fullBleed {
-                    ArtworkContinuation(entry: controller.current, seam: geo.size.width)
-                        .ignoresSafeArea()
-                        .opacity(pane == .main && !videoShowing ? 1 : 0)
-                        .animation(Motion.playerPane(reduceMotion), value: blurred)
-                }
-                if compactPortrait || blurred {
-                    FullArtworkBlurBackdrop(entry: controller.current)
-                        .ignoresSafeArea()
-                        .opacity(blurred ? 1 : 0)
-                        .animation(Motion.playerPane(reduceMotion), value: blurred)
-                        .allowsHitTesting(false)
-                }
-
+            let topInset = geo.safeAreaInsets.top + (usesFullscreenCover ? PlayerLayout.dismissalTopSpacing : 0)
+            Group {
                 if compactPortrait {
-                    compactPortraitPlayer(width: geo.size.width, fullBleed: fullBleed)
+                    compactPortraitPlayer(width: geo.size.width, fullBleed: fullBleed, topInset: topInset)
                 } else {
                     ZStack {
                         if columns {
@@ -86,10 +69,39 @@ extension NowPlayingView {
                     .animation(Motion.playerPane(reduceMotion), value: pane)
                 }
             }
+            .modifier(PlayerDragDismissal(enabled: usesFullscreenCover, dismiss: { dismiss() }))
+            .frame(width: geo.size.width, height: geo.size.height)
+            .background {
+                // This layer neither picks up the grabber's padding nor moves
+                // with an interactive pull. Only decoration enters the safe area.
+                playerBackdrop(width: geo.size.width, continuation: fullBleed,
+                               compact: compactPortrait, blurred: blurred)
+                    .ignoresSafeArea(.container)
+            }
         }
-        .modifier(PlayerDragDismissal(enabled: usesFullscreenCover, dismiss: { dismiss() }))
         .toolbar(.hidden, for: .navigationBar)
         .toolbarTitleDisplayMode(.inline)
+    }
+
+    private func playerBackdrop(width: CGFloat, continuation: Bool, compact: Bool, blurred: Bool) -> some View {
+        let fill = Color(red: 0.09, green: 0.09, blue: 0.10)
+        return ZStack {
+            MeshBackdrop(seed: controller.current?.id.hashValue ?? 0, artwork: controller.current?.artworkData,
+                         initialBase: fill)
+            if continuation {
+                ArtworkContinuation(entry: controller.current, seam: width)
+                    .opacity(pane == .main && !videoShowing ? 1 : 0)
+                    .animation(Motion.playerPane(reduceMotion), value: blurred)
+            }
+            if compact || blurred {
+                FullArtworkBlurBackdrop(entry: controller.current)
+                    .opacity(blurred ? 1 : 0)
+                    .animation(Motion.playerPane(reduceMotion), value: blurred)
+            }
+        }
+        .background(fill)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
     }
     #endif
 
@@ -124,7 +136,7 @@ extension NowPlayingView {
     }
 
     #if os(iOS)
-    private func compactPortraitPlayer(width: CGFloat, fullBleed: Bool) -> some View {
+    private func compactPortraitPlayer(width: CGFloat, fullBleed: Bool, topInset: CGFloat) -> some View {
         let showsLyrics = pane == .lyrics
         let showsDeck = !showsLyrics || lyricsControlsOpen
         return ZStack(alignment: .top) {
@@ -169,7 +181,8 @@ extension NowPlayingView {
             GeometryReader { geometry in
                 let target: PlayerArtworkSlot = showsLyrics ? .lyrics : .cover
                 let frame = frames[target].map { geometry[$0] } ?? .zero
-                compactMovingArtwork(frame: frame, sourceSide: width, fullBleed: fullBleed && !showsLyrics)
+                compactMovingArtwork(frame: frame, sourceSide: width, fullBleed: fullBleed && !showsLyrics,
+                                     topInset: topInset)
                     .opacity(pane == .queue || frame.isEmpty ? 0 : 1)
                     .animation(reduceMotion ? nil : .smooth(duration: 0.34), value: target)
             }
@@ -200,9 +213,11 @@ extension NowPlayingView {
         .accessibilityHint("Swipe up for Up Next")
     }
 
-    private func compactMovingArtwork(frame: CGRect, sourceSide: CGFloat, fullBleed: Bool) -> some View {
+    private func compactMovingArtwork(frame: CGRect, sourceSide: CGFloat, fullBleed: Bool, topInset: CGFloat) -> some View {
         let main = pane == .main
-        return ZStack {
+        let artwork = PlayerLayout.extendedArtworkFrame(frame, topInset: fullBleed ? topInset : 0)
+        let extraTop = frame.minY - artwork.minY
+        return ZStack(alignment: .top) {
             MovingPlayerArtwork(
                 entry: controller.current,
                 canvasURL: controller.canvasURL,
@@ -212,14 +227,23 @@ extension NowPlayingView {
                 fullBleed: fullBleed,
                 sourceSide: sourceSide
             )
+            .frame(width: artwork.width, height: artwork.height)
             if main && showMusicVideos {
                 VideoSurface(cornerRadius: 12, fillSlot: false, announcesLoading: true,
                              presentation: fullBleed ? .fill : .card) { Color.clear }
                     .clipShape(.rect(cornerRadius: fullBleed ? 0 : 12, style: .continuous))
+                    .frame(width: frame.width, height: frame.height)
+                    .padding(.top, extraTop)
                     .transition(.opacity)
             }
         }
-        .frame(width: frame.width, height: frame.height)
+        .frame(width: artwork.width, height: artwork.height)
+        .overlay(alignment: .top) {
+            LinearGradient(colors: [.black.opacity(0.40), .clear], startPoint: .top, endPoint: .bottom)
+                .frame(height: extraTop)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
         .overlay(alignment: .top) {
             if main, fullBleed, let caption = playbackOriginCaption {
                 Text(caption)
@@ -229,14 +253,14 @@ extension NowPlayingView {
                     .padding(.horizontal, 10)
                     .padding(.vertical, 6)
                     .background(.black.opacity(0.68), in: Capsule())
-                    .padding(.top, 12)
+                    .padding(.top, extraTop + 12)
                     .padding(.horizontal, 16)
                     .allowsHitTesting(false)
                     .transition(.opacity)
             }
         }
         .allowsHitTesting(main && videoShowing)
-        .position(x: frame.midX, y: frame.midY)
+        .position(x: artwork.midX, y: artwork.midY)
     }
     #endif
 

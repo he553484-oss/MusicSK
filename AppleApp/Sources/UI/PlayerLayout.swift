@@ -117,6 +117,7 @@ enum PlayerLayout {
     /// Big enough to be a comfortable target, small enough that the panel below it
     /// is still the screen rather than a strip under a picture.
     static let sleeveCollapsedSide: CGFloat = 56
+    static let dismissalTopSpacing: CGFloat = 24
 
     /// The largest square artwork that fits a portrait stage, given the gutters the
     /// player keeps around it and an optional platform-specific ceiling.
@@ -147,6 +148,12 @@ enum PlayerLayout {
         let top = min(12, availableHeight)
         let side = min(max(0, width - 48), max(0, availableHeight - top - 20))
         return CGRect(x: (width - side) / 2, y: top, width: side, height: side)
+    }
+
+    /// Keep the bottom seam and the controls fixed while the cover enters the top safe area.
+    static func extendedArtworkFrame(_ frame: CGRect, topInset: CGFloat) -> CGRect {
+        guard !frame.isEmpty, topInset.isFinite, topInset > 0 else { return frame }
+        return CGRect(x: frame.minX, y: frame.minY - topInset, width: frame.width, height: frame.height + topInset)
     }
 
     /// A contained iPad portrait sleeve should read as a centered album cover,

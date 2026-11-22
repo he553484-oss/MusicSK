@@ -1136,7 +1136,7 @@ struct NowPlayingTakeover: ViewModifier {
 
     func body(content: Content) -> some View {
         content.fullScreenCover(isPresented: $isPresented) {
-            player.presentationBackground(.black)
+            player.presentationBackground(.clear)
         }
     }
 

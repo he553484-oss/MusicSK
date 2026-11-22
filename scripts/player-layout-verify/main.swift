@@ -217,6 +217,14 @@ check("moving back toward the mini player cancels",
 let expandedStage = CGSize(width: 393, height: 430)
 let expandedAnchor = PlayerLayout.compactPortraitArtworkFrame(stage: expandedStage, fullBleed: true)
 check("the full-bleed cover uses the real player width", expandedAnchor == CGRect(x: 0, y: 0, width: 393, height: 393))
+let topChrome = 59 + PlayerLayout.dismissalTopSpacing
+let edgeToEdge = PlayerLayout.extendedArtworkFrame(expandedAnchor, topInset: topChrome)
+check("the cover reaches the top without moving its bottom seam",
+      edgeToEdge.minY == -topChrome && edgeToEdge.maxY == expandedAnchor.maxY && edgeToEdge.width == expandedAnchor.width)
+check("a modal without an upper inset leaves the artwork frame intact",
+      PlayerLayout.extendedArtworkFrame(expandedAnchor, topInset: 0) == expandedAnchor)
+check("an absent anchor cannot draw over the status bar",
+      PlayerLayout.extendedArtworkFrame(.zero, topInset: topChrome).isEmpty)
 
 let shortStage = CGSize(width: 393, height: 260)
 let croppedAnchor = PlayerLayout.compactPortraitArtworkFrame(stage: shortStage, fullBleed: true)

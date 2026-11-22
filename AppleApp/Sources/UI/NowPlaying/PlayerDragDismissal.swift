@@ -21,7 +21,7 @@ struct PlayerDragDismissal: ViewModifier {
         if enabled {
             GeometryReader { geometry in
                 content
-                    .padding(.top, 24)
+                    .padding(.top, PlayerLayout.dismissalTopSpacing)
                     .overlay(alignment: .top) { grabber(height: geometry.size.height) }
                     .offset(y: releasedOffset ?? drag.pull)
                     .animation(

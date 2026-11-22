@@ -18,6 +18,7 @@ import AppKit
 struct MeshBackdrop: View {
     var seed: Int
     var artwork: Data? = nil
+    var initialBase: Color = .black
 
     private struct PaletteInput: Equatable {
         let seed: Int
@@ -27,7 +28,7 @@ struct MeshBackdrop: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appliedSeed: Int?
     @State private var phase: Double = 0
-    @State private var base: Color = .black
+    @State private var base: Color?
     @State private var blob0 = Color.clear
     @State private var blob1 = Color.clear
     @State private var blob2 = Color.clear
@@ -46,7 +47,7 @@ struct MeshBackdrop: View {
                 // v1.5's backdrop behind its switch: one static wash, no
                 // animated blobs. The colour still follows the artwork; only
                 // the motion is gone.
-                base
+                (base ?? initialBase)
                     .overlay {
                         LinearGradient(
                             colors: [Color.black.opacity(0.10), Color.black.opacity(0.38)],
@@ -114,7 +115,7 @@ struct MeshBackdrop: View {
                 )
             )
         }
-        .background(base)
+        .background(base ?? initialBase)
         .blur(radius: reduceBlur ? 0 : 64)
         .scaleEffect(1.3)
         .clipped()
