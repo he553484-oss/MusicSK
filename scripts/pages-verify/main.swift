@@ -164,6 +164,8 @@ private func verifyForcedRefresh() async throws {
         try await repository.fetch("detail", context: context, force: true, currentGeneration: { 1 }) { await refresh.load("fresh") }
     }
     await refresh.waitForStart()
+    await pending.waitForCancellation()
+    await pending.release()
     let arrival = ReaderArrival()
     let secondRefresh = Task<String, Error> {
         try await repository.fetch("detail", context: context, force: true, currentGeneration: { arrival.report(generation: 1) }) { () -> String in
@@ -171,11 +173,17 @@ private func verifyForcedRefresh() async throws {
         }
     }
     await arrival.wait()
+    let backgroundArrival = ReaderArrival()
+    let background = Task<String, Error> {
+        try await repository.fetch("detail", context: context, currentGeneration: { backgroundArrival.report(generation: 1) }) { () -> String in
+            preconditionFailure("An ordinary reader should also share an active refresh")
+        }
+    }
+    await backgroundArrival.wait()
     await refresh.release()
-    await pending.release()
-    let values = try await [regular.value, forced.value, secondRefresh.value]
-    precondition(values == ["original", "fresh", "fresh"])
-    print("PASS explicit refresh bypasses an older ordinary request and coalesces concurrent refreshes")
+    let values = try await [regular.value, forced.value, secondRefresh.value, background.value]
+    precondition(values == ["fresh", "fresh", "fresh", "fresh"])
+    print("PASS explicit refresh supersedes an older read and delivers one fresh page to all readers")
 }
 
 @main struct Verify {

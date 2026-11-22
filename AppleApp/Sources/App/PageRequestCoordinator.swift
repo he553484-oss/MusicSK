@@ -24,11 +24,11 @@ actor PageRequestCoordinator {
         let generation: Int64
         let name: String
         let responseType: ObjectIdentifier
-        let force: Bool
     }
 
     private struct Flight {
         let id: UUID
+        let forced: Bool
         let task: Task<Void, Never>
         var readers: [UUID: Reader]
     }
@@ -46,10 +46,8 @@ actor PageRequestCoordinator {
                network: @escaping @Sendable () async throws -> T) async throws -> T {
         try Task.checkCancellation()
         guard currentGeneration() == context.generation else { throw CancellationError() }
-        // An explicit refresh can run alongside an older read. Concurrent
-        // readers asking for the same kind of freshness still share a request.
         let key = RequestKey(partition: context.partition, generation: context.generation, name: name,
-                             responseType: ObjectIdentifier(T.self), force: force)
+                             responseType: ObjectIdentifier(T.self))
         let version = revision
         let partitionVersion = partitionRevisions[key.partition, default: 0]
         let reader = UUID()
@@ -59,7 +57,7 @@ actor PageRequestCoordinator {
                     continuation.resume(returning: .failure(CancellationError()))
                     return
                 }
-                register(continuation, reader: reader, key: key, network: network)
+                register(continuation, reader: reader, key: key, force: force, network: network)
             }
         } onCancel: {
             Task { await self.cancelReader(reader, key: key) }
@@ -72,12 +70,20 @@ actor PageRequestCoordinator {
     }
 
     private func register<T: Sendable>(_ continuation: Reader, reader: UUID,
-                                      key: RequestKey, network: @escaping @Sendable () async throws -> T) {
-        if flights[key] != nil {
+                                      key: RequestKey, force: Bool,
+                                      network: @escaping @Sendable () async throws -> T) {
+        let previous = flights[key]
+        if let previous, !force || previous.forced {
             flights[key]?.readers[reader] = continuation
             return
         }
 
+        // Upgrade an ordinary in-flight read to the explicit refresh. All of
+        // its subscribers receive the same fresh response, even if the old
+        // callback arrives after a view has requested the refresh.
+        previous?.task.cancel()
+        var readers = previous?.readers ?? [:]
+        readers[reader] = continuation
         let id = UUID()
         let task = Task { [weak self] in
             let response: PageResult
@@ -85,7 +91,7 @@ actor PageRequestCoordinator {
             catch { response = .failure(error) }
             await self?.complete(response, id: id, key: key)
         }
-        flights[key] = Flight(id: id, task: task, readers: [reader: continuation])
+        flights[key] = Flight(id: id, forced: force, task: task, readers: readers)
     }
 
     private func complete(_ response: PageResult, id: UUID, key: RequestKey) {
