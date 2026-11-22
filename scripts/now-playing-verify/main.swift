@@ -134,7 +134,13 @@ struct Verify {
         let resumedSnapshot = pausedSnapshot.updating(rate: 1, preparing: false, at: anchor.addingTimeInterval(10))
         precondition(resumedSnapshot.position == 13 && resumedSnapshot.rate == 1 && !resumedSnapshot.preparing)
         precondition(resumedSnapshot.timestamp == anchor.addingTimeInterval(10))
-        precondition(resumedSnapshot.updating(rate: .nan, position: .infinity).position == 13)
+        precondition(resumedSnapshot.updating(rate: .nan, position: .infinity, at: resumedSnapshot.timestamp).position == 13)
+        let pauseAt = anchor.addingTimeInterval(3)
+        let implicitPause = playingSnapshot.updating(rate: 0, at: pauseAt)
+        precondition(implicitPause.rate == 0 && implicitPause.position == 15 && implicitPause.timestamp == pauseAt)
+        precondition(implicitPause.predictedPosition(at: pauseAt.addingTimeInterval(9)) == 15)
+        let speedChange = playingSnapshot.updating(rate: 2, at: pauseAt)
+        precondition(speedChange.predictedPosition(at: pauseAt.addingTimeInterval(1)) == 17)
 
         // A native Play cannot report success before activation/load finishes,
         // or after a newer pause/stop/selection invalidates the command.
@@ -311,6 +317,9 @@ struct Verify {
         await until("first retry") { retries.sleepers.count == 1 }
         // Track identity/artwork changes must not reset the retry budget.
         retries.lifecycle.update(contentID: "same-title-other-recording", playing: true)
+        retries.lifecycle.request(reason: "engine update")
+        retries.lifecycle.request(reason: "foreground")
+        precondition(retries.delays == [1_000_000_000])
         precondition(retries.lifecycle.contentID == "same-title-other-recording")
         retries.wake()
         await until("second retry") { retries.sleepers.count == 1 }

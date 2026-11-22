@@ -30,6 +30,7 @@ final class NowPlayingController {
     private var modern: AnyObject?
     private var animatedSource: NowPlayingArtworkSource?
     private var artworkTask: Task<Void, Never>?
+    private var artworkTaskAllowsDownload = false
     private var requestedSource: NowPlayingArtworkSource?
     private var artworkGeneration = UUID()
     private var installedClips: [NowPlayingArtworkShape: NowPlayingClip] = [:]
@@ -147,8 +148,10 @@ final class NowPlayingController {
         }
 #endif
         let rate = isPlaying ? Double(PlatformSettings.shared.getFloat(key: "playback_speed", default: 1)) : 0
-        let elapsed = position ?? metadataProgress.predictedPosition(at: Date())
-        metadataProgress = metadataProgress.updating(rate: rate, position: elapsed)
+        // A metadata write restarts MediaPlayer's elapsed-time interpolation.
+        let now = Date()
+        let elapsed = position ?? metadataProgress.predictedPosition(at: now)
+        metadataProgress = metadataProgress.updating(rate: rate, position: elapsed, at: now)
         var info: [String: Any] = [
             MPMediaItemPropertyTitle: title,
             MPMediaItemPropertyArtist: artist,
@@ -175,10 +178,7 @@ final class NowPlayingController {
 #endif
         if let thumbnailUrl, !thumbnailUrl.isEmpty, artworkData == nil,
            artworkURL != thumbnailUrl, lastRequestedURL != thumbnailUrl {
-            fetchArtwork(
-                id: id, url: thumbnailUrl, title: title, artist: artist,
-                duration: duration, isPlaying: isPlaying
-            )
+            fetchArtwork(id: id, url: thumbnailUrl)
         }
     }
 
@@ -232,7 +232,10 @@ final class NowPlayingController {
         }
 #endif
         guard var info = MPNowPlayingInfoCenter.default().nowPlayingInfo else { return }
-        metadataProgress = metadataProgress.updating(rate: rate, position: position ?? metadataProgress.predictedPosition(at: Date()))
+        let now = Date()
+        metadataProgress = metadataProgress.updating(
+            rate: rate, position: position ?? metadataProgress.predictedPosition(at: now), at: now
+        )
         info[MPNowPlayingInfoPropertyPlaybackRate] = metadataProgress.rate
         info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = metadataProgress.position
         info[MPNowPlayingInfoPropertyMediaType] = MPNowPlayingInfoMediaType.audio.rawValue
@@ -301,6 +304,7 @@ final class NowPlayingController {
         artworkGeneration = UUID()
         artworkTask?.cancel()
         artworkTask = nil
+        artworkTaskAllowsDownload = false
         requestedSource = nil
         animatedSource = nil
         installedClips = [:]
@@ -320,7 +324,8 @@ final class NowPlayingController {
         let names: [Notification.Name] = [
             .NSProcessInfoPowerStateDidChange,
             ProcessInfo.thermalStateDidChangeNotification,
-            UIAccessibility.reduceMotionStatusDidChangeNotification
+            UIAccessibility.reduceMotionStatusDidChangeNotification,
+            UIAccessibility.videoAutoplayStatusDidChangeNotification
         ]
         artworkObservers = names.map { name in
             NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
@@ -348,14 +353,17 @@ final class NowPlayingController {
         let device = ProcessInfo.processInfo
         return NetworkQuality.shared.canvasAllowed && !NetworkQuality.shared.constrained
             && !UIAccessibility.isReduceMotionEnabled && !device.isLowPowerModeEnabled
+            && UIAccessibility.isVideoAutoplayEnabled
             && device.thermalState.rawValue < ProcessInfo.ThermalState.serious.rawValue
     }
 
     @available(iOS 26, *)
     private func refreshAnimatedArtwork() {
         let allowedSource = artworkPolicyAllowsMotion ? animatedSource : nil
+        let allowDownload = NetworkQuality.shared.connected
         if allowedSource == requestedSource,
-           artworkTask != nil || !installedClips.isEmpty || allowedSource == nil { return }
+           !installedClips.isEmpty || allowedSource == nil
+            || (artworkTask != nil && (artworkTaskAllowsDownload || !allowDownload)) { return }
         artworkTask?.cancel()
         artworkTask = nil
         let generation = UUID()
@@ -379,7 +387,7 @@ final class NowPlayingController {
             shapes = Set(NowPlayingArtworkShape.allCases.filter { keys.contains($0.mediaPlayerKey) })
         }
         guard !shapes.isEmpty else { return }
-        let allowDownload = NetworkQuality.shared.connected
+        artworkTaskAllowsDownload = allowDownload
         artworkTask = Task(priority: .utility) { [weak self] in
             let clips = await NowPlayingArtworkLoader.prepare(source, shapes: shapes, allowDownload: allowDownload)
             guard !Task.isCancelled, let self, self.artworkGeneration == generation else { return }
@@ -452,18 +460,21 @@ final class NowPlayingController {
 
     /// Fetch the thumbnail off-main, then publish it. `lastRequestedURL` is
     /// the in-flight cache key so a later track cannot land artwork on this one.
-    private func fetchArtwork(
-        id: String, url: String, title: String, artist: String, duration: Double, isPlaying: Bool
-    ) {
+    private func fetchArtwork(id: String, url: String) {
         lastRequestedURL = url
         let sized = SharedArtwork.sized(url, 544) ?? url
         let headers = LocalArtwork.isReference(sized) ? [:] : WebDavBridge.shared.playbackHeaders(fileUrl: sized)
         Task.detached(priority: .utility) { [weak self] in
-            guard let data = await ArtworkRequests.shared.data(url: sized, headers: headers),
-                  !data.isEmpty else { return }
+            let data = await ArtworkRequests.shared.data(url: sized, headers: headers)
             await MainActor.run { [weak self] in
                 guard let self, self.metadataKey == id, self.lastRequestedURL == url else { return }
-                guard let item = self.artworkFromBytes(data) else { return }
+                guard self.artworkURL != url else { return }
+                guard let item = self.artworkFromBytes(data) else {
+                    // A failed download must not suppress every later lookup for
+                    // the same playing track, including after reconnection.
+                    self.lastRequestedURL = nil
+                    return
+                }
                 self.artworkURL = url
                 guard var info = MPNowPlayingInfoCenter.default().nowPlayingInfo else { return }
                 info[MPMediaItemPropertyArtwork] = item
@@ -531,16 +542,18 @@ private final class ModernNowPlaying: MediaSessionRepresentable {
         guard let contentID else { return nil }
         let imageData = artworkData
         let imageURL = artworkURL
+        let preview = NowPlayingArtworkShape.allCases.lazy.compactMap { self.animatedClips[$0]?.preview }.first
         let staticArtwork: Artwork? = (imageData != nil || imageURL != nil)
             ? Artwork(id: "\(contentID)|\(imageURL ?? "embedded")") { _ in
-                if let imageData { return try ArtworkRepresentation(data: imageData) }
-                guard let imageURL
-                else { throw ArtworkRepresentation.ArtworkRepresentationError.noRepresentationAvailable }
-                let sized = SharedArtwork.sized(imageURL, 544) ?? imageURL
-                let headers = LocalArtwork.isReference(sized) ? [:] : WebDavBridge.shared.playbackHeaders(fileUrl: sized)
-                guard let data = await ArtworkRequests.shared.data(url: sized, headers: headers)
-                else { throw ArtworkRepresentation.ArtworkRepresentationError.noRepresentationAvailable }
-                return try ArtworkRepresentation(data: data)
+                if let imageData, let image = try? ArtworkRepresentation(data: imageData) { return image }
+                if let imageURL {
+                    let sized = SharedArtwork.sized(imageURL, 544) ?? imageURL
+                    let headers = LocalArtwork.isReference(sized) ? [:] : WebDavBridge.shared.playbackHeaders(fileUrl: sized)
+                    if let data = await ArtworkRequests.shared.data(url: sized, headers: headers),
+                       let image = try? ArtworkRepresentation(data: data) { return image }
+                }
+                if let preview { return try ArtworkRepresentation(data: preview) }
+                throw ArtworkRepresentation.ArtworkRepresentationError.noRepresentationAvailable
             }
             : nil
         let total = duration > 0 ? MediaDuration.finite(duration) : nil
@@ -793,7 +806,9 @@ private final class ModernNowPlayingSession: NowPlayingSessionDriver {
     func classify(_ error: Error) -> NowPlayingClaimFailure {
         switch error as? MediaSessionError {
         case .sessionInvalidated: return .invalidated
-        case .invalidState: return .ineligible
+        // An invalid state while the framework reports eligibility can be
+        // transient. Only wait for an eligibility edge when we can observe one.
+        case .invalidState: return canBecomeApplicationPrimary ? .transient : .ineligible
         default: return .transient
         }
     }

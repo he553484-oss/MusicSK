@@ -29,6 +29,7 @@ final class NowPlayingLifecycle {
     private let log: (String) -> Void
     private var session: (any NowPlayingSessionDriver)?
     private var claimTask: Task<Void, Never>?
+    private var waitingForRetry = false
     private enum Operation: Hashable { case publication, prominence }
     private struct OperationKey: Hashable {
         let session: ObjectIdentifier
@@ -81,11 +82,19 @@ final class NowPlayingLifecycle {
             record("request deferred", reason: reason)
             return
         }
+        // A notification during a timed retry joins the current attempt.
+        // Outside the backoff a new eligibility edge can still replace it.
+        guard !waitingForRetry else { return }
         cancelClaim()
         let intent = generation
         claimTask = Task { [weak self] in
             guard let self else { return }
-            defer { if self.generation == intent { self.claimTask = nil } }
+            defer {
+                if self.generation == intent {
+                    self.claimTask = nil
+                    self.waitingForRetry = false
+                }
+            }
             await self.claim(reason: reason, intent: intent)
         }
     }
@@ -111,6 +120,7 @@ final class NowPlayingLifecycle {
         generation &+= 1
         claimTask?.cancel()
         claimTask = nil
+        waitingForRetry = false
     }
 
     private func current(_ intent: UInt64, _ driver: any NowPlayingSessionDriver) -> Bool {
@@ -159,8 +169,10 @@ final class NowPlayingLifecycle {
                     }
                     let delay = retryDelays[retry]
                     retry += 1
+                    waitingForRetry = true
                     do { try await sleep(delay) } catch { return }
                     guard current(intent, driver) else { return }
+                    waitingForRetry = false
                     continue
                 }
             }
@@ -259,7 +271,8 @@ struct NowPlayingPlaybackState: Equatable {
     func updating(rate: Double? = nil, position: Double? = nil,
                   preparing: Bool? = nil, at timestamp: Date = Date()) -> Self {
         let nextRate = rate.map { $0.isFinite ? max(0, $0) : 0 } ?? self.rate
-        let nextPosition = position.flatMap { $0.isFinite ? max(0, $0) : nil } ?? self.position
+        let nextPosition = position.flatMap { $0.isFinite ? max(0, $0) : nil }
+            ?? (nextRate == self.rate ? self.position : predictedPosition(at: timestamp))
         let nextPreparing = preparing ?? (rate != nil && nextRate == 0 ? false : self.preparing)
         guard nextRate != self.rate || nextPosition != self.position || nextPreparing != self.preparing else { return self }
         return Self(rate: nextRate, position: nextPosition, preparing: nextPreparing, timestamp: timestamp)

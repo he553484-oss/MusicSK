@@ -251,9 +251,7 @@ final class PlaybackController {
     var loadingGeneration: UInt64?
     var isBuffering: Bool { state == .buffering }
 #if os(iOS)
-    private(set) var mixWithOtherAudio = PlatformSettings.shared.getBoolean(
-        key: "mix_with_other_audio", default: true
-    )
+    private(set) var mixWithOtherAudio = AudioSessionManager.mixesWithOtherAudio
     private var mixingPreferenceGeneration: UInt64 = 0
 
     /// Explicit listener choice; app transitions never change this policy.
@@ -364,8 +362,8 @@ final class PlaybackController {
     /// Source returned with the active canvas payload (`SPOTIFY` or another
     /// provider). Kept with the clip so a version change does not lose it.
     var canvasSource: String?
-    var canvasLookupGeneration: UInt64 = 0
-    var canvasIdentity: String?
+    @ObservationIgnored var canvasLookupGeneration: UInt64 = 0
+    @ObservationIgnored var canvasIdentity: CanvasTrackIdentity?
     var nerd: NerdStatsRec?
     /// True while a lossless/module lookup is still running for the playing track
     /// (upstream `NerdStats.racingLossless`).

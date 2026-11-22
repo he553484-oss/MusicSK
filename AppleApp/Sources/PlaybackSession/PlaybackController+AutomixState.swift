@@ -130,15 +130,16 @@ extension PlaybackController {
                 await OfflineArtwork.preserve(covered, audioPath: asset.path)
             }
             await MainActor.run { [weak self] in
-                guard let self, self.current?.id == entry.id else { return }
+                guard let self, let active = self.current, active.id == entry.id,
+                      active.thumbnailUrl == entry.thumbnailUrl else { return }
                 self.current?.artworkData = data
                 if !LocalArtwork.isReference(raw), let i = self.queue.firstIndex(where: { $0.id == entry.id }) {
                     self.queue[i].artworkData = data
                 }
                 self.nowPlaying.update(
-                    id: entry.id, title: entry.title, artist: entry.artist, album: entry.albumName,
+                    id: active.id, title: active.title, artist: active.artist, album: active.albumName,
                     duration: self.duration, artworkData: data,
-                    thumbnailUrl: entry.thumbnailUrl, isPlaying: self.isPlaying, position: self.position
+                    thumbnailUrl: active.thumbnailUrl, isPlaying: self.isPlaying, position: self.position
                 )
                 self.widgetPublisher.publish(entry: self.current, isPlaying: self.isPlaying, canNext: self.canPlayNext, canPrevious: self.canPlayPrevious)
             }

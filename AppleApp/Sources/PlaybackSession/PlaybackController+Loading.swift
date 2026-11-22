@@ -77,6 +77,7 @@ extension PlaybackController {
         let wasAudible = state == .playing || (state == .paused && engineLoadedId != nil)
         playingIndex = index
         current = entry
+        prepareCanvasSelection(entry)
         historyVideoID = youtubeVideoID(for: entry)
         let outgoingPosition = position
         position = startAt ?? 0

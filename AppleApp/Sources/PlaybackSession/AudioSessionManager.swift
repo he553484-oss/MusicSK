@@ -30,6 +30,14 @@ enum AudioSessionManager {
     private static let sessionQueue = DispatchQueue(label: "app.bitchord.BitChord.audio-session")
     private static let readiness = AudioSessionReadiness()
 
+    #if os(iOS)
+    /// A playback app needs audio priority for reliable ownership of system
+    /// controls. Retain mixed playback when the listener has enabled it.
+    static var mixesWithOtherAudio: Bool {
+        PlatformSettings.shared.getBoolean(key: "mix_with_other_audio", default: false)
+    }
+    #endif
+
     /// Successful activation, invalidated on deactivation/interruption/reset.
     /// A valid hardware format alone does not mean the session is active.
     static var isActive: Bool {
@@ -45,6 +53,7 @@ enum AudioSessionManager {
         let session = AVAudioSession.sharedInstance()
         let message = "audio session \(event) category=\(session.category.rawValue) "
             + "mode=\(session.mode.rawValue) options=\(session.categoryOptions.rawValue) "
+            + "mixPreference=\(mixesWithOtherAudio) "
             + "policy=\(session.routeSharingPolicy.rawValue) "
             + "active=\(isActive) otherAudio=\(session.isOtherAudioPlaying)"
         PlaybackDebugLog.shared.record(message)
@@ -100,9 +109,7 @@ enum AudioSessionManager {
             try readiness.activate {
                 // Playback already supports AirPlay and Bluetooth A2DP without
                 // the category options intended for play-and-record sessions.
-                let mixing = PlatformSettings.shared.getBoolean(
-                    key: "mix_with_other_audio", default: true
-                )
+                let mixing = mixesWithOtherAudio
                 let options: AVAudioSession.CategoryOptions = mixing ? [.mixWithOthers] : []
                 // Long-form routing rejects mixWithOthers with OSStatus -50.
                 // Use the default routing policy when the user wants mixing;

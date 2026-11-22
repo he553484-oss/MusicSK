@@ -1,5 +1,29 @@
 import Foundation
 
+/// Keys an asynchronous animated-artwork lookup to one catalogue entry and
+/// the metadata used to match it. Names alone can describe several recordings.
+struct CanvasTrackIdentity: Equatable {
+    let id: String
+    let title: String
+    let artist: String
+    let album: String
+    let usesCatalogue: Bool
+
+    init(_ entry: QueueEntry) {
+        id = entry.id
+        title = Self.normalized(entry.title)
+        artist = Self.normalized(entry.artist)
+        album = Self.normalized(entry.albumName ?? "")
+        // A catalogue download keeps its ID. A file or server URL imported
+        // directly into the library uses its own path and private metadata.
+        usesCatalogue = !(entry.isLocal && entry.id == entry.source)
+    }
+
+    private static func normalized(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+}
+
 /// One playable entry in the queue. Wraps either a local file path or a
 /// resolved stream URL; metadata mirrors upstream's `Song` row.
 struct QueueEntry: Identifiable, Hashable, Sendable, Codable {

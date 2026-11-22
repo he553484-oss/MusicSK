@@ -3,6 +3,33 @@ import Foundation
 import CoreGraphics
 #endif
 
+enum CanvasVideoFileType: String, CaseIterable {
+    case mp4, m4v, mov, webm
+
+    static func candidates(pathExtension: String) -> [Self] {
+        let ext = pathExtension.lowercased()
+        if ext.isEmpty { return allCases }
+        return Self(rawValue: ext).map { [$0] } ?? []
+    }
+
+    /// A signed provider URL can omit its extension. Only cache such a
+    /// response when the server identifies a supported movie container.
+    init?(mimeType: String?, pathExtension: String) {
+        let mime = mimeType?.lowercased() ?? ""
+        guard !mime.contains("mpegurl"), !mime.hasPrefix("text/"), !mime.contains("json") else { return nil }
+        switch mime {
+        case "video/mp4": self = .mp4
+        case "video/x-m4v": self = .m4v
+        case "video/quicktime": self = .mov
+        case "video/webm": self = .webm
+        case "", "application/octet-stream":
+            guard let known = Self(rawValue: pathExtension.lowercased()) else { return nil }
+            self = known
+        default: return nil
+        }
+    }
+}
+
 enum NowPlayingArtworkShape: String, CaseIterable, Sendable {
     case square
     case tall

@@ -10,92 +10,89 @@ import AVFoundation
 import AppKit
 #endif
 
-// Spotify Canvas lookups.
+// Animated artwork for the active catalogue track.
 extension PlaybackController {
-    /// Re-read the feature/network preferences and run the same lookup used
-    /// when a track starts. Settings surfaces call this after changing a
-    /// canvas preference.
+    /// Re-read feature and network preferences after a settings change.
     func refreshCanvasLookup() {
         guard let current else { return }
         fetchCanvas(for: current)
     }
 
+    func prepareCanvasSelection(_ entry: QueueEntry) {
+        let identity = CanvasTrackIdentity(entry)
+        guard canvasIdentity != identity else { return }
+        canvasIdentity = identity
+        canvasLookupGeneration &+= 1
+        clearCanvas()
+    }
+
     func fetchCanvas(for entry: QueueEntry) {
-        let titleKey = entry.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let artistKey = entry.artist.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let albumKey = entry.albumName?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
-        let identity = "\(titleKey)|\(artistKey)|\(albumKey)"
-        if canvasIdentity != identity {
-            canvasURL = nil
-            canvasFallbackURL = nil
-            canvasSource = nil
-            canvasIdentity = identity
-            publishCanvas(for: entry.id)
-        }
+        let identity = CanvasTrackIdentity(entry)
+        prepareCanvasSelection(entry)
+        let allowed = NetworkQuality.shared.canvasAllowed && identity.usesCatalogue
+        if !allowed { clearCanvas() }
         canvasLookupGeneration &+= 1
         let generation = canvasLookupGeneration
-        guard NetworkQuality.shared.canvasAllowed,
-              // A catalogue track can have a local downloaded file while
-              // retaining its catalogue id. A true library file uses its
-              // path as both id and source and has no catalogue lookup.
-              !(entry.isLocal && entry.id == entry.source) else {
-            canvasURL = nil
-            canvasFallbackURL = nil
-            canvasSource = nil
-            publishCanvas(for: entry.id)
-            return
-        }
         publishCanvas(for: entry.id)
-        CanvasBridge.shared.lookup(title: entry.title, artist: entry.artist, album: entry.albumName, callback: CanvasAdapter { [weak self] json in
-            Task { @MainActor in
-                guard let self, self.canvasLookupGeneration == generation,
-                      let active = self.current, active.id == entry.id,
-                      active.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == titleKey,
-                      active.artist.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == artistKey else { return }
-                guard let json, let data = json.data(using: .utf8),
-                      let payload = try? JSONDecoder().decode(CanvasPayload.self, from: data),
-                      let url = URL(string: payload.url) else {
-                    NSLog("[BitChord] no animated artwork found for '%@' by '%@'", entry.title, entry.artist)
-                    return
+        guard allowed else { return }
+
+        CanvasBridge.shared.lookup(
+            title: entry.title, artist: entry.artist, album: entry.albumName,
+            callback: CanvasAdapter { [weak self] json in
+                Task { @MainActor in
+                    guard let self, self.canvasLookupIsCurrent(identity, generation: generation) else { return }
+                    if self.applyCanvas(json, for: entry) { return }
+                    // A song lookup can miss even when the release has artwork.
+                    // The shared catalogue lookup independently verifies album and artist.
+                    guard let album = entry.albumName, !identity.album.isEmpty else { return }
+                    CanvasBridge.shared.lookupAlbum(album: album, artist: entry.artist, callback: CanvasAdapter { [weak self] json in
+                        Task { @MainActor in
+                            guard let self, self.canvasLookupIsCurrent(identity, generation: generation) else { return }
+                            if !self.applyCanvas(json, for: entry) {
+                                NSLog("[BitChord] no animated artwork found for '%@' by '%@'", entry.title, entry.artist)
+                            }
+                        }
+                    })
                 }
-                self.canvasURL = url
-                self.canvasFallbackURL = payload.fallbackUrl.flatMap(URL.init(string:))
-                self.canvasSource = payload.source
-                self.publishCanvas(for: active.id)
-                NSLog("[BitChord] animated artwork source=%@ host=%@ for '%@'",
-                      payload.source, url.host ?? "unknown", entry.title)
             }
-        })
-        if entry.albumName == nil {
+        )
+
+        if identity.album.isEmpty {
+            // Some queue paths enrich the active entry after playback begins.
+            // Use exactly the same identity checks and fallback on the retry.
             Task { @MainActor [weak self] in
                 try? await Task.sleep(for: .milliseconds(350))
                 guard let self, self.canvasLookupGeneration == generation,
                       let latest = self.current, latest.id == entry.id,
-                      let album = latest.albumName else { return }
-                self.canvasLookupGeneration &+= 1
-                let retryGeneration = self.canvasLookupGeneration
-                CanvasBridge.shared.lookup(title: latest.title, artist: latest.artist, album: album, callback: CanvasAdapter { [weak self] json in
-                    Task { @MainActor in
-                        guard let self, self.canvasLookupGeneration == retryGeneration,
-                              self.current?.id == latest.id else { return }
-                        guard let json,
-                              let data = json.data(using: .utf8),
-                              let payload = try? JSONDecoder().decode(CanvasPayload.self, from: data),
-                              let url = URL(string: payload.url) else {
-                            NSLog("[BitChord] no animated artwork found for '%@' by '%@' after album metadata arrived",
-                                  latest.title, latest.artist)
-                            return
-                        }
-                        self.canvasURL = url
-                        self.canvasFallbackURL = payload.fallbackUrl.flatMap(URL.init(string:))
-                        self.canvasSource = payload.source
-                        self.publishCanvas(for: latest.id)
-                        NSLog("[BitChord] animated artwork source=%@ host=%@ for '%@' after album metadata arrived",
-                              payload.source, url.host ?? "unknown", latest.title)
-                    }
-                })
+                      !CanvasTrackIdentity(latest).album.isEmpty else { return }
+                self.fetchCanvas(for: latest)
             }
         }
+    }
+
+    private func canvasLookupIsCurrent(_ identity: CanvasTrackIdentity, generation: UInt64) -> Bool {
+        canvasLookupGeneration == generation
+            && current.map(CanvasTrackIdentity.init) == identity
+            && NetworkQuality.shared.canvasAllowed
+    }
+
+    private func applyCanvas(_ json: String?, for entry: QueueEntry) -> Bool {
+        guard let data = json?.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(CanvasPayload.self, from: data),
+              let url = URL(string: payload.url) else { return false }
+        canvasURL = url
+        canvasFallbackURL = payload.fallbackUrl.flatMap(URL.init(string:))
+        canvasSource = payload.source
+        publishCanvas(for: entry.id)
+        NSLog("[BitChord] animated artwork source=%@ host=%@ for '%@'",
+              payload.source, url.host ?? "unknown", entry.title)
+        return true
+    }
+
+    private func clearCanvas() {
+        canvasURL = nil
+        canvasFallbackURL = nil
+        canvasSource = nil
     }
 
     private func publishCanvas(for id: String) {

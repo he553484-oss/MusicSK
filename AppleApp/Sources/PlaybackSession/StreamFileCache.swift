@@ -435,18 +435,18 @@ actor CanvasFileCache {
 
     func cachedFile(for remote: URL, allowDownload: Bool = true) async -> URL {
         if remote.isFileURL { return remote }
-        let ext = remote.pathExtension.lowercased()
         // AVPlayer must see an HLS playlist as a network resource so it can
         // resolve and fetch its media segments. Do not snapshot the playlist
         // into a local file, where its relative segment URLs would break.
-        if ["m3u", "m3u8"].contains(ext) { return remote }
-        // Keep the container extension on disk; AVPlayer uses it when opening
-        // the downloaded movie as a local asset.
-        guard ["mp4", "m4v", "mov", "webm"].contains(ext) else { return remote }
-        let dest = folder.appendingPathComponent("\(DiskCache.hashName(remote.absoluteString)).\(ext)")
-        if FileManager.default.fileExists(atPath: dest.path) {
-            DiskCache.touch(dest)
-            return dest
+        let types = CanvasVideoFileType.candidates(pathExtension: remote.pathExtension)
+        guard !types.isEmpty else { return remote }
+        let base = folder.appendingPathComponent(DiskCache.hashName(remote.absoluteString))
+        for type in types {
+            let candidate = base.appendingPathExtension(type.rawValue)
+            if FileManager.default.fileExists(atPath: candidate.path) {
+                DiskCache.touch(candidate)
+                return candidate
+            }
         }
         guard allowDownload else { return remote }
         let waiterID = UUID()
@@ -456,7 +456,7 @@ actor CanvasFileCache {
                     continuation.resume(returning: remote)
                     return
                 }
-                registerWaiter(continuation, id: waiterID, remote: remote, destination: dest)
+                registerWaiter(continuation, id: waiterID, remote: remote, destination: base)
             }
         } onCancel: {
             Task { await self.cancelWaiter(for: remote, waiterID: waiterID) }
@@ -508,7 +508,7 @@ actor CanvasFileCache {
         }
     }
 
-    private func download(_ remote: URL, to dest: URL) async -> URL {
+    private func download(_ remote: URL, to base: URL) async -> URL {
         var request = CanvasMediaRequest.download(remote)
         let allowMetered = await MainActor.run {
             PlatformSettings.shared.getBoolean(key: "canvas_over_cellular", default: false)
@@ -524,12 +524,11 @@ actor CanvasFileCache {
             PlaybackDebugLog.shared.record("animated artwork download failed HTTP \(http.statusCode) host=\(remote.host ?? "unknown")")
             return remote
         }
-        if let mimeType = response.mimeType?.lowercased(),
-           mimeType.contains("mpegurl") || mimeType.contains("text/") || mimeType.contains("json") {
-            return remote
-        }
-        guard let size = try? temporary.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+        guard let type = CanvasVideoFileType(mimeType: response.mimeType, pathExtension: remote.pathExtension),
+              let size = try? temporary.resourceValues(forKeys: [.fileSizeKey]).fileSize,
               size > 0, Int64(size) <= Self.limit else { return remote }
+        // AVPlayer uses the extension to open the local asset.
+        let dest = base.appendingPathExtension(type.rawValue)
         do {
             try FileManager.default.moveItem(at: temporary, to: dest)
         } catch {
@@ -572,9 +571,10 @@ actor CanvasFileCache {
     }
 
     func invalidate(_ remote: URL) {
-        let ext = remote.pathExtension.lowercased()
-        let path = folder.appendingPathComponent("\(DiskCache.hashName(remote.absoluteString)).\(ext)")
-        try? FileManager.default.removeItem(at: path)
+        let base = folder.appendingPathComponent(DiskCache.hashName(remote.absoluteString))
+        for type in CanvasVideoFileType.candidates(pathExtension: remote.pathExtension) {
+            try? FileManager.default.removeItem(at: base.appendingPathExtension(type.rawValue))
+        }
     }
 
     func clear() { DiskCache.clearFolder(folder) }
