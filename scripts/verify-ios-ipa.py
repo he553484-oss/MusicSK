@@ -118,9 +118,8 @@ def verify_ipa(path, version, build, revision, minimum_ios):
 
         app = check_bundle(archive, APP, BUNDLE_ID, version, build, revision, minimum_ios)
         require("audio" in app.get("UIBackgroundModes", []), "App bundle lacks background audio mode")
-        for framework in ("BitChordShared", "NativeCoreFFI"):
-            require(f"{APP}/Frameworks/{framework}.framework/{framework}" in members,
-                    f"Missing embedded framework: {framework}")
+        # BitChordShared and NativeCoreFFI link into Musicsk statically.
+        # Xcode strips their archive executables from the embedded bundles.
 
         widget = check_bundle(archive, WIDGET, f"{BUNDLE_ID}.widget", version, build, revision, minimum_ios)
         require(widget.get("NSExtension", {}).get("NSExtensionPointIdentifier") == "com.apple.widgetkit-extension",

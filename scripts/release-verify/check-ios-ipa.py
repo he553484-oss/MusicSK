@@ -47,8 +47,7 @@ class IPATest(unittest.TestCase):
             )),
             f"{APP}/Musicsk": executable(),
             f"{WIDGET}/MusicskWidget": executable(),
-            f"{APP}/Frameworks/BitChordShared.framework/BitChordShared": b"shared placeholder",
-            f"{APP}/Frameworks/NativeCoreFFI.framework/NativeCoreFFI": b"native placeholder",
+            f"{APP}/Info.fixture": b"archive placeholder",
         }
 
     def archive(self):
@@ -110,9 +109,11 @@ class IPATest(unittest.TestCase):
         self.set_plist(WIDGET, NSExtension={"NSExtensionPointIdentifier": "com.apple.share-services"})
         self.expect_rejected("WidgetKit")
 
-    def test_missing_framework(self):
-        del self.members[f"{APP}/Frameworks/BitChordShared.framework/BitChordShared"]
-        self.expect_rejected("embedded framework")
+    def test_missing_executable(self):
+        del self.members[f"{APP}/Musicsk"]
+        self.archive()
+        with self.assertRaisesRegex(KeyError, "Musicsk.app/Musicsk"):
+            self.verify()
 
     def test_unexpected_app(self):
         self.members["Payload/Other.app/Info.plist"] = b"other"
@@ -138,7 +139,7 @@ class IPATest(unittest.TestCase):
     def test_corrupt_zip_member(self):
         self.archive()
         data = self.ipa.read_bytes()
-        self.ipa.write_bytes(data.replace(b"shared placeholder", b"changed framework!", 1))
+        self.ipa.write_bytes(data.replace(b"archive placeholder", b"changed placeholder", 1))
         with self.assertRaisesRegex(ValueError, "ZIP CRC"):
             self.verify()
 
