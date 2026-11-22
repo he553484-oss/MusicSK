@@ -19,7 +19,8 @@ struct SettingsLine<Trailing: View>: View {
             SettingsGlyph(kind: glyph)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 8) {
-                    Text(title)
+                    Text(verbatim: NSLocalizedString(title, comment: "Settings option"))
+                        .fixedSize(horizontal: false, vertical: true)
                     if let badge {
                         Text(badge.uppercased())
                             .font(.caption2.weight(.semibold))
@@ -67,7 +68,7 @@ struct SettingsSubToggle: View {
     var body: some View {
         Toggle(isOn: $isOn) {
             HStack(spacing: 8) {
-                Text(title)
+                Text(verbatim: NSLocalizedString(title, comment: "Settings option"))
                 if let badge {
                     Text(badge.uppercased())
                         .font(.caption2.weight(.semibold))

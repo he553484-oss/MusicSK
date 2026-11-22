@@ -17,7 +17,7 @@ extension SettingsView {
                 SettingsLine(
                     glyph: .replay,
                     title: "Replay",
-                    subtitle: "Your top songs, artists, albums and genres"
+                    subtitle: String(localized: "Your top songs, artists, albums and genres")
                 ) {
                     EmptyView()
                 }
@@ -55,7 +55,7 @@ extension SettingsView {
                 SettingsLine(
                     glyph: .importData,
                     title: "Import Data",
-                    subtitle: "Restores non-secret preferences"
+                    subtitle: String(localized: "Restores non-secret preferences")
                 ) {
                     EmptyView()
                 }
@@ -81,7 +81,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .dontRepeat,
                 title: "Don’t Repeat Songs in Current Session",
-                subtitle: "AutoPlay won’t suggest a song already played or suggested this session",
+                subtitle: String(localized: "AutoPlay won’t suggest a song already played or suggested this session"),
                 isOn: $dontRepeat
             )
         }
@@ -89,7 +89,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .hideVolume,
                 title: "Hide Volume Bar",
-                subtitle: "Removes the volume slider from the main player",
+                subtitle: String(localized: "Removes the volume slider from the main player"),
                 isOn: $hideVolume
             )
         }
@@ -97,7 +97,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .songStatus,
                 title: "Hide Song Status",
-                subtitle: "Hides the “Playing from” caption on the main player",
+                subtitle: String(localized: "Hides the “Playing from” caption on the main player"),
                 isOn: $hideSongStatus
             )
         }
@@ -106,7 +106,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .hideVolume,
                 title: "Hide Status Bar in Player",
-                subtitle: "Hides the iPhone status bar while Now Playing is open",
+                subtitle: String(localized: "Hides the iPhone status bar while Now Playing is open"),
                 isOn: $hidePlayerStatusBar
             )
         }
@@ -115,7 +115,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .dontRepeat,
                 title: "Show Queue History",
-                subtitle: "Shows tracks already played above Now Playing in the queue",
+                subtitle: String(localized: "Shows tracks already played above Now Playing in the queue"),
                 isOn: $showQueueHistory
             )
         }
@@ -123,7 +123,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .video,
                 title: "Stop When Backgrounded",
-                subtitle: "Pauses playback when Musicsk is hidden or deactivated on Mac; closing a window uses its own setting",
+                subtitle: String(localized: "Pauses playback when Musicsk is hidden or deactivated on Mac; closing a window uses its own setting"),
                 isOn: $stopBackground
             )
         }
@@ -132,7 +132,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .video,
                 title: "Stop Music on Close",
-                subtitle: "Pauses playback when the main window closes",
+                subtitle: String(localized: "Pauses playback when the main window closes"),
                 isOn: $stopMusicOnClose
             )
         }
@@ -178,7 +178,7 @@ extension SettingsView {
                 Text("Korean").tag("ko")
                 Text("Chinese").tag("zh-Hans")
             } label: {
-                SettingsLine(glyph: .theme, title: "App Language", subtitle: "Follows system unless you pick one") {
+                SettingsLine(glyph: .theme, title: "App Language", subtitle: String(localized: "Follows system unless you pick one")) {
                     EmptyView()
                 }
             }
@@ -193,7 +193,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .align,
                 title: "Smart Version Alignment",
-                subtitle: "Keeps your place when switching between versions of a track",
+                subtitle: String(localized: "Keeps your place when switching between versions of a track"),
                 isOn: $smartAlign
             )
         }
@@ -226,7 +226,7 @@ extension SettingsView {
                 SettingsLine(
                     glyph: .sources,
                     title: "Open-source licenses",
-                    subtitle: "Third-party software, models and asset notices"
+                    subtitle: String(localized: "Third-party software, models and asset notices")
                 ) {
                     EmptyView()
                 }

@@ -20,9 +20,9 @@ struct QualityPickerPage: View {
                 } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(option.title)
+                            Text(option.localizedTitle)
                                 .foregroundStyle(.primary)
-                            Text(option.detail)
+                            Text(option.localizedDetail)
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
@@ -36,7 +36,7 @@ struct QualityPickerPage: View {
                 }
             }
         }
-        .navigationTitle(title)
+        .navigationTitle(NSLocalizedString(title, comment: "Quality settings"))
     }
 }
 
@@ -57,9 +57,9 @@ struct AutomixPerformancePage: View {
                 } label: {
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(mode.1)
+                            Text(verbatim: NSLocalizedString(mode.1, comment: "AutoMix performance"))
                                 .foregroundStyle(.primary)
-                            Text(mode.2)
+                            Text(verbatim: NSLocalizedString(mode.2, comment: "AutoMix performance details"))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
@@ -103,6 +103,9 @@ struct AudioQualityOption: Identifiable {
     let title: String
     let detail: String
 
+    var localizedTitle: String { NSLocalizedString(title, comment: "Audio quality") }
+    var localizedDetail: String { NSLocalizedString(detail, comment: "Audio quality details") }
+
     static let stream: [AudioQualityOption] = [
         .init(id: "LOW", title: "Low", detail: "64 kbps · uses the least data"),
         .init(id: "MEDIUM", title: "Medium", detail: "Compressed audio · balances data use and quality"),
@@ -117,6 +120,6 @@ struct AudioQualityOption: Identifiable {
     ]
 
     static func label(_ id: String, in options: [AudioQualityOption]) -> String {
-        options.first { $0.id == id }?.title ?? id.capitalized
+        options.first { $0.id == id }?.localizedTitle ?? id.capitalized
     }
 }

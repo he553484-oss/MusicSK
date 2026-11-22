@@ -110,7 +110,7 @@ struct AccountIntegrationsView: View {
                         SettingsLine(
                             glyph: .person,
                             title: "Sign In",
-                            subtitle: "Get personalized recommendations"
+                            subtitle: String(localized: "Get personalized recommendations")
                         ) {
                             EmptyView()
                         }
@@ -203,7 +203,7 @@ struct AccountIntegrationsView: View {
                 SettingsSliderRow(
                     glyph: .lastFm,
                     title: "Minimum duration",
-                    subtitle: "Songs shorter than this won't scrobble",
+                    subtitle: String(localized: "Songs shorter than this won't scrobble"),
                     valueText: "\(Int(scrobbleMin))s",
                     value: $scrobbleMin,
                     range: 10...120,
@@ -212,7 +212,7 @@ struct AccountIntegrationsView: View {
                 SettingsSliderRow(
                     glyph: .lastFm,
                     title: "Scrobble after",
-                    subtitle: "Fraction of the track before a scrobble is sent",
+                    subtitle: String(localized: "Fraction of the track before a scrobble is sent"),
                     valueText: "\(Int(scrobblePercent * 100))%",
                     value: $scrobblePercent,
                     range: 0.25...0.9,
@@ -221,7 +221,7 @@ struct AccountIntegrationsView: View {
                 SettingsSliderRow(
                     glyph: .lastFm,
                     title: "Scrobble delay cap",
-                    subtitle: "Cap on scrobble delay in seconds",
+                    subtitle: String(localized: "Cap on scrobble delay in seconds"),
                     valueText: "\(Int(scrobbleMax))s",
                     value: $scrobbleMax,
                     range: 30...480,

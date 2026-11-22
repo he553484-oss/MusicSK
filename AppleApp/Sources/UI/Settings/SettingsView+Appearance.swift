@@ -28,7 +28,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .reduceMotion,
                 title: "Reduce Animation",
-                subtitle: "Freezes the main player's gradient instead of drifting",
+                subtitle: String(localized: "Freezes the main player's gradient instead of drifting"),
                 isOn: $reduceAnimation
             )
         }
@@ -37,7 +37,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .reduceBlur,
                 title: "Reduce Dynamic Blur",
-                subtitle: "Swaps frosted glass for solid fills across the app",
+                subtitle: String(localized: "Swaps frosted glass for solid fills across the app"),
                 isOn: $reduceBlur
             )
         }
@@ -45,7 +45,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .fullBleed,
                 title: "Full-Screen Cover Art",
-                subtitle: "Runs the cover to the edges of the player instead of a square sleeve",
+                subtitle: String(localized: "Runs the cover to the edges of the player instead of a square sleeve"),
                 isOn: $fullBleed
             )
         }
@@ -53,7 +53,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .mesh,
                 title: "Legacy Mesh Gradient",
-                subtitle: "The single-wash backdrop instead of colours sampled from the artwork",
+                subtitle: String(localized: "The single-wash backdrop instead of colours sampled from the artwork"),
                 isOn: $legacyMesh
             )
         }
@@ -61,7 +61,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .canvas,
                 title: "Animated Cover Art",
-                subtitle: "Plays the looping video some releases ship instead of a still sleeve",
+                subtitle: String(localized: "Plays the looping video some releases ship instead of a still sleeve"),
                 isOn: $canvas
             )
         }
@@ -75,7 +75,7 @@ extension SettingsView {
                 SettingsToggleLine(
                     glyph: .theme,
                     title: "Artist Signatures",
-                    subtitle: "Show Wikimedia artist signatures on artist pages",
+                    subtitle: String(localized: "Show Wikimedia artist signatures on artist pages"),
                     isOn: Binding(
                         get: { artistSignatures },
                         set: { value in
@@ -105,7 +105,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .lyrics,
                 title: "Synced Lyrics",
-                subtitle: "Lights up the words on the player as they’re sung",
+                subtitle: String(localized: "Lights up the words on the player as they’re sung"),
                 isOn: $syncedLyrics
             )
         }
@@ -113,28 +113,28 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .lyrics,
                 title: "Lyrics on Player",
-                subtitle: "Shows the line being sung under the song title",
+                subtitle: String(localized: "Shows the line being sung under the song title"),
                 isOn: $playerLyricLine
             )
         }
         if syncedLyrics {
             rows.row("Blur Unfocused Lyrics", "blur", "lyrics", "focus") {
                 SettingsToggleLine(glyph: .reduceBlur, title: "Blur Unfocused Lyrics",
-                                   subtitle: "Softens lines away from the words being sung", isOn: $lyricsBlur)
+                                   subtitle: String(localized: "Softens lines away from the words being sung"), isOn: $lyricsBlur)
             }
             rows.row("Translation Language", "translation", "language", "romanize", "lyrics") {
                 PushLink {
                     TranslationPreferenceView(selection: $translationLanguage, translator: controller.lyricsTranslator)
                 } label: {
                     SettingsLine(glyph: .lyricsSources, title: "Translation Language",
-                                 subtitle: translationLanguage.isEmpty ? "Follow the app language" : (Locale.current.localizedString(forIdentifier: translationLanguage) ?? translationLanguage)) { EmptyView() }
+                                 subtitle: translationLanguage.isEmpty ? String(localized: "Follow the App Language") : (Locale.current.localizedString(forIdentifier: translationLanguage) ?? translationLanguage)) { EmptyView() }
                 }
             }
             rows.row("Prefer Word-Synced Lyrics", "syllable", "word", "synced", "lyrics", "timing") {
                 SettingsToggleLine(
                     glyph: .lyrics,
                     title: "Prefer Word-Synced Lyrics",
-                    subtitle: "Syllable timings win the lyrics race when a source has them",
+                    subtitle: String(localized: "Syllable timings win the lyrics race when a source has them"),
                     isOn: $syllableSync
                 )
             }
@@ -176,8 +176,8 @@ extension SettingsView {
                     glyph: .performance,
                     title: "High Performance Mode",
                     subtitle: highPerf
-                        ? "Holding \(refreshRate) Hz"
-                        : "Requests a sustained high refresh rate"
+                        ? String(localized: "Holding \(refreshRate) Hz")
+                        : String(localized: "Requests a sustained high refresh rate")
                 ) {
                     EmptyView()
                 }

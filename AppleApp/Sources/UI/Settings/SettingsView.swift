@@ -314,6 +314,8 @@ struct SettingsView: View {
             }
         }
 
+        var localizedTitle: String { NSLocalizedString(title, comment: "Settings section") }
+
         var systemImage: String {
             switch self {
             case .sources: return "square.stack.3d.up"
@@ -374,7 +376,10 @@ struct SettingsView: View {
             keywords: [String],
             @ViewBuilder content: () -> V
         ) {
-            let terms = ([sectionTitle, title] + keywords).joined(separator: Self.separator)
+            let localizedTerms = [sectionTitle, title].map {
+                NSLocalizedString($0, comment: "Settings search")
+            }
+            let terms = ([sectionTitle, title] + keywords + localizedTerms).joined(separator: Self.separator)
             // The matching policy stays in the shared layer (SettingsSearchBridge),
             // where the terms and the comparison cannot drift apart.
             guard SettingsSearchBridge.shared.matches(
@@ -483,7 +488,7 @@ struct SettingsView: View {
             selection: $selectedMacSettingsSection,
             sidebarLabel: { section in
                 NavigationLink(value: section) {
-                    Label(section.title, systemImage: section.systemImage)
+                    Label(section.localizedTitle, systemImage: section.systemImage)
                 }
             },
             detail: { section in
@@ -532,7 +537,7 @@ struct SettingsView: View {
         return Form {
             Section {
                 ForEach(entries.filter { !cleanupTitles.contains($0.title) }) { row in row.content }
-            } header: { Text(section.title) } footer: { if search.isEmpty { footer(for: section) } }
+            } header: { Text(section.localizedTitle) } footer: { if search.isEmpty { footer(for: section) } }
             if section == .downloads {
                 Section {
                     ForEach(entries.filter { cleanupTitles.contains($0.title) }) { row in row.content }
@@ -546,7 +551,7 @@ struct SettingsView: View {
 
     @ViewBuilder private func settingsSectionPage(_ section: SettingsSection) -> some View {
         if section == .sources { SourcesView() }
-        else { settingsSectionForm(section).navigationTitle(section.title) }
+        else { settingsSectionForm(section).navigationTitle(section.localizedTitle) }
     }
 
     private func sectionSummary(_ section: SettingsSection) -> String {
@@ -579,8 +584,8 @@ struct SettingsView: View {
                         ForEach(SettingsSection.allCases) { section in
                             PushLink { settingsSectionPage(section) } label: {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Label(section.title, systemImage: section.systemImage)
-                                    Text(sectionSummary(section)).font(.caption).foregroundStyle(.secondary)
+                                    Label(section.localizedTitle, systemImage: section.systemImage)
+                                    Text(verbatim: NSLocalizedString(sectionSummary(section), comment: "Settings section summary")).font(.caption).foregroundStyle(.secondary)
                                 }.padding(.vertical, 3)
                             }
                             .id(section.id)
@@ -593,7 +598,7 @@ struct SettingsView: View {
                             row.content
                         }
                     } header: {
-                        Text(built.section.title)
+                        Text(built.section.localizedTitle)
                     } footer: {
                         // Not while searching. A footer explains the rows that sat above
                         // it, and the search has filtered those: the Audio Quality note

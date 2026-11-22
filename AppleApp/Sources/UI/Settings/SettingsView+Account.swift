@@ -35,7 +35,7 @@ extension SettingsView {
         if let reason = auth.sessionUnavailableReason { return reason }
         if let email = auth.accountEmail, !email.isEmpty { return email }
         if let name = auth.accountName, !name.isEmpty { return name }
-        return auth.signedIn ? "Signed in" : "Not signed in"
+        return auth.signedIn ? String(localized: "Signed in") : String(localized: "Not signed in")
     }
 
     /// What the Listen Together row says.
@@ -45,8 +45,8 @@ extension SettingsView {
     /// the button is.
     var listenTogetherSubtitle: String {
         let party = PartyStore.shared
-        if party.inParty { return "In a party · \(party.code)" }
-        return "Share a code and play the same music, in time"
+        if party.inParty { return String(localized: "In a party · \(party.code)") }
+        return String(localized: "Share a code and play the same music, in time")
     }
 
     /// How many are listening, when it is more than one person.

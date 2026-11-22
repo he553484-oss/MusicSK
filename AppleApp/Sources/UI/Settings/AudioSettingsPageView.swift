@@ -69,7 +69,7 @@ struct AudioSettingsPageView: View {
         switch item {
         case .sources:
             PushLink { SourcesView() } label: {
-                SettingsLine(glyph: .sources, title: item.title, subtitle: "Where audio comes from, and in what order") { EmptyView() }
+                SettingsLine(glyph: .sources, title: item.title, subtitle: String(localized: "Where audio comes from, and in what order")) { EmptyView() }
             }
         case .wifi:
             qualityPicker(item.title, selection: preferences.$wifiQuality, inUse: !metered)
@@ -106,7 +106,7 @@ struct AudioSettingsPageView: View {
             }
         case .normalization:
             VStack(alignment: .leading, spacing: 6) {
-                SettingsToggleLine(glyph: .loudness, title: item.title, subtitle: "Levels tracks to a consistent loudness", isOn: preferences.$loudness)
+                SettingsToggleLine(glyph: .loudness, title: item.title, subtitle: String(localized: "Levels tracks to a consistent loudness"), isOn: preferences.$loudness)
                     .disabled(readout.processingBypass != nil)
                 Picker("Normalization Mode", selection: preferences.$loudnessMode) {
                     Text("Track").tag("TRACK")
@@ -120,7 +120,7 @@ struct AudioSettingsPageView: View {
             }
         case .spatial:
             VStack(alignment: .leading, spacing: 6) {
-                SettingsToggleLine(glyph: .spatial, title: item.title, subtitle: "Stereo widening and head tracking", isOn: preferences.$spatial)
+                SettingsToggleLine(glyph: .spatial, title: item.title, subtitle: String(localized: "Stereo widening and head tracking"), isOn: preferences.$spatial)
                     .disabled(spatialUnavailable != nil)
                 note(spatialUnavailable ?? (preferences.spatial ? readout.stageStatus("Spatial / head tracking") : "Off · preference is disabled."))
                 note("Apple’s Spatial Audio, Headphone Accommodations and Adaptive Audio are managed in system settings.")
@@ -128,13 +128,13 @@ struct AudioSettingsPageView: View {
         case .equalizer:
             VStack(alignment: .leading, spacing: 6) {
                 PushLink { EqualizerView() } label: {
-                    SettingsLine(glyph: .equalizer, title: item.title, subtitle: "Ten-band EQ and tone controls") { EmptyView() }
+                    SettingsLine(glyph: .equalizer, title: item.title, subtitle: String(localized: "Ten-band EQ and tone controls")) { EmptyView() }
                 }
                 note(readout.processingBypass ?? (controller.soundMode == "TRANSPARENT" ? "Inactive in Transparent mode · choose Enhanced to hear your EQ settings." : readout.stageStatus("Manual EQ / tone")))
             }
         case .dolby:
             VStack(alignment: .leading, spacing: 6) {
-                SettingsToggleLine(glyph: .dolby, title: item.title, subtitle: "Prefer supported Dolby audio when a source supplies it", isOn: preferences.$dolbyAtmos)
+                SettingsToggleLine(glyph: .dolby, title: item.title, subtitle: String(localized: "Prefer supported Dolby audio when a source supplies it"), isOn: preferences.$dolbyAtmos)
                     .disabled(!AppleDolbyRenderer.available)
                 note(dolbyStatus)
             }
@@ -167,7 +167,7 @@ struct AudioSettingsPageView: View {
             }
         case .pipeline:
             Button { showingPipeline = true } label: {
-                SettingsLine(glyph: .nerd, title: item.title, subtitle: "Detailed measurements and source decisions") { EmptyView() }
+                SettingsLine(glyph: .nerd, title: item.title, subtitle: String(localized: "Detailed measurements and source decisions")) { EmptyView() }
             }.buttonStyle(.plain)
         case .technical:
             PushLink { AudioSettingsPageView(page: .technical, preferences: preferences) } label: {
@@ -191,13 +191,13 @@ struct AudioSettingsPageView: View {
             }
         case .sampleRate:
             VStack(alignment: .leading, spacing: 6) {
-                SettingsToggleLine(glyph: .precision, title: item.title, subtitle: "Request each track’s native rate from the output route", isOn: preferences.$matchSourceRate)
+                SettingsToggleLine(glyph: .precision, title: item.title, subtitle: String(localized: "Request each track’s native rate from the output route"), isOn: preferences.$matchSourceRate)
                 note(readout.sampleRateStatus(requested: preferences.matchSourceRate))
             }
         case .bitPerfect:
             #if os(macOS)
             VStack(alignment: .leading, spacing: 6) {
-                SettingsToggleLine(glyph: .precision, title: item.title, subtitle: "Request exclusive output for supported lossless stereo", isOn: preferences.$bitPerfect)
+                SettingsToggleLine(glyph: .precision, title: item.title, subtitle: String(localized: "Request exclusive output for supported lossless stereo"), isOn: preferences.$bitPerfect)
                 note(readout.bitPerfectStatus(requested: preferences.bitPerfect))
             }
             #else
@@ -205,7 +205,7 @@ struct AudioSettingsPageView: View {
             #endif
         case .usb:
             VStack(alignment: .leading, spacing: 6) {
-                SettingsToggleLine(glyph: .precision, title: item.title, subtitle: "Prefer a supported USB device when opening audio output", isOn: preferences.$preferUsbDac)
+                SettingsToggleLine(glyph: .precision, title: item.title, subtitle: String(localized: "Prefer a supported USB device when opening audio output"), isOn: preferences.$preferUsbDac)
                 note(AudioRouteState.shared.kind.lowercased().contains("usb") ? "USB is the current route." : "No USB route is currently in use. This preference does not connect or unlock a DAC.")
             }
         }

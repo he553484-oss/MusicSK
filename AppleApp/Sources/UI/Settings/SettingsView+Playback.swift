@@ -15,7 +15,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .swipe,
                 title: "Single-Click to Play",
-                subtitle: "Play songs with one click. Turn off to select with one click and play with a double-click.",
+                subtitle: String(localized: "Play songs with one click. Turn off to select with one click and play with a double-click."),
                 isOn: $singleClickToPlay
             )
         }
@@ -23,8 +23,8 @@ extension SettingsView {
         rows.row("Crossfade", "blend", "fade", "transition", "gapless", "automix") {
             VStack(alignment: .leading, spacing: 6) {
                 SettingsSliderRow(glyph: .crossfade, title: "Crossfade",
-                    subtitle: automix ? "Inactive while Automix controls transition timing" : "Blends one track into the next; 0s keeps gapless playback",
-                    valueText: crossfade == 0 ? "Off" : "\(crossfade)s",
+                    subtitle: automix ? String(localized: "Inactive while Automix controls transition timing") : String(localized: "Blends one track into the next; 0s keeps gapless playback"),
+                    valueText: crossfade == 0 ? String(localized: "Off") : Duration.seconds(crossfade).formatted(.units(allowed: [.seconds], width: .abbreviated)),
                     value: Binding(get: { Double(crossfade) }, set: { crossfade = Int($0.rounded()) }),
                     range: 0...12, step: 1)
                     .disabled(automix || controller.settingsAudioReadout.processingBypass != nil)
@@ -58,7 +58,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .automix,
                 title: "Smart Sequencing",
-                subtitle: automix ? "Order upcoming tracks for smooth transitions. Takes priority over Shuffle; manually queued tracks keep their order." : "Inactive · enable Automix to use Smart Sequencing.",
+                subtitle: automix ? String(localized: "Order upcoming tracks for smooth transitions. Takes priority over Shuffle; manually queued tracks keep their order.") : String(localized: "Inactive · enable Automix to use Smart Sequencing."),
                 isOn: $automixSequence
             ).disabled(!automix)
         }
@@ -66,7 +66,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .automix,
                 title: "Mix on Skip",
-                subtitle: automix ? "Pressing Next blends into the next track. Inactive during a party and on Repeat One." : "Inactive · enable Automix to blend on Next.",
+                subtitle: automix ? String(localized: "Pressing Next blends into the next track. Inactive during a party and on Repeat One.") : String(localized: "Inactive · enable Automix to blend on Next."),
                 isOn: Binding(
                     get: { controller.automixOnSkipEnabled },
                     set: { controller.setAutomixOnSkipEnabled($0) }
@@ -77,7 +77,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .video,
                 title: "Show Music Videos",
-                subtitle: "Shows the music video while the player is open. Off at the start of every session; the Now Playing pill turns it on too.",
+                subtitle: String(localized: "Shows the music video while the player is open. Off at the start of every session; the Now Playing pill turns it on too."),
                 isOn: $showMusicVideos
             )
         }
@@ -110,7 +110,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .skipSilence,
                 title: "Skip Silence",
-                subtitle: controller.soundMode == "TRANSPARENT" ? "Inactive in Transparent mode · choose Enhanced to skip silence" : controller.settingsAudioReadout.processingBypass ?? "Trim gaps longer than a second",
+                subtitle: controller.soundMode == "TRANSPARENT" ? String(localized: "Inactive in Transparent mode · choose Enhanced to skip silence") : controller.settingsAudioReadout.processingBypass ?? String(localized: "Trim gaps longer than a second"),
                 isOn: $skipSilence
             )
         }
@@ -118,8 +118,8 @@ extension SettingsView {
             SettingsSliderRow(
                 glyph: .speed,
                 title: "Playback Speed",
-                subtitle: "Slows or speeds the mix without changing pitch on the engine",
-                valueText: String(format: "%.2fx", playbackSpeed),
+                subtitle: String(localized: "Slows or speeds the mix without changing pitch on the engine"),
+                valueText: "\(playbackSpeed.formatted(.number.precision(.fractionLength(2))))×",
                 value: $playbackSpeed,
                 range: 0.5...2.0,
                 step: 0.05
@@ -130,7 +130,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .musicOnly,
                 title: "Play Alongside Other Apps",
-                subtitle: "Keep other apps audible alongside Musicsk. This can prevent iOS Lock Screen, Control Center and headphone controls from controlling Musicsk. Turn off to give Musicsk audio priority. Applies immediately while playing, or on the next play.",
+                subtitle: String(localized: "Keep other apps audible alongside Musicsk. This can prevent iOS Lock Screen, Control Center and headphone controls from controlling Musicsk. Turn off to give Musicsk audio priority. Applies immediately while playing, or on the next play."),
                 isOn: Binding(
                     get: { controller.mixWithOtherAudio },
                     set: { controller.setMixWithOtherAudio($0) }
@@ -142,7 +142,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .nerd,
                 title: "Show Stats for Nerds",
-                subtitle: "Codec, bitrate and sample rate on the player",
+                subtitle: String(localized: "Codec, bitrate and sample rate on the player"),
                 isOn: $nerdStats
             )
         }
@@ -150,7 +150,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .video,
                 title: "Stop Converting Video Songs to Audio",
-                subtitle: "Plays a music-video upload as itself instead of swapping it for its catalogue audio release",
+                subtitle: String(localized: "Plays a music-video upload as itself instead of swapping it for its catalogue audio release"),
                 isOn: Binding(
                     get: { !convertVideo },
                     set: { convertVideo = !$0 }
@@ -161,17 +161,17 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .musicOnly,
                 title: "Prefer Music Only",
-                subtitle: "Starts a music-video result on its catalogue audio release instead of the video's own upload",
+                subtitle: String(localized: "Starts a music-video result on its catalogue audio release instead of the video's own upload"),
                 isOn: $preferMusicOnly
             )
         }
     }
 
     private var automixSubtitle: String {
-        if let bypass = controller.settingsAudioReadout.processingBypass { return "Requested transition settings are inactive · " + bypass }
-        guard automix else { return "Times and blends transitions automatically when enabled." }
-        if AutomixModelStore.shared.beatAvailable { return "Blends transitions automatically from each track’s timing." }
-        return "Uses tempo analysis while the beat model is missing. Install it under Advanced Options → Automix Models for beat-aligned transitions."
+        if let bypass = controller.settingsAudioReadout.processingBypass { return String(localized: "Requested transition settings are inactive · \(bypass)") }
+        guard automix else { return String(localized: "Times and blends transitions automatically when enabled.") }
+        if AutomixModelStore.shared.beatAvailable { return String(localized: "Blends transitions automatically from each track’s timing.") }
+        return String(localized: "Uses tempo analysis while the beat model is missing. Install it under Advanced Options → Automix Models for beat-aligned transitions.")
     }
 
     func buildAutomixAdvancedRows(_ rows: inout SettingsRows) {
@@ -182,7 +182,7 @@ extension SettingsView {
                 SettingsLine(
                     glyph: .cpu,
                     title: "Automix Performance",
-                    subtitle: "CPU inference budget — up to \(controller.automixInferenceThreads) worker\(controller.automixInferenceThreads == 1 ? "" : "s")"
+                    subtitle: String(localized: "CPU inference budget — up to \(controller.automixInferenceThreads) workers")
                 ) {
                     Text(Self.automixPerfLabel(automixPerf))
                         .foregroundStyle(.secondary)

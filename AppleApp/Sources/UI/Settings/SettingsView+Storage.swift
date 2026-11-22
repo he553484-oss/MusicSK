@@ -36,7 +36,7 @@ extension SettingsView {
                     SettingsLine(
                         glyph: .localMusic,
                         title: "Use All Audio Folders",
-                        subtitle: "Forgets the chosen folder"
+                        subtitle: String(localized: "Forgets the chosen folder")
                     ) {
                         EmptyView()
                     }
@@ -48,7 +48,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .filter,
                 title: "Filter Non-Music Audio",
-                subtitle: "Hides clips under 30 seconds, ringtones, podcasts and recorder output",
+                subtitle: String(localized: "Hides clips under 30 seconds, ringtones, podcasts and recorder output"),
                 isOn: $filterNonMusic
             )
         }
@@ -124,7 +124,7 @@ extension SettingsView {
             SettingsToggleLine(
                 glyph: .storage,
                 title: "Show Cached Songs in Library",
-                subtitle: "Adds the stream cache to the Library's folders",
+                subtitle: String(localized: "Adds the stream cache to the Library's folders"),
                 isOn: $showCachedSongs
             )
         }

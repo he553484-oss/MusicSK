@@ -37,7 +37,7 @@ extension SettingsView {
             AudioSettingsPageView(page: page, preferences: audioPreferences, focus: focus)
         } label: {
             SettingsLine(glyph: page.glyph,
-                title: focus?.title ?? page.title, subtitle: focus == nil ? page.detail : page.title) { EmptyView() }
+                title: focus?.title ?? page.title, subtitle: focus == nil ? NSLocalizedString(page.detail, comment: "Audio page description") : NSLocalizedString(page.title, comment: "Audio page")) { EmptyView() }
         }
     }
 
@@ -93,7 +93,7 @@ extension SettingsView {
             #if os(macOS)
             Picker(selection: selection) {
                 ForEach(options) { option in
-                    Text(option.title).tag(option.id)
+                    Text(option.localizedTitle).tag(option.id)
                 }
             } label: {
                 SettingsLine(glyph: glyph, title: title, subtitle: subtitle, badge: badge) {

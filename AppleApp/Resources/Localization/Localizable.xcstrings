@@ -69,8 +69,50 @@
       }
     },
     "%lld Hz": {},
-    "%lld albums": {},
-    "%lld artists": {},
+    "%lld albums": {
+      "localizations": {
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld álbum"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld álbumes"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld artists": {
+      "localizations": {
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld artista"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld artistas"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld in this party": {},
     "%lld of %lld tracks matched. Choose the matches to keep. Unmatched tracks stay in the playlist and can be matched later.": {
       "localizations": {
@@ -93,8 +135,50 @@
       }
     },
     "%lld percent": {},
-    "%lld songs": {},
-    "%lld tracks": {},
+    "%lld songs": {
+      "localizations": {
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld canción"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld canciones"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld tracks": {
+      "localizations": {
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld pista"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld pistas"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "%lld%%": {},
     "%lld.": {},
     "%lldm": {},
@@ -324,9 +408,36 @@
     },
     "Accelerated Beat Detection": {},
     "Accelerated beat detection": {},
-    "Access your playlists, library, and personalized mixes.": {},
-    "Account": {},
-    "Account & Integrations": {},
+    "Access your playlists, library, and personalized mixes.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accede a tus listas, tu biblioteca y tus mezclas personalizadas."
+          }
+        }
+      }
+    },
+    "Account": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuenta"
+          }
+        }
+      }
+    },
+    "Account & Integrations": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuenta e integraciones"
+          }
+        }
+      }
+    },
     "Account & Settings": {},
     "Account and Settings": {},
     "Activity": {
@@ -541,14 +652,59 @@
     "Add to %lld": {},
     "Add to Playlist": {},
     "Add to Playlist…": {},
-    "Add to Queue": {},
+    "Add to Queue": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir a la cola"
+          }
+        }
+      }
+    },
     "Address": {},
-    "Adjust Lyrics Timing": {},
-    "Advanced Options": {},
+    "Adjust Lyrics Timing": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustar tiempo de las letras"
+          }
+        }
+      }
+    },
+    "Advanced Options": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opciones avanzadas"
+          }
+        }
+      }
+    },
     "AirPlay": {},
     "AirPlay & Bluetooth": {},
-    "Album": {},
-    "Album artist": {},
+    "Album": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Álbum"
+          }
+        }
+      }
+    },
+    "Album artist": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Artista del álbum"
+          }
+        }
+      }
+    },
     "Albums": {
       "localizations": {
         "de": {
@@ -649,7 +805,16 @@
         }
       }
     },
-    "Albums couldn't load": {},
+    "Albums couldn't load": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron cargar los álbumes"
+          }
+        }
+      }
+    },
     "Albums group themselves once a folder with tagged music is scanned.": {},
     "Albums you save on YouTube Music show up here — or scan a folder on this device.": {},
     "Already in %@": {},
@@ -975,11 +1140,38 @@
         }
       }
     },
-    "Artists couldn't load": {},
+    "Artists couldn't load": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudieron cargar los artistas"
+          }
+        }
+      }
+    },
     "Artists group themselves once a folder with tagged music is scanned.": {},
     "Artists you follow on YouTube Music show up here — or scan a folder on this device.": {},
-    "Artists, Songs, Lyrics, and More": {},
-    "Audio Output": {},
+    "Artists, Songs, Lyrics, and More": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Artistas, canciones, letras y más"
+          }
+        }
+      }
+    },
+    "Audio Output": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salida de audio"
+          }
+        }
+      }
+    },
     "Audio Pipeline": {
       "localizations": {
         "tr": {
@@ -987,20 +1179,71 @@
             "state": "translated",
             "value": "Ses Hattı"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ruta de audio"
+          }
         }
       }
     },
-    "Audio Quality": {},
-    "Audio output": {},
-    "Audio quality, playback, appearance": {},
+    "Audio Quality": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calidad de audio"
+          }
+        }
+      }
+    },
+    "Audio output": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salida de audio"
+          }
+        }
+      }
+    },
+    "Audio quality, playback, appearance": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calidad de audio, reproducción y apariencia"
+          }
+        }
+      }
+    },
     "Authorise Last.fm": {},
     "Auto-hide keeps the still sleeve when no motion clip was found. Prefer Spotify asks Spotify's catalogue first when looking one up.": {},
-    "Auto-hide motion art": {},
+    "Auto-hide motion art": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ocultar automáticamente portadas animadas"
+          }
+        }
+      }
+    },
     "AutoMix blends the end of one track into the next": {},
     "AutoMix off": {},
     "AutoMix off — tracks change at the end": {},
     "AutoMix on": {},
-    "AutoPlay": {},
+    "AutoPlay": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducción automática"
+          }
+        }
+      }
+    },
     "AutoPlay off": {},
     "AutoPlay on": {},
     "Automix Models": {},
@@ -1115,7 +1358,16 @@
         }
       }
     },
-    "Back to player": {},
+    "Back to player": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver al reproductor"
+          }
+        }
+      }
+    },
     "Balance": {
       "localizations": {
         "tr": {
@@ -1136,7 +1388,16 @@
     "Musicsk %@ is available. Update using the same method you used to install Musicsk. The release page has the change notes.": {},
     "Musicsk %@ is out": {},
     "Musicsk analyzes your tracks on-device to match beats, time crossfades, and prevent vocal clashes between songs.": {},
-    "Musicsk audio priority": {},
+    "Musicsk audio priority": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prioridad de audio para Musicsk"
+          }
+        }
+      }
+    },
     "Musicsk installs from its releases page, so this opens it in your browser.": {},
     "Musicsk watches the folder you choose for music files. Filtering keeps everything that is not a song out of the list.": {},
     "Musicsk will still prefer its copy when the match is the same recording. It will not when it is not.": {},
@@ -1360,7 +1621,16 @@
       }
     },
     "Cancel All": {},
-    "Cancel download": {},
+    "Cancel download": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar descarga"
+          }
+        }
+      }
+    },
     "Cancel timer": {},
     "Can’t reach it right now · %@": {},
     "Can’t read that share": {},
@@ -1369,8 +1639,26 @@
     "CarPlay": {},
     "Categories could not load. %@": {},
     "Category": {},
-    "Change": {},
-    "Change Lyrics Source": {},
+    "Change": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar"
+          }
+        }
+      }
+    },
+    "Change Lyrics Source": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar fuente de letras"
+          }
+        }
+      }
+    },
     "Channels": {
       "localizations": {
         "tr": {
@@ -1384,7 +1672,16 @@
     "Channels you subscribe to show up here.": {},
     "Check for Updates": {},
     "Check for updates automatically": {},
-    "Checking download…": {},
+    "Checking download…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Comprobando la descarga…"
+          }
+        }
+      }
+    },
     "Checking…": {
       "localizations": {
         "de": {
@@ -1494,11 +1791,29 @@
     "Chinese": {},
     "Choose Another Folder": {},
     "Choose File": {},
-    "Choose Folder": {},
+    "Choose Folder": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegir carpeta"
+          }
+        }
+      }
+    },
     "Choose Language…": {},
     "Choose Output": {},
     "Choose another profile": {},
-    "Choose audio output": {},
+    "Choose audio output": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegir salida de audio"
+          }
+        }
+      }
+    },
     "Choose which YouTube channel to listen as": {},
     "Clarity Mix · %lld%%": {},
     "Clarity Preset": {},
@@ -1610,7 +1925,16 @@
     },
     "Clear Diagnostic History": {},
     "Clear completed jobs": {},
-    "Clear downloads on this device": {},
+    "Clear downloads on this device": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Borrar descargas de este dispositivo"
+          }
+        }
+      }
+    },
     "Clear the filter": {},
     "Close": {
       "localizations": {
@@ -1934,7 +2258,16 @@
       }
     },
     "Core ML · Neural Engine": {},
-    "Could not translate this lyric": {},
+    "Could not translate this lyric": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo traducir la letra"
+          }
+        }
+      }
+    },
     "Couldn't load": {},
     "Create": {},
     "Create a party": {
@@ -2360,7 +2693,16 @@
       }
     },
     "Delete %@": {},
-    "Download Models": {},
+    "Download Models": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar modelos"
+          }
+        }
+      }
+    },
     "Finds the singing at the start and end of each track so two vocals do not overlap during a transition.": {},
     "Developer": {},
     "Diagnostic Reports": {},
@@ -2691,13 +3033,58 @@
       }
     },
     "Download %@": {},
-    "Download Models (~123 MB)": {},
-    "Download Models (~46.7 MB)": {},
+    "Download Models (~123 MB)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar modelos (~123 MB)"
+          }
+        }
+      }
+    },
+    "Download Models (~46.7 MB)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar modelos (~46,7 MB)"
+          }
+        }
+      }
+    },
     "Download and install updates automatically": {},
-    "Download anyway": {},
-    "Downloaded collections": {},
+    "Download anyway": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar de todos modos"
+          }
+        }
+      }
+    },
+    "Downloaded collections": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Colecciones descargadas"
+          }
+        }
+      }
+    },
     "Downloaded once and kept in Musicsk's storage. Removing a model takes effect immediately: Automix falls back to tempo analysis without the beat model, and stops watching for vocal clashes without the vocal one.": {},
-    "Downloading in Background — Done": {},
+    "Downloading in Background — Done": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descarga en segundo plano — Listo"
+          }
+        }
+      }
+    },
     "Downloads": {
       "localizations": {
         "es": {
@@ -2795,7 +3182,16 @@
     "Drag the puck: sideways tilts warm ↔ bright, up and down shapes the mids.": {},
     "Edit": {},
     "Edit %@": {},
-    "Edit source": {},
+    "Edit source": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Editar fuente"
+          }
+        }
+      }
+    },
     "Enable JioSaavn": {},
     "Engine": {},
     "English": {
@@ -3103,10 +3499,46 @@
     "Exported downloads live in the shared Music folder. Private ones stay inside Musicsk's own storage.": {},
     "Fill search with %@": {},
     "Filter %@": {},
-    "Filter downloads": {},
-    "Filter this library": {},
-    "Finish signing in": {},
-    "Finishing sign-in to Musicsk.": {},
+    "Filter downloads": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtrar descargas"
+          }
+        }
+      }
+    },
+    "Filter this library": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtrar esta biblioteca"
+          }
+        }
+      }
+    },
+    "Finish signing in": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminar el inicio de sesión"
+          }
+        }
+      }
+    },
+    "Finishing sign-in to Musicsk.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminando el inicio de sesión en Musicsk."
+          }
+        }
+      }
+    },
     "First button": {
       "localizations": {
         "de": {
@@ -3222,11 +3654,26 @@
             "state": "translated",
             "value": "Odaklı"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enfoque"
+          }
         }
       }
     },
     "Follow artists on YouTube Music — or scan a folder on this device.": {},
-    "Follow the App Language": {},
+    "Follow the App Language": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usar el idioma de la app"
+          }
+        }
+      }
+    },
     "Forgets the address, the account and the password. Nothing on the server is touched.": {},
     "French": {
       "localizations": {
@@ -3542,8 +3989,26 @@
       }
     },
     "GitHub": {},
-    "Go Home": {},
-    "Go to Library": {},
+    "Go Home": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ir a Inicio"
+          }
+        }
+      }
+    },
+    "Go to Library": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ir a la biblioteca"
+          }
+        }
+      }
+    },
     "HDMI": {},
     "Headphone": {},
     "Headphones": {},
@@ -5095,7 +5560,16 @@
         }
       }
     },
-    "Library couldn't load": {},
+    "Library couldn't load": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo cargar la biblioteca"
+          }
+        }
+      }
+    },
     "Licence": {},
     "Light": {
       "localizations": {
@@ -5310,7 +5784,16 @@
       }
     },
     "Liked playlists, albums and artists live here.": {},
-    "Liked playlists, albums and artists you save show up here.": {},
+    "Liked playlists, albums and artists you save show up here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las listas, álbumes y artistas que guardes aparecerán aquí."
+          }
+        }
+      }
+    },
     "List or grid": {},
     "Listen Now": {
       "localizations": {
@@ -5739,7 +6222,16 @@
         }
       }
     },
-    "Loading": {},
+    "Loading": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando"
+          }
+        }
+      }
+    },
     "Loading your profile…": {},
     "Local Music": {
       "localizations": {
@@ -5848,16 +6340,79 @@
       }
     },
     "Logic Core": {},
-    "Looking for lyrics": {},
-    "Looking for lyrics…": {},
+    "Looking for lyrics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscando letras"
+          }
+        }
+      }
+    },
+    "Looking for lyrics…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscando letras…"
+          }
+        }
+      }
+    },
     "Looking up…": {},
     "Lossless includes Hi-Res when an enabled source supplies it. Audio Pipeline shows the format actually decoded.": {},
     "Loudest around %@": {},
-    "Lyrics": {},
-    "Lyrics Offset": {},
-    "Lyrics Offset…": {},
-    "Lyrics Sources": {},
-    "Lyrics off": {},
+    "Lyrics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letras"
+          }
+        }
+      }
+    },
+    "Lyrics Offset": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajuste del tiempo de las letras"
+          }
+        }
+      }
+    },
+    "Lyrics Offset…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajustar tiempo de las letras…"
+          }
+        }
+      }
+    },
+    "Lyrics Sources": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuentes de letras"
+          }
+        }
+      }
+    },
+    "Lyrics off": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letras desactivadas"
+          }
+        }
+      }
+    },
     "Lyrics offset": {
       "localizations": {
         "tr": {
@@ -5865,10 +6420,25 @@
             "state": "translated",
             "value": "Söz zamanlama ayarı"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajuste del tiempo de las letras"
+          }
         }
       }
     },
-    "Lyrics options": {},
+    "Lyrics options": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opciones de letras"
+          }
+        }
+      }
+    },
     "Manage party": {},
     "Match Source Sample Rate asks the route to switch clock families between tracks. Bit-perfect output is available on macOS when the DAC grants exclusive access and the lossless source format is supported. The Audio Pipeline readout shows what is actually in effect.": {},
     "Match Unmatched": {},
@@ -6089,7 +6659,16 @@
       }
     },
     "Mix with Other Apps": {},
-    "Mixing on": {},
+    "Mixing on": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mezcla activada"
+          }
+        }
+      }
+    },
     "Mode": {},
     "Models": {},
     "Models are downloaded once and verified via SHA-256. Manage anytime in Settings.": {},
@@ -6423,15 +7002,87 @@
     },
     "Next Track": {},
     "Next track": {},
-    "No albums in the scanned folder.": {},
-    "No albums yet": {},
-    "No artists in the scanned folder.": {},
-    "No artists yet": {},
-    "No audio files here": {},
-    "No audio files in the scanned folder.": {},
+    "No albums in the scanned folder.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay álbumes en la carpeta examinada."
+          }
+        }
+      }
+    },
+    "No albums yet": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay álbumes"
+          }
+        }
+      }
+    },
+    "No artists in the scanned folder.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay artistas en la carpeta examinada."
+          }
+        }
+      }
+    },
+    "No artists yet": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay artistas"
+          }
+        }
+      }
+    },
+    "No audio files here": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay archivos de audio aquí"
+          }
+        }
+      }
+    },
+    "No audio files in the scanned folder.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La carpeta examinada no contiene archivos de audio."
+          }
+        }
+      }
+    },
     "No categories are available right now.": {},
-    "No downloads yet": {},
-    "No downloads yet. Save a track from Now Playing or a collection menu.": {},
+    "No downloads yet": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay descargas"
+          }
+        }
+      }
+    },
+    "No downloads yet. Save a track from Now Playing or a collection menu.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay descargas. Guarda una pista desde En reproducción o desde el menú de una colección."
+          }
+        }
+      }
+    },
     "No enabled source can provide lossless audio. Add an addon to play lossless files without transcoding.": {
       "localizations": {
         "de": {
@@ -6540,9 +7191,36 @@
     },
     "No listening history yet": {},
     "No log lines for this track": {},
-    "No lyrics": {},
-    "No lyrics for this track": {},
-    "No lyrics for this track.": {},
+    "No lyrics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin letras"
+          }
+        }
+      }
+    },
+    "No lyrics for this track": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay letras para esta pista"
+          }
+        }
+      }
+    },
+    "No lyrics for this track.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay letras para esta pista."
+          }
+        }
+      }
+    },
     "No playlists yet": {},
     "No remote library yet": {},
     "No results": {
@@ -6651,10 +7329,37 @@
         }
       }
     },
-    "No saved albums yet": {},
-    "No saved artists yet": {},
+    "No saved albums yet": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay álbumes guardados"
+          }
+        }
+      }
+    },
+    "No saved artists yet": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay artistas guardados"
+          }
+        }
+      }
+    },
     "No track in this library matches “%@”.": {},
-    "No tracks": {},
+    "No tracks": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay pistas"
+          }
+        }
+      }
+    },
     "Nobody else is here yet.": {},
     "Non-music segments and audible boundaries are always used by Automix.": {},
     "Normalization": {},
@@ -6778,7 +7483,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Sesión no iniciada"
+            "value": "Sesión cerrada"
           }
         },
         "fr": {
@@ -6889,7 +7594,16 @@
     "Nothing matches": {},
     "Nothing matches the current filter.": {},
     "Nothing on that share": {},
-    "Nothing playing.": {},
+    "Nothing playing.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada en reproducción."
+          }
+        }
+      }
+    },
     "Nothing saved yet": {},
     "Nothing to explore right now": {
       "localizations": {
@@ -6997,7 +7711,16 @@
         }
       }
     },
-    "Now Playing": {},
+    "Now Playing": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En reproducción"
+          }
+        }
+      }
+    },
     "Now playing": {
       "localizations": {
         "de": {
@@ -7104,7 +7827,16 @@
         }
       }
     },
-    "Now singing: %@": {},
+    "Now singing: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verso actual: %@"
+          }
+        }
+      }
+    },
     "OK": {},
     "Off": {
       "localizations": {
@@ -7212,7 +7944,16 @@
         }
       }
     },
-    "On": {},
+    "On": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activado"
+          }
+        }
+      }
+    },
     "On Device": {
       "localizations": {
         "de": {
@@ -7320,10 +8061,28 @@
       }
     },
     "On This Device": {},
-    "On device": {},
+    "On device": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En el dispositivo"
+          }
+        }
+      }
+    },
     "On disk": {},
     "On the share": {},
-    "On this device": {},
+    "On this device": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En este dispositivo"
+          }
+        }
+      }
+    },
     "One **album** you kept coming back to.": {},
     "Online": {
       "localizations": {
@@ -7514,8 +8273,26 @@
         }
       }
     },
-    "Open Album": {},
-    "Open Artist": {},
+    "Open Album": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir álbum"
+          }
+        }
+      }
+    },
+    "Open Artist": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir artista"
+          }
+        }
+      }
+    },
     "Open Musicsk": {
       "localizations": {
         "de": {
@@ -7618,8 +8395,26 @@
     },
     "Open system output switcher": {},
     "Open the release": {},
-    "Opens Now Playing": {},
-    "Opens the lyrics": {},
+    "Opens Now Playing": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre En reproducción"
+          }
+        }
+      }
+    },
+    "Opens the lyrics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abre las letras"
+          }
+        }
+      }
+    },
     "Output": {},
     "Output Precision": {},
     "Output Switcher": {},
@@ -8125,7 +8920,16 @@
         }
       }
     },
-    "Personalized recommendations and your library, on every device.": {},
+    "Personalized recommendations and your library, on every device.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus recomendaciones personalizadas y tu biblioteca en todos tus dispositivos."
+          }
+        }
+      }
+    },
     "Pick a folder — Musicsk reads its tags, artwork and plays it with gapless and crossfade.": {},
     "Pin": {
       "localizations": {
@@ -8233,7 +9037,16 @@
         }
       }
     },
-    "Pin to Library": {},
+    "Pin to Library": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fijar en la biblioteca"
+          }
+        }
+      }
+    },
     "Pinned": {
       "localizations": {
         "de": {
@@ -8447,10 +9260,28 @@
       }
     },
     "Play Imported Playlist": {},
-    "Play Next": {},
+    "Play Next": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducir a continuación"
+          }
+        }
+      }
+    },
     "Play a few songs and this page will fill in with minutes, top tracks and artists.": {},
     "Play a few songs this year and this page will fill in with minutes, top tracks and artists.": {},
-    "Play a song to see lyrics here.": {},
+    "Play a song to see lyrics here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproduce una canción para ver su letra aquí."
+          }
+        }
+      }
+    },
     "Playback": {
       "localizations": {
         "de": {
@@ -8557,7 +9388,16 @@
         }
       }
     },
-    "Playback Diagnostics": {},
+    "Playback Diagnostics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Diagnóstico de reproducción"
+          }
+        }
+      }
+    },
     "Playing": {
       "localizations": {
         "de": {
@@ -8665,9 +9505,27 @@
       }
     },
     "Playlist Import": {},
-    "Playlist Privacy…": {},
+    "Playlist Privacy…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacidad de la lista…"
+          }
+        }
+      }
+    },
     "Playlist Update": {},
-    "Playlist privacy": {},
+    "Playlist privacy": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacidad de la lista"
+          }
+        }
+      }
+    },
     "Playlists": {
       "localizations": {
         "es": {
@@ -8757,7 +9615,16 @@
       }
     },
     "Playlists couldn't load": {},
-    "Playlists you save show up here.": {},
+    "Playlists you save show up here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las listas que guardes aparecerán aquí."
+          }
+        }
+      }
+    },
     "Playlists, albums and artists you save show up here.": {},
     "Plays on this account show up here, newest first.": {},
     "Plays the top result": {},
@@ -8871,9 +9738,27 @@
         }
       }
     },
-    "Positive values show lyrics later": {},
+    "Positive values show lyrics later": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los valores positivos retrasan la letra"
+          }
+        }
+      }
+    },
     "Prefer Spotify catalogue": {},
-    "Prefer Word-Synced Lyrics": {},
+    "Prefer Word-Synced Lyrics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preferir letras sincronizadas por palabra"
+          }
+        }
+      }
+    },
     "Preserves the recording. Playback speed, Automix and crossfade keep their own settings.": {},
     "Preset": {
       "localizations": {
@@ -8993,8 +9878,26 @@
     },
     "Previous Track": {},
     "Previous track": {},
-    "Privacy": {},
-    "Privacy: %@": {},
+    "Privacy": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacidad"
+          }
+        }
+      }
+    },
+    "Privacy: %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Privacidad: %@"
+          }
+        }
+      }
+    },
     "Private": {},
     "Public": {},
     "QR code for the party invite": {},
@@ -9009,7 +9912,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Cola"
+            "value": "Cola de reproducción"
           }
         },
         "fr": {
@@ -9119,6 +10022,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Son dinlenenler"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recientes"
           }
         }
       }
@@ -9435,9 +10344,27 @@
         }
       }
     },
-    "Remove %@ from queue": {},
+    "Remove %@ from queue": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar %@ de la cola"
+          }
+        }
+      }
+    },
     "Remove %@ from recent searches": {},
-    "Remove %@ from the queue": {},
+    "Remove %@ from the queue": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar %@ de la cola"
+          }
+        }
+      }
+    },
     "Remove Duplicates": {},
     "Remove Key": {},
     "Remove from Liked": {},
@@ -9548,12 +10475,48 @@
       }
     },
     "Remove from Playlist": {},
-    "Rename Playlist": {},
+    "Rename Playlist": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar nombre de la lista"
+          }
+        }
+      }
+    },
     "Rename Playlist…": {},
     "Reorder": {},
-    "Repeat all": {},
-    "Repeat off": {},
-    "Repeat one": {},
+    "Repeat all": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repetir todo"
+          }
+        }
+      }
+    },
+    "Repeat off": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repetición desactivada"
+          }
+        }
+      }
+    },
+    "Repeat one": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Repetir una canción"
+          }
+        }
+      }
+    },
     "Replace this device's data?": {},
     "Replay": {
       "localizations": {
@@ -9790,8 +10753,26 @@
     "Save Diagnostic Report": {},
     "Save a track from Now Playing — Musicsk tags it and keeps it here.": {},
     "Save albums on YouTube Music — or scan a folder on this device.": {},
-    "Save to Library": {},
-    "Saved Artists": {},
+    "Save to Library": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar en la biblioteca"
+          }
+        }
+      }
+    },
+    "Saved Artists": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Artistas guardados"
+          }
+        }
+      }
+    },
     "Saved to YouTube Music": {
       "localizations": {
         "de": {
@@ -10601,10 +11582,37 @@
     "Share invite": {},
     "Share poster": {},
     "Shared secret": {},
-    "Show Lyrics": {},
-    "Show Original": {},
+    "Show Lyrics": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar letras"
+          }
+        }
+      }
+    },
+    "Show Original": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar original"
+          }
+        }
+      }
+    },
     "Show Player in Menu Bar": {},
-    "Show Queue": {},
+    "Show Queue": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar cola"
+          }
+        }
+      }
+    },
     "Show all": {
       "localizations": {
         "de": {
@@ -10711,7 +11719,16 @@
         }
       }
     },
-    "Show all %@": {},
+    "Show all %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar todo: %@"
+          }
+        }
+      }
+    },
     "Show what you’re playing on your Discord profile, updating as the track does.": {},
     "Shuffle": {
       "localizations": {
@@ -10724,7 +11741,7 @@
         "es": {
           "stringUnit": {
             "state": "translated",
-            "value": "Aleatorio"
+            "value": "Reproducción aleatoria"
           }
         },
         "fr": {
@@ -11031,13 +12048,67 @@
         }
       }
     },
-    "Sign In": {},
-    "Sign In and Settings": {},
-    "Sign In to YouTube Music": {},
-    "Sign Out": {},
+    "Sign In": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar sesión"
+          }
+        }
+      }
+    },
+    "Sign In and Settings": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar sesión y ajustes"
+          }
+        }
+      }
+    },
+    "Sign In to YouTube Music": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciar sesión en YouTube Music"
+          }
+        }
+      }
+    },
+    "Sign Out": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrar sesión"
+          }
+        }
+      }
+    },
     "Sign Out of Last.fm": {},
-    "Sign in for your library": {},
-    "Sign in for your playlists": {},
+    "Sign in for your library": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicia sesión para ver tu biblioteca"
+          }
+        }
+      }
+    },
+    "Sign in for your playlists": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicia sesión para ver tus listas"
+          }
+        }
+      }
+    },
     "Sign in to YouTube Music": {
       "localizations": {
         "de": {
@@ -11144,9 +12215,36 @@
         }
       }
     },
-    "Sign in to see history": {},
-    "Signing out removes your saved YouTube Music session from this device.": {},
-    "Signing you in": {},
+    "Sign in to see history": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inicia sesión para ver el historial"
+          }
+        }
+      }
+    },
+    "Signing out removes your saved YouTube Music session from this device.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Al cerrar sesión se elimina de este dispositivo la sesión guardada de YouTube Music."
+          }
+        }
+      }
+    },
+    "Signing you in": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iniciando sesión"
+          }
+        }
+      }
+    },
     "Similar music will keep playing": {},
     "Similar music, selected to play next": {},
     "Skip": {
@@ -11469,7 +12567,16 @@
       }
     },
     "Songs you add to your YouTube Music library — or a folder you scan on this device.": {},
-    "Songs you add to your library show up here.": {},
+    "Songs you add to your library show up here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las canciones que añadas a tu biblioteca aparecerán aquí."
+          }
+        }
+      }
+    },
     "Sort": {
       "localizations": {
         "de": {
@@ -11573,7 +12680,16 @@
     "Sort %@": {},
     "Sort By": {},
     "Sort by": {},
-    "Sort this library": {},
+    "Sort this library": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ordenar esta biblioteca"
+          }
+        }
+      }
+    },
     "Sound Mode": {},
     "Source": {
       "localizations": {
@@ -11581,6 +12697,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Kaynak"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuente"
           }
         }
       }
@@ -12302,7 +13424,16 @@
     "Suggestions": {},
     "Swap title and artist": {},
     "Swipe up for Up Next, swipe down to return to the player.": {},
-    "Swipe up or down to adjust when the lyrics appear": {},
+    "Swipe up or down to adjust when the lyrics appear": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desliza hacia arriba o abajo para ajustar cuándo aparece la letra"
+          }
+        }
+      }
+    },
     "Switch Channel": {},
     "Switch to grid view": {
       "localizations": {
@@ -13050,7 +14181,16 @@
     "This invite points at somebody else’s party server, so joining switches this device to it.": {},
     "This is a preference, not a per-track setting — the same lag applies to every track, so it is set once.": {},
     "This is your **Replay** — the year in music you actually played.": {},
-    "This page has no playable tracks.": {},
+    "This page has no playable tracks.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta página no tiene pistas que se puedan reproducir."
+          }
+        }
+      }
+    },
     "This party is full": {
       "localizations": {
         "de": {
@@ -13163,8 +14303,26 @@
     "Track": {},
     "Track Log": {},
     "Track Log…": {},
-    "Track artist": {},
-    "Tracks you play will show up here.": {},
+    "Track artist": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Artista de la pista"
+          }
+        }
+      }
+    },
+    "Tracks you play will show up here.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Las pistas que reproduzcas aparecerán aquí."
+          }
+        }
+      }
+    },
     "Translate to %@": {},
     "Translation Language": {},
     "Transparent": {},
@@ -13279,7 +14437,16 @@
     },
     "Try again": {},
     "Turn On": {},
-    "Turn off to give Musicsk audio priority. Other apps may pause.": {},
+    "Turn off to give Musicsk audio priority. Other apps may pause.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desactívalo para dar prioridad a Musicsk. Otras apps pueden ponerse en pausa."
+          }
+        }
+      }
+    },
     "Turn on to keep other apps audible.": {},
     "USB Audio": {},
     "Unlike": {},
@@ -13390,7 +14557,16 @@
         }
       }
     },
-    "Unpin from Library": {},
+    "Unpin from Library": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desfijar de la biblioteca"
+          }
+        }
+      }
+    },
     "Up next": {},
     "Upgrade Quality": {},
     "Use This Profile": {},
@@ -13610,9 +14786,36 @@
     "Vocal + clash detection": {},
     "Vocal Detection": {},
     "Vocal model installed — without the beat model Automix falls back to tempo analysis": {},
-    "Volume": {},
-    "Volume Down": {},
-    "Volume Up": {},
+    "Volume": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volumen"
+          }
+        }
+      }
+    },
+    "Volume Down": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bajar volumen"
+          }
+        }
+      }
+    },
+    "Volume Up": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Subir volumen"
+          }
+        }
+      }
+    },
     "Waiting for Wi-Fi": {},
     "Waiting for Wi‑Fi": {},
     "Watching": {
@@ -14052,11 +15255,38 @@
     },
     "Your Replay is growing": {},
     "Your Songs": {},
-    "Your albums live here": {},
-    "Your artists live here": {},
+    "Your albums live here": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aquí aparecerán tus álbumes"
+          }
+        }
+      }
+    },
+    "Your artists live here": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aquí aparecerán tus artistas"
+          }
+        }
+      }
+    },
     "Your feed couldn't load": {},
     "Your libraries": {},
-    "Your library and recommendations will use this profile.": {},
+    "Your library and recommendations will use this profile.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tu biblioteca y tus recomendaciones usarán este perfil."
+          }
+        }
+      }
+    },
     "Your listening pattern": {
       "localizations": {
         "de": {
@@ -14563,7 +15793,1174 @@
     "sp_dc cookie": {},
     "{song_name}, {artist_name} and {album_name} are replaced with the track. The first button opens the song on YouTube Music, the second this project.": {},
     "“%@” is in two places": {},
-    "•": {}
+    "•": {},
+    "%lld downloaded songs": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld canción descargada"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld canciones descargadas"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Accounts": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cuentas"
+          }
+        }
+      }
+    },
+    "Add to Library": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Añadir a la biblioteca"
+          }
+        }
+      }
+    },
+    "All Downloads": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Todas las descargas"
+          }
+        }
+      }
+    },
+    "Allow Musicsk to add photos in Settings to save this card.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permite que Musicsk añada fotos desde Ajustes para guardar esta tarjeta."
+          }
+        }
+      }
+    },
+    "Animated Artwork": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portadas animadas"
+          }
+        }
+      }
+    },
+    "App Language": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Idioma de la app"
+          }
+        }
+      }
+    },
+    "Artist": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Artista"
+          }
+        }
+      }
+    },
+    "Back to artwork": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Volver a la portada"
+          }
+        }
+      }
+    },
+    "Blends one track into the next; 0s keeps gapless playback": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Funde una pista con la siguiente. Con 0 s solo se mantiene la reproducción sin pausas."
+          }
+        }
+      }
+    },
+    "Blur Inactive Lyrics": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desenfocar versos inactivos"
+          }
+        }
+      }
+    },
+    "Browse Library": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Explorar biblioteca"
+          }
+        }
+      }
+    },
+    "Choose a Source…": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Elegir una fuente…"
+          }
+        }
+      }
+    },
+    "Clear Up Next": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vaciar la cola"
+          }
+        }
+      }
+    },
+    "Close search": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cerrar búsqueda"
+          }
+        }
+      }
+    },
+    "Codec, bitrate and sample rate on the player": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muestra el códec, la tasa de bits y la frecuencia de muestreo."
+          }
+        }
+      }
+    },
+    "Collapse": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contraer"
+          }
+        }
+      }
+    },
+    "Crossfade": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fundido entre canciones"
+          }
+        }
+      }
+    },
+    "Current Output": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salida actual"
+          }
+        }
+      }
+    },
+    "Delete Playlist": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Eliminar lista"
+          }
+        }
+      }
+    },
+    "Detailed measurements and source decisions": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mediciones detalladas y selección de fuentes."
+          }
+        }
+      }
+    },
+    "Double-tap to add to the share card": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toca dos veces para añadir a la tarjeta"
+          }
+        }
+      }
+    },
+    "Download All": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargar todo"
+          }
+        }
+      }
+    },
+    "Downloaded": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargado"
+          }
+        }
+      }
+    },
+    "Downloading…": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Descargando…"
+          }
+        }
+      }
+    },
+    "Expanded": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expandido"
+          }
+        }
+      }
+    },
+    "Follows system unless you pick one": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa el idioma del sistema hasta que elijas otro."
+          }
+        }
+      }
+    },
+    "Freezes the main player's gradient instead of drifting": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mantiene fijo el degradado del reproductor."
+          }
+        }
+      }
+    },
+    "Full Bleed Artwork": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Portada hasta los bordes"
+          }
+        }
+      }
+    },
+    "Gapless Playback": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducción sin pausas"
+          }
+        }
+      }
+    },
+    "General": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "General"
+          }
+        }
+      }
+    },
+    "Get personalized recommendations": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Obtener recomendaciones personalizadas"
+          }
+        }
+      }
+    },
+    "Hide Status Bar in Player": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ocultar barra de estado en el reproductor"
+          }
+        }
+      }
+    },
+    "Hide Volume Slider": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ocultar control de volumen"
+          }
+        }
+      }
+    },
+    "Hides the iPhone status bar while Now Playing is open": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oculta la barra de estado del iPhone en En reproducción."
+          }
+        }
+      }
+    },
+    "Holding %lld Hz": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manteniendo %lld Hz"
+          }
+        }
+      }
+    },
+    "Inactive while Automix controls transition timing": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Inactivo mientras Automix controla las transiciones."
+          }
+        }
+      }
+    },
+    "Instrumental": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Instrumental"
+          }
+        }
+      }
+    },
+    "Keep other apps audible alongside Musicsk. This can prevent iOS Lock Screen, Control Center and headphone controls from controlling Musicsk. Turn off to give Musicsk audio priority. Applies immediately while playing, or on the next play.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permite oír otras apps junto a Musicsk. Esto puede impedir que la pantalla bloqueada, el Centro de control o los audífonos controlen Musicsk. Desactívalo para dar prioridad a Musicsk. Se aplica durante la reproducción o al volver a reproducir."
+          }
+        }
+      }
+    },
+    "Latest Release": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Último lanzamiento"
+          }
+        }
+      }
+    },
+    "Latest Releases": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Últimos lanzamientos"
+          }
+        }
+      }
+    },
+    "Levels tracks to a consistent loudness": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Iguala el volumen entre pistas."
+          }
+        }
+      }
+    },
+    "Lights up the words on the player as they’re sung": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Resalta las palabras a medida que se cantan."
+          }
+        }
+      }
+    },
+    "Loading Library": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando biblioteca"
+          }
+        }
+      }
+    },
+    "Lyric Blur": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desenfoque de letras"
+          }
+        }
+      }
+    },
+    "Lyrics by %@": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letra de %@"
+          }
+        }
+      }
+    },
+    "Lyrics by %@ · Musicsk synced %lld of %lld lines": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letra de %@ · Musicsk sincronizó %lld de %lld líneas"
+          }
+        }
+      }
+    },
+    "Lyrics by %@ · Synced by Musicsk": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letra de %@ · Sincronizada por Musicsk"
+          }
+        }
+      }
+    },
+    "Lyrics loading…": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cargando letras…"
+          }
+        }
+      }
+    },
+    "Lyrics on Player": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letras en el reproductor"
+          }
+        }
+      }
+    },
+    "Mix with Other Audio": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mezclar con otro audio"
+          }
+        }
+      }
+    },
+    "Mix With Other Audio": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mezclar con otro audio"
+          }
+        }
+      }
+    },
+    "More Releases": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Más lanzamientos"
+          }
+        }
+      }
+    },
+    "Music you start appears here": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La música que reproduzcas aparecerá aquí"
+          }
+        }
+      }
+    },
+    "No saved music": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No hay música guardada"
+          }
+        }
+      }
+    },
+    "No tracks found": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se encontraron pistas"
+          }
+        }
+      }
+    },
+    "Not Playing": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sin reproducción"
+          }
+        }
+      }
+    },
+    "Nothing playing": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nada en reproducción"
+          }
+        }
+      }
+    },
+    "Open in YouTube Music": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir en YouTube Music"
+          }
+        }
+      }
+    },
+    "Open Lyrics": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir letras"
+          }
+        }
+      }
+    },
+    "Open Player": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Abrir reproductor"
+          }
+        }
+      }
+    },
+    "Playback Speed": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Velocidad de reproducción"
+          }
+        }
+      }
+    },
+    "Playlist": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lista de reproducción"
+          }
+        }
+      }
+    },
+    "Plays the looping video some releases ship instead of a still sleeve": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproduce el vídeo en bucle de los lanzamientos compatibles."
+          }
+        }
+      }
+    },
+    "Prefer supported Dolby audio when a source supplies it": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Da prioridad al audio Dolby compatible de las fuentes que lo ofrecen."
+          }
+        }
+      }
+    },
+    "Previously Played": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducido anteriormente"
+          }
+        }
+      }
+    },
+    "Remove from Library": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar de la biblioteca"
+          }
+        }
+      }
+    },
+    "Remove Like": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Quitar Me gusta"
+          }
+        }
+      }
+    },
+    "Removes the volume slider from the main player": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oculta el control de volumen del reproductor."
+          }
+        }
+      }
+    },
+    "Request each track’s native rate from the output route": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solicita la frecuencia de muestreo nativa de cada pista."
+          }
+        }
+      }
+    },
+    "Requests a sustained high refresh rate": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Solicita una frecuencia de actualización alta de forma sostenida."
+          }
+        }
+      }
+    },
+    "Restores non-secret preferences": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaura las preferencias que no contienen credenciales."
+          }
+        }
+      }
+    },
+    "Runs the cover to the edges of the player instead of a square sleeve": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La portada se extiende hasta los bordes del reproductor."
+          }
+        }
+      }
+    },
+    "Save an album or playlist in YouTube Music, or choose a music folder on this device.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guarda un álbum o una lista en YouTube Music, o elige una carpeta con música en este dispositivo."
+          }
+        }
+      }
+    },
+    "Save Share Card": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Guardar tarjeta para compartir"
+          }
+        }
+      }
+    },
+    "Saved Albums": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Álbumes guardados"
+          }
+        }
+      }
+    },
+    "Share lyrics": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compartir letra"
+          }
+        }
+      }
+    },
+    "Show Queue History": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mostrar historial de la cola"
+          }
+        }
+      }
+    },
+    "Shows the line being sung under the song title": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muestra el verso actual debajo del título."
+          }
+        }
+      }
+    },
+    "Shows tracks already played above Now Playing in the queue": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Muestra las pistas anteriores encima de la pista actual en la cola."
+          }
+        }
+      }
+    },
+    "Signed in": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sesión iniciada"
+          }
+        }
+      }
+    },
+    "Smart Sequencing": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Secuencia inteligente"
+          }
+        }
+      }
+    },
+    "Softens lines away from the words being sung": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desenfoca los versos alejados del actual."
+          }
+        }
+      }
+    },
+    "Song": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Canción"
+          }
+        }
+      }
+    },
+    "Sound Processing": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Procesamiento de sonido"
+          }
+        }
+      }
+    },
+    "Source priority": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prioridad de fuentes"
+          }
+        }
+      }
+    },
+    "Source Quality": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calidad de la fuente"
+          }
+        }
+      }
+    },
+    "Stereo widening and head tracking": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amplía el estéreo y sigue el movimiento de la cabeza."
+          }
+        }
+      }
+    },
+    "Stop picking lyrics": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dejar de seleccionar versos"
+          }
+        }
+      }
+    },
+    "Subscribe": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suscribirse"
+          }
+        }
+      }
+    },
+    "Swaps frosted glass for solid fills across the app": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa fondos sólidos en la app."
+          }
+        }
+      }
+    },
+    "Swipe up for Up Next": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Desliza hacia arriba para ver la cola"
+          }
+        }
+      }
+    },
+    "Syllable timings win the lyrics race when a source has them": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Da prioridad a las fuentes con tiempos por sílaba."
+          }
+        }
+      }
+    },
+    "Tap to read lyrics": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toca para leer la letra"
+          }
+        }
+      }
+    },
+    "Technical Audio & DAC": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio avanzado y DAC"
+          }
+        }
+      }
+    },
+    "Ten-band EQ and tone controls": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ecualizador de diez bandas y controles de tono."
+          }
+        }
+      }
+    },
+    "The single-wash backdrop instead of colours sampled from the artwork": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Usa un fondo de un solo tono."
+          }
+        }
+      }
+    },
+    "This playlist is empty.": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta lista está vacía."
+          }
+        }
+      }
+    },
+    "Top songs": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Canciones populares"
+          }
+        }
+      }
+    },
+    "Top Songs": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Canciones populares"
+          }
+        }
+      }
+    },
+    "Unsubscribe": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancelar suscripción"
+          }
+        }
+      }
+    },
+    "Up Next": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A continuación"
+          }
+        }
+      }
+    },
+    "Where audio comes from, and in what order": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consulta de dónde viene el audio y en qué orden."
+          }
+        }
+      }
+    },
+    "Word-Synced Lyrics": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Letras sincronizadas por palabra"
+          }
+        }
+      }
+    },
+    "Your top songs, artists, albums and genres": {
+      "extractionState": "manual",
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tus canciones, artistas, álbumes y géneros más escuchados"
+          }
+        }
+      }
+    }
   },
   "version": "1.0"
 }
