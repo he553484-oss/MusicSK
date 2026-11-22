@@ -22,4 +22,29 @@ enum LosslessRoute {
         let route = routeKind.lowercased()
         return !route.isEmpty && !route.contains("bluetooth") && !route.contains("airplay")
     }
+
+    /// A category or configuration notification can repeat a device change.
+    /// Retain the opportunity until recovery completes, then consume it once.
+    struct UpgradeOpportunity {
+        private var currentKind = ""
+        private var pending = false
+
+        mutating func observe(kind: String) {
+            let normalized = kind.lowercased()
+            // Hardware may briefly report no port while establishing a route.
+            guard !normalized.isEmpty, normalized != currentKind else { return }
+            if !LosslessRoute.permitsLossless(routeKind: normalized) {
+                pending = false
+            } else if currentKind.contains("bluetooth") {
+                pending = true
+            }
+            currentKind = normalized
+        }
+
+        mutating func consume() -> Bool {
+            guard pending else { return false }
+            pending = false
+            return true
+        }
+    }
 }

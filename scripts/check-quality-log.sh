@@ -19,7 +19,7 @@ checks = {
     "one quality record is emitted on every successful track start": "quality-start" in load,
     "source field reports the resolved playback origin": "switch resolvedOrigin[entry.id]" in load and all(origin in load for origin in ["case .local:", "case .cache:", "case .youtube:", "case .substitute:"]),
     "quality record includes claimed and measured stream/output fields": all(field in load for field in fields),
-    "pipeline sheet shows claimed quality beside measured stream": 'row("Claimed Quality", claimedQuality)' in sheet and 'row("Measured Stream", measuredStream)' in sheet,
+    "pipeline sheet separates the configured source request from measured stream metadata": 'row("Requested Source Quality", claimedQuality)' in sheet and 'row("Measured Stream", measuredStream)' in sheet and 'effectiveAudioQuality(metered: metered)' in sheet and '[codec, bitrate, sourceRate, bitDepth]' in sheet,
     "loudness origin maps the engine's actual metadata": 'loudnessOrigin = "player_response"' in load and 'loudnessOrigin = "analyzed"' in load and 'loudnessOrigin = "none"' in load,
     "diagnostic persistence sanitizes and bounds each event": "Self.sanitize(" in log and "capacity" in log and "limit = 2 * 1024 * 1024" in log,
 }

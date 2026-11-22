@@ -859,8 +859,6 @@ final class PlaybackController {
     ///    even if CoreAudio's own rebuild beat us to it.
     private var routeRecoveryGeneration: UInt64 = 0
     private func outputRouteChanged() {
-        let route = AudioRouteState.shared
-        let returnedFromBluetooth = route.previousKind.lowercased().contains("bluetooth") && route.carriesLossless
         routeRecoveryGeneration &+= 1
         let recovery = routeRecoveryGeneration
         guard started, state == .playing else { return }
@@ -894,7 +892,7 @@ final class PlaybackController {
                             try engine.requestOutputRebuild(force: true)
                         }
                     }
-                    if returnedFromBluetooth, let entry = self.current {
+                    if let entry = self.current, AudioRouteState.shared.takeLosslessUpgradeOpportunity() {
                         QualityUpgrade.resetAutomaticAttemptForRoute(entry.id)
                         self.lookForBetterCopy(entry, codec: self.nerd?.codec ?? "", kbps: self.nerd?.kbps ?? 0)
                     }

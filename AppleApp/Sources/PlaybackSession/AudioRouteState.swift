@@ -10,15 +10,14 @@ final class AudioRouteState {
     static let shared = AudioRouteState()
     private(set) var name = "System output"
     private(set) var kind = ""
-    private(set) var previousKind = ""
     private(set) var spatialCapable = false
     private(set) var monoAudioEnabled = false
     /// Capability alone does not establish whether Apple is spatializing audio.
     private(set) var systemSpatialEnabled: Bool?
     private var uid = ""
+    @ObservationIgnored private var losslessUpgrade = LosslessRoute.UpgradeOpportunity()
 
     func refresh(systemSpatialEnabled reported: Bool? = nil) {
-        let oldKind = kind
         #if os(iOS)
         monoAudioEnabled = UIAccessibility.isMonoAudioEnabled
         let port = AVAudioSession.sharedInstance().currentRoute.outputs.first
@@ -35,9 +34,14 @@ final class AudioRouteState {
         // macOS does not expose AVAudioSession's confirmed spatial state.
         systemSpatialEnabled = nil
         #endif
-        if kind != oldKind { previousKind = oldKind }
+        losslessUpgrade.observe(kind: kind)
         // Addons that declare `checkValidLossless` sit out while this is false.
         PlaybackCodecCapabilities.shared.setLosslessOutput(value: carriesLossless)
+    }
+
+    func takeLosslessUpgradeOpportunity() -> Bool {
+        guard !kind.isEmpty else { return false }
+        return losslessUpgrade.consume()
     }
 
     /// Whether this route can carry lossless audio. Bluetooth (AAC/SBC) is the

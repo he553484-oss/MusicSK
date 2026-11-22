@@ -10,7 +10,7 @@ root = Path(sys.argv[1])
 route = (root / "AppleApp/Sources/PlaybackSession/LosslessRoute.swift").read_text()
 state = (root / "AppleApp/Sources/PlaybackSession/AudioRouteState.swift").read_text()
 upgrade = (root / "AppleApp/Sources/PlaybackSession/PlaybackController+QualityUpgrade.swift").read_text()
-source = (root / "AppleApp/Sources/PlaybackSession/PlaybackController+SourceResolution.swift").read_text()
+controller = (root / "AppleApp/Sources/PlaybackSession/PlaybackController.swift").read_text()
 session = (root / "AppleApp/Sources/PlaybackSession/AudioSessionManager.swift").read_text()
 kotlin = (root / "shared/src/commonMain/kotlin/com/music/bitchord/data/sources/SourceResolver.kt").read_text()
 preferences = (root / "AppleApp/Sources/PlaybackSession/PlaybackController+Preferences.swift").read_text()
@@ -24,7 +24,8 @@ checks = {
     "speaker normalization compares the AVAudioSession raw port value": "AVAudioSession.Port.builtInSpeaker.rawValue" in preferences,
     "bit-perfect remains opt-in and engine startup applies eligibility gating": 'bit_perfect_output", default: false' in (root / "AppleApp/Sources/PlaybackSession/PlaybackController.swift").read_text() and "let startBitPerfect = effectiveBitPerfectOutput" in (root / "AppleApp/Sources/PlaybackSession/PlaybackController.swift").read_text() and "setBitPerfectEnabled(enabled: startBitPerfect)" in (root / "AppleApp/Sources/PlaybackSession/PlaybackController.swift").read_text() and "guard bitPerfectOutput" in preferences,
     "Settings UI keeps automatic bit-perfect opt-in": 'bit_perfect_output", default: false' in (root / "AppleApp/Sources/UI/Settings/SettingsView.swift").read_text(),
-    "route changes follow source preference and re-offer after returning to wired": "qualityUpgradeTask?.cancel()" in (root / "AppleApp/Sources/PlaybackSession/PlaybackController.swift").read_text() and "returnedFromBluetooth" in (root / "AppleApp/Sources/PlaybackSession/PlaybackController.swift").read_text(),
+    "upgrade lookups cancel superseded work and still follow source preference": "qualityUpgradeTask?.cancel()" in upgrade and "let prefs = ResolvePrefs.current()" in upgrade and "prefs.canSubstitute" in upgrade,
+    "successful route recovery consumes the opportunity before re-offering": "self.routeRecoveryGeneration == recovery" in controller and "AudioRouteState.shared.takeLosslessUpgradeOpportunity()" in controller and "QualityUpgrade.resetAutomaticAttemptForRoute(entry.id)" in controller and "self.lookForBetterCopy(entry" in controller,
 }
 for label, passed in checks.items():
     print(f"{'PASS' if passed else 'FAIL'} {label}")
@@ -57,6 +58,23 @@ struct RoutePolicySelfCheck {
         precondition(LosslessRoute.cappedLosslessSampleRate(routeKind: "AirPlay", requested: 96_000) == 48_000)
         precondition(LosslessRoute.cappedLosslessSampleRate(routeKind: "AirPlay", requested: 44_100) == 44_100)
         precondition(LosslessRoute.cappedLosslessSampleRate(routeKind: "USB", requested: 96_000) == 96_000)
+        var recovery = LosslessRoute.UpgradeOpportunity()
+        recovery.observe(kind: "BluetoothA2DP")
+        recovery.observe(kind: "")
+        precondition(!recovery.consume())
+        recovery.observe(kind: "USB")
+        recovery.observe(kind: "usb") // newer category notification supersedes recovery
+        precondition(recovery.consume())
+        precondition(!recovery.consume())
+        recovery.observe(kind: "USB")
+        precondition(!recovery.consume())
+        recovery.observe(kind: "BluetoothA2DP")
+        recovery.observe(kind: "Speaker")
+        recovery.observe(kind: "BluetoothHFP") // switched back before activation completed
+        precondition(!recovery.consume())
+        recovery.observe(kind: "AirPlay")
+        recovery.observe(kind: "USB") // still a capable output when the latest activation wins
+        precondition(recovery.consume())
         print("PASS executable route-policy self-check")
     }
 }
