@@ -11,7 +11,6 @@ import AVFAudio
 import AppKit
 #endif
 
-#if os(iOS)
 enum PlayerArtworkSlot: Hashable {
     case cover, lyrics
 }
@@ -27,6 +26,7 @@ struct PlayerArtworkFrames: PreferenceKey {
     }
 }
 
+#if os(iOS)
 /// Draws the cover once as the destination changes between the stage and the
 /// lyrics header. The original viewport determines the requested image size.
 struct MovingPlayerArtwork: View {

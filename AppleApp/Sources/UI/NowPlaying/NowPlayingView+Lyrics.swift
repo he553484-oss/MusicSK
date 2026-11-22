@@ -45,7 +45,7 @@ extension NowPlayingView {
             .accessibilityLabel("Back to player")
 
             VStack(alignment: .leading, spacing: 3) {
-                Text(controller.current?.title ?? "Nothing playing")
+                Text(controller.current?.title ?? String(localized: "Nothing playing"))
                     .font(.headline.weight(.semibold))
                     .lineLimit(1)
                 ArtistCreditText(
