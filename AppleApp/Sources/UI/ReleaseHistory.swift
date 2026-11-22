@@ -141,7 +141,7 @@ struct ReleaseNotesView: View {
             if let match = line.range(of: #"^#{1,6} "#, options: .regularExpression) {
                 let level = line.distance(from: line.startIndex, to: match.upperBound) - 1
                 let text = String(line[match.upperBound...])
-                if level == 1, result.isEmpty, text.lowercased().hasPrefix("bitchord") { continue }
+                if level == 1, result.isEmpty, text.lowercased().hasPrefix("musicsk") { continue }
                 result.append(.heading(text, level: level))
             } else if let match = line.range(of: #"^[-*+] "#, options: .regularExpression) {
                 result.append(.bullet(String(line[match.upperBound...])))

@@ -23,9 +23,13 @@ CHECK_DIR="${TMPDIR:-/tmp}/bitchord-player-layout-check"
 rm -rf "$CHECK_DIR"
 mkdir -p "$CHECK_DIR"
 
-xcrun swiftc \
-  -sdk "$(xcrun --show-sdk-path --sdk macosx)" \
-  -target arm64-apple-macos15.0 \
+if command -v xcrun >/dev/null 2>&1; then
+  swift_compiler=(xcrun swiftc -sdk "$(xcrun --show-sdk-path --sdk macosx)" -target arm64-apple-macos15.0)
+else
+  swift_compiler=(swiftc)
+fi
+
+"${swift_compiler[@]}" \
   -swift-version 5 \
   -o "$CHECK_DIR/check" \
   "$ROOT/AppleApp/Sources/UI/PlayerLayout.swift" \

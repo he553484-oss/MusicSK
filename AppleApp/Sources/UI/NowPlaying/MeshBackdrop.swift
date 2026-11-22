@@ -67,7 +67,7 @@ struct MeshBackdrop: View {
             }.value
             guard !Task.isCancelled else { return }
             let trackChanged = appliedSeed != input.seed
-            apply(palette, animated: appliedSeed != nil)
+            apply(palette, first: appliedSeed == nil)
             appliedSeed = input.seed
             if trackChanged && !reduceAnimation && !legacyMesh {
                 withAnimation(.timingCurve(0.4, 0.0, 0.2, 1.0, duration: 8)) {
@@ -83,6 +83,7 @@ struct MeshBackdrop: View {
 
     private var animatedMesh: some View {
         let blobs = [blob0, blob1, blob2, blob3]
+        let angle = phase
         return Canvas(rendersAsynchronously: true) { context, size in
             let anchors: [(CGFloat, CGFloat)] = [
                 (0.20, 0.25), (0.80, 0.20), (0.75, 0.80), (0.25, 0.75),
@@ -91,8 +92,8 @@ struct MeshBackdrop: View {
             let radius = max(size.width, size.height) * 0.62
             for i in 0..<4 {
                 let color = blobs[i]
-                let x = (anchors[i].0 + 0.16 * cos(phase * speeds[i] + Double(i) * 1.7)) * size.width
-                let y = (anchors[i].1 + 0.16 * sin(phase * speeds[i] * 0.9 + Double(i) * 2.3)) * size.height
+                let x = (anchors[i].0 + 0.16 * cos(angle * speeds[i] + Double(i) * 1.7)) * size.width
+                let y = (anchors[i].1 + 0.16 * sin(angle * speeds[i] * 0.9 + Double(i) * 2.3)) * size.height
                 let rect = CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2)
                 context.fill(
                     Path(ellipseIn: rect),
@@ -121,7 +122,7 @@ struct MeshBackdrop: View {
         .allowsHitTesting(false)
     }
 
-    private func apply(_ mesh: ArtworkPalette.MeshBlobs, animated: Bool) {
+    private func apply(_ mesh: ArtworkPalette.MeshBlobs, first: Bool) {
         let run = {
             base = mesh.base
             blob0 = mesh.blobs[0]
@@ -129,10 +130,6 @@ struct MeshBackdrop: View {
             blob2 = mesh.blobs[2]
             blob3 = mesh.blobs[3]
         }
-        if animated && !reduceAnimation {
-            withAnimation(.easeInOut(duration: 1.4), run)
-        } else {
-            run()
-        }
+        withAnimation(reduceAnimation ? nil : .easeInOut(duration: first ? 0.24 : 1.4), run)
     }
 }

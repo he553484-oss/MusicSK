@@ -33,8 +33,10 @@ import Foundation
   precondition(ReleaseManifest(schema: 2, version: "1.0.4", build: 13, revision: "abc1234", artifacts: [artifact]).artifact(for: "ios", assets: [good]) == nil)
   precondition(ReleaseIdentity(version: "1.0.4-rc1", build: 13).compared(to: .init(version:"1.0.3",build:12)) == nil)
   precondition(ReleaseIdentity(version: "1.0.4", build: 13).key != ReleaseIdentity(version: "1.0.4", build: 14).key)
-  let release = AppReleaseUpdate(identity: .init(version: "1.0.4", build: 13), releaseUrl: URL(string: "https://github.com/bagumamartin/BitChord/releases/tag/v1.0.4")!, notes: "![banner](https://example.invalid/image.png)\n\nPlayback fixes", publishedAt: nil, download: good, artifact: artifact, revision: "abc1234")
-  precondition(release.displayNotes == "Playback fixes")
+  let upstream = ReleaseAsset(name: "BitChord-1.0.4-build13-ios-unsigned.ipa", browser_download_url: good.browser_download_url, size: 10)
+  precondition(AppReleaseUpdate.legacyAsset(platform: "ios", assets: [upstream]) == nil)
+  let upstreamArtifact = ReleaseManifest.Artifact(platform: "ios", name: upstream.name, sha256: artifact.sha256, minimumOS: artifact.minimumOS, installation: artifact.installation)
+  precondition(ReleaseManifest(schema: 1, version: "1.0.4", build: 13, revision: "abc1234", artifacts: [upstreamArtifact]).artifact(for: "ios", assets: [upstream]) == nil)
   print("PASS audio request/actual distinctions, bypass states, unknown formats and version/build comparison")
  }
 }

@@ -4,7 +4,7 @@
 #
 # Start it by pushing a tag (git tag v1.0.6 && git push origin v1.0.6) or from
 # the Actions tab. Before either, AppleApp/project.yml must carry the version
-# and a new build number, and release-notes/<version>.md must exist on that
+# and a new build number, and release-notes/musicsk/<version>.md must exist on that
 # commit.
 #
 # Public updates require the SPARKLE_ED_PRIVATE_KEY secret and matching
@@ -79,7 +79,7 @@ jobs:
         env:
           HAS_SPARKLE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY != '' }}
         run: |
-          [[ -f "release-notes/$VERSION.md" ]] || { echo "::error::release-notes/$VERSION.md is missing"; exit 1; }
+          [[ -f "release-notes/musicsk/$VERSION.md" ]] || { echo "::error::release-notes/musicsk/$VERSION.md is missing"; exit 1; }
           if [[ "$MODE" != build ]] && gh release view "$TAG" >/dev/null 2>&1; then
             echo "::error::GitHub release $TAG already exists"; exit 1
           fi
@@ -134,7 +134,7 @@ jobs:
           gh release create "$TAG" \
             --target "$GITHUB_SHA" \
             --title "Musicsk $VERSION" \
-            --notes-file "$GITHUB_WORKSPACE/release-notes/$VERSION.md" \
+            --notes-file "$GITHUB_WORKSPACE/release-notes/musicsk/$VERSION.md" \
             "${flags[@]}" \
             Musicsk-$VERSION-build*-ios-unsigned.ipa \
             Musicsk-$VERSION-build*-mac-arm64.dmg \
@@ -153,7 +153,7 @@ jobs:
           export SPARKLE_ED_KEY_FILE="$key"
           git fetch origin main
           git checkout -B main origin/main
-          scripts/generate-mac-appcast.sh "$TAG" build/release/Musicsk-$VERSION-build*-mac-arm64.dmg "release-notes/$VERSION.md"
+          scripts/generate-mac-appcast.sh "$TAG" build/release/Musicsk-$VERSION-build*-mac-arm64.dmg "release-notes/musicsk/$VERSION.md"
           rm -f "$key"
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'

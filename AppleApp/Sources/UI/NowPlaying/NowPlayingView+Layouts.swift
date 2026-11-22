@@ -74,10 +74,10 @@ extension NowPlayingView {
                 .animation(Motion.playerPane(reduceMotion), value: pane)
             }
         }
-        .modifier(PlayerDragDismissal(enabled: isIPad, dismiss: { dismiss() }))
+        .modifier(PlayerDragDismissal(enabled: usesFullscreenCover, dismiss: { dismiss() }))
         .toolbar(.hidden, for: .navigationBar)
         .toolbarTitleDisplayMode(.inline)
-        .ignoresSafeArea(.container, edges: isIPad ? [] : .top)
+        .ignoresSafeArea(.container, edges: usesFullscreenCover || isIPad ? [] : .top)
     }
     #endif
 

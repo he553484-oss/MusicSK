@@ -18,6 +18,8 @@ import AppKit
 /// Music's grabber-plus-swipe dismissal (a sheet can no longer be trusted
 /// full-screen — `.page` sizing presented as a floating card on iPadOS 27).
 struct NowPlayingView: View {
+    var usesFullscreenCover = false
+
     @Environment(\.accessibilityReduceMotion) var reduceMotion
     @Environment(PlaybackController.self) var controller
     @Environment(AppModel.self) var appModel

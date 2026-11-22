@@ -31,7 +31,7 @@ struct ArtworkView: View {
     /// upstream's list of `rememberRemoteArtworkUrl` callers as well.
     var remoteId: String?
     var playerThumbnailSource: String?
-    @State private var embedded: Data?
+    @State private var embedded: (id: String, bytes: Data)?
 
     init(entry: QueueEntry?, side: CGFloat? = nil, reusesPlayerThumbnail: Bool = false) {
         self.init(
@@ -85,7 +85,7 @@ struct ArtworkView: View {
             guard let remoteId else { return }
             let bytes = await EmbeddedArtwork.embeddedCoverData(id: remoteId)
             guard !Task.isCancelled else { return }
-            embedded = bytes
+            embedded = bytes.map { (remoteId, $0) }
         }
     }
 
@@ -93,7 +93,7 @@ struct ArtworkView: View {
     private var artwork: some View {
         // Bytes already in hand win: a downloaded track's own artwork, and a remote
         // track's extracted cover once it has arrived.
-        if let bytes = data ?? embedded, let image = Self.image(from: bytes) {
+        if let bytes = data ?? (embedded?.id == remoteId ? embedded?.bytes : nil), let image = Self.image(from: bytes) {
             scaled(image)
         } else if let url, let cached = ArtworkCache.shared.get(url) {
             scaled(cached)

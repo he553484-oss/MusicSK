@@ -1128,29 +1128,52 @@ struct NowPlayingTakeover: ViewModifier {
     var zoomNamespace: Namespace.ID
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var activePresentation: Presentation?
+
+    private enum Presentation: Equatable {
+        case sheet, cover
+    }
+
+    private var preferredPresentation: Presentation {
+        sizeClass == .regular ? .cover : .sheet
+    }
 
     func body(content: Content) -> some View {
-        if sizeClass == .regular {
-            content.fullScreenCover(isPresented: $isPresented) {
-                player
-            }
-        } else {
-            content.sheet(isPresented: $isPresented) {
-                player
+        // Both modifiers keep their identity across a width change. An open
+        // player keeps its presentation until it closes.
+        content
+            .sheet(isPresented: binding(for: .sheet)) {
+                player(in: .sheet)
                     .presentationDetents([.large])
                     .presentationDragIndicator(.visible)
                     .presentationCornerRadius(24)
             }
-        }
+            .fullScreenCover(isPresented: binding(for: .cover)) {
+                player(in: .cover)
+            }
+            .onChange(of: isPresented, initial: true) { _, presented in
+                activePresentation = presented ? (activePresentation ?? preferredPresentation) : nil
+            }
+    }
+
+    private func binding(for presentation: Presentation) -> Binding<Bool> {
+        Binding(
+            get: { isPresented && (activePresentation ?? preferredPresentation) == presentation },
+            set: { presented in
+                if (activePresentation ?? preferredPresentation) == presentation {
+                    isPresented = presented
+                }
+            }
+        )
     }
 
     @ViewBuilder
-    private var player: some View {
+    private func player(in presentation: Presentation) -> some View {
+        let stack = PlayerNavigationStack(usesFullscreenCover: presentation == .cover)
         if reduceMotion {
-            PlayerNavigationStack()
+            stack
         } else {
-            PlayerNavigationStack()
-                .navigationTransition(.zoom(sourceID: NowPlayingZoom.sourceID, in: zoomNamespace))
+            stack.navigationTransition(.zoom(sourceID: NowPlayingZoom.sourceID, in: zoomNamespace))
         }
     }
 }
@@ -1158,12 +1181,13 @@ struct NowPlayingTakeover: ViewModifier {
 /// The player as the root of its own stack, so an artist or album opened from
 /// it is pushed over it and the system back button returns to it.
 private struct PlayerNavigationStack: View {
+    let usesFullscreenCover: Bool
     @Environment(AppModel.self) private var appModel
 
     var body: some View {
         @Bindable var appModel = appModel
         NavigationStack(path: $appModel.playerPath) {
-            NowPlayingView()
+            NowPlayingView(usesFullscreenCover: usesFullscreenCover)
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: BrowseDestination.self) { destination in
                     switch destination {
