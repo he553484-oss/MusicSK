@@ -13,24 +13,45 @@ struct CanvasPlayer: View {
     let url: URL
     var fallbackURL: URL? = nil
     var isPlaying: Bool = true // Kept for existing sleeve/album call sites.
-    var fitPortrait = false
+    var fitPortrait = true
     var sampleFrames = false
     var onAspect: (CGFloat) -> Void = { _ in }
     var onRendered: (Bool) -> Void = { _ in }
     var onFrame: (Data) -> Void = { _ in }
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityPlayAnimatedImages) private var autoplayArtwork
     @State private var visible = false
+    @State private var powerAllowsArtwork = Self.powerPolicyAllowsArtwork
+
+    private static var powerPolicyAllowsArtwork: Bool {
+        let device = ProcessInfo.processInfo
+        #if os(iOS)
+        guard !device.isLowPowerModeEnabled else { return false }
+        #endif
+        return device.thermalState.rawValue < ProcessInfo.ThermalState.serious.rawValue
+    }
 
     var body: some View {
         CanvasPlayerLayer(configuration: CanvasConfiguration(
             url: url, fallback: fallbackURL,
-            active: visible && scenePhase == .active && isPlaying,
+            active: visible && scenePhase == .active && isPlaying && !reduceMotion
+                && autoplayArtwork && powerAllowsArtwork && NetworkQuality.shared.canvasAllowed
+                && !NetworkQuality.shared.constrained,
             fitPortrait: fitPortrait, sampleFrames: sampleFrames,
             onAspect: onAspect, onRendered: onRendered, onFrame: onFrame
         ))
         .allowsHitTesting(false)
         .onAppear { visible = true }
         .onDisappear { visible = false }
+        #if os(iOS)
+        .onReceive(NotificationCenter.default.publisher(for: .NSProcessInfoPowerStateDidChange)) { _ in
+            powerAllowsArtwork = Self.powerPolicyAllowsArtwork
+        }
+        #endif
+        .onReceive(NotificationCenter.default.publisher(for: ProcessInfo.thermalStateDidChangeNotification)) { _ in
+            powerAllowsArtwork = Self.powerPolicyAllowsArtwork
+        }
     }
 }
 

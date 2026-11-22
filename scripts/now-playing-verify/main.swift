@@ -95,9 +95,29 @@ func until(_ label: String, _ predicate: () -> Bool) async {
 struct Verify {
     @MainActor
     static func main() async {
+        // Only file dimensions that match a native artwork variant may reach the system.
+        precondition(NowPlayingArtworkShape(size: CGSize(width: 800, height: 800)) == .square)
+        precondition(NowPlayingArtworkShape(size: CGSize(width: 480, height: 640)) == .tall)
+        precondition(NowPlayingArtworkShape(size: CGSize(width: -480, height: 640)) == .tall)
+        precondition(NowPlayingArtworkShape(size: CGSize(width: 720, height: 1280)) == nil)
+        precondition(NowPlayingArtworkShape(size: CGSize(width: 480, height: 639)) == nil)
+        precondition(NowPlayingArtworkShape(size: .zero) == nil)
+
         // A native snapshot uses one coherent state/position/time anchor.
         let anchor = Date(timeIntervalSince1970: 100)
         let playingSnapshot = NowPlayingPlaybackState(rate: 1, position: 12, timestamp: anchor)
+        let later = Date(timeIntervalSince1970: 100.5)
+        precondition(playingSnapshot.predictedPosition(at: later) == 12.5)
+        precondition(!playingSnapshot.needsCorrection(position: 12.5, at: later))
+        precondition(!playingSnapshot.needsCorrection(position: 12.8, at: later))
+        precondition(playingSnapshot.needsCorrection(position: 10, at: later))
+        precondition(playingSnapshot.needsCorrection(position: 30, at: later))
+        precondition(!playingSnapshot.needsCorrection(position: .infinity, at: later))
+        let fast = NowPlayingPlaybackState(rate: 2, position: 12, timestamp: anchor)
+        precondition(fast.predictedPosition(at: later) == 13)
+        let still = NowPlayingPlaybackState(rate: 0, position: 12, timestamp: anchor)
+        precondition(!still.needsCorrection(position: 30, at: later))
+
         let pausedSnapshot = playingSnapshot.updating(rate: 0, position: 13, at: anchor.addingTimeInterval(1))
         precondition(pausedSnapshot.rate == 0 && pausedSnapshot.position == 13)
         precondition(pausedSnapshot.timestamp == anchor.addingTimeInterval(1))

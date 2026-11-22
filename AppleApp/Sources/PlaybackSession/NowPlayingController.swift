@@ -20,6 +20,7 @@ import Synchronization
 @MainActor
 final class NowPlayingController {
     private var metadataKey: String?
+    private var metadataProgress = NowPlayingPlaybackState()
     private var artwork: MPMediaItemArtwork?
     /// URL that `artwork` was built from — not the in-flight request.
     private var artworkURL: String?
@@ -27,11 +28,19 @@ final class NowPlayingController {
     private var handlers: [Any] = []
 #if os(iOS)
     private var modern: AnyObject?
+    private var animatedSource: NowPlayingArtworkSource?
+    private var artworkTask: Task<Void, Never>?
+    private var requestedSource: NowPlayingArtworkSource?
+    private var artworkGeneration = UUID()
+    private var installedClips: [NowPlayingArtworkShape: NowPlayingClip] = [:]
+    private var legacyAnimatedMetadata: [String: Any] = [:]
+    private var artworkObservers: [NSObjectProtocol] = []
 #endif
 
     init() {
 #if os(iOS)
         NowPlayingActivityController.endLegacyActivities()
+        if #available(iOS 26, *) { observeArtworkPolicy() }
         if #available(iOS 27, *) {
             resetModernModel()
             // iOS 27+: metadata and commands live EXCLUSIVELY on the
@@ -110,50 +119,48 @@ final class NowPlayingController {
 
     /// Called only for an explicit play intent, after activation and a paused
     /// engine load have succeeded, before engine.play().
-    func prepareForPlayback(id: String, title: String, artist: String, duration: Double,
+    func prepareForPlayback(id: String, title: String, artist: String, album: String? = nil, duration: Double,
                             artworkData: Data?, thumbnailUrl: String?, position: Double,
                             canNext: Bool, canPrevious: Bool, canSeek: Bool) {
 #if os(iOS)
         if #available(iOS 27, *), let model = modern as? ModernNowPlaying {
-            model.prepare(id: id, title: title, artist: artist, duration: duration,
+            prepareMetadata(for: id)
+            model.prepare(id: id, title: title, artist: artist, album: album, duration: duration,
                           artworkData: artworkData, thumbnailUrl: thumbnailUrl, position: position,
                           canNext: canNext, canPrevious: canPrevious, canSeek: canSeek)
         }
 #endif
     }
 
-    func update(id: String, title: String, artist: String, duration: Double,
+    func update(id: String, title: String, artist: String, album: String? = nil, duration: Double,
                 artworkData: Data?, thumbnailUrl: String?, isPlaying: Bool,
                 position: Double? = nil) {
+        prepareMetadata(for: id)
         // iOS 27 publishes exclusively through the MediaSession (see init:
         // mixing in MPNowPlayingInfoCenter yields undefined behavior).
 #if os(iOS)
         if #available(iOS 27, *), let model = modern as? ModernNowPlaying {
-            model.update(id: id, title: title, artist: artist, duration: duration,
+            model.update(id: id, title: title, artist: artist, album: album, duration: duration,
                          artworkData: artworkData, thumbnailUrl: thumbnailUrl,
                          isPlaying: isPlaying, position: position)
             return
         }
 #endif
-        let key = id
-        if metadataKey != key {
-            metadataKey = key
-            artwork = nil
-            artworkURL = nil
-            lastRequestedURL = nil
-        }
+        let rate = isPlaying ? Double(PlatformSettings.shared.getFloat(key: "playback_speed", default: 1)) : 0
+        let elapsed = position ?? metadataProgress.predictedPosition(at: Date())
+        metadataProgress = metadataProgress.updating(rate: rate, position: elapsed)
         var info: [String: Any] = [
             MPMediaItemPropertyTitle: title,
             MPMediaItemPropertyArtist: artist,
             MPMediaItemPropertyPlaybackDuration: duration,
-            MPNowPlayingInfoPropertyPlaybackRate: isPlaying ? Double(PlatformSettings.shared.getFloat(key: "playback_speed", default: 1)) : 0.0,
+            MPNowPlayingInfoPropertyPlaybackRate: metadataProgress.rate,
+            MPNowPlayingInfoPropertyElapsedPlaybackTime: metadataProgress.position,
             MPNowPlayingInfoPropertyMediaType: MPNowPlayingInfoMediaType.audio.rawValue,
         ]
-        if let position {
-            info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = position
-        } else if let old = MPNowPlayingInfoCenter.default().nowPlayingInfo?[MPNowPlayingInfoPropertyElapsedPlaybackTime] {
-            info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = old
-        }
+        if let album { info[MPMediaItemPropertyAlbumTitle] = album }
+        #if os(iOS)
+        info.merge(legacyAnimatedMetadata, uniquingKeysWith: { _, animated in animated })
+        #endif
         if lastRequestedURL != thumbnailUrl { lastRequestedURL = nil }
         if let item = artworkFromBytes(artworkData) {
             info[MPMediaItemPropertyArtwork] = item
@@ -190,6 +197,19 @@ final class NowPlayingController {
         commands.changePlaybackPositionCommand.isEnabled = canSeek
     }
 
+    /// A native progress clock interpolates between anchors. Periodic engine
+    /// samples are needed only to correct observable drift.
+    func synchronizePosition(_ position: Double) {
+#if os(iOS)
+        if #available(iOS 27, *), let model = modern as? ModernNowPlaying {
+            model.synchronizePosition(position)
+            return
+        }
+#endif
+        guard metadataKey != nil, metadataProgress.needsCorrection(position: position) else { return }
+        update(position: position)
+    }
+
     func update(position: Double) {
 #if os(iOS)
         if #available(iOS 27, *), let model = modern as? ModernNowPlaying {
@@ -197,8 +217,9 @@ final class NowPlayingController {
             return
         }
 #endif
-        var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
-        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = position
+        guard var info = MPNowPlayingInfoCenter.default().nowPlayingInfo else { return }
+        metadataProgress = metadataProgress.updating(position: position)
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = metadataProgress.position
         info[MPNowPlayingInfoPropertyMediaType] = MPNowPlayingInfoMediaType.audio.rawValue
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
@@ -210,11 +231,10 @@ final class NowPlayingController {
             return
         }
 #endif
-        var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
-        info[MPNowPlayingInfoPropertyPlaybackRate] = rate
-        if let position {
-            info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = position
-        }
+        guard var info = MPNowPlayingInfoCenter.default().nowPlayingInfo else { return }
+        metadataProgress = metadataProgress.updating(rate: rate, position: position ?? metadataProgress.predictedPosition(at: Date()))
+        info[MPNowPlayingInfoPropertyPlaybackRate] = metadataProgress.rate
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = metadataProgress.position
         info[MPNowPlayingInfoPropertyMediaType] = MPNowPlayingInfoMediaType.audio.rawValue
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
 #if os(macOS)
@@ -249,6 +269,7 @@ final class NowPlayingController {
     }
 
     func stop() {
+        clearMetadata()
 #if os(iOS)
         if #available(iOS 27, *), let model = modern as? ModernNowPlaying {
             model.stop()
@@ -258,12 +279,143 @@ final class NowPlayingController {
             return
         }
 #endif
-        lastRequestedURL = nil
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
 #if os(macOS)
         MPNowPlayingInfoCenter.default().playbackState = .stopped
 #endif
     }
+
+    private func prepareMetadata(for id: String) {
+        guard metadataKey != id else { return }
+        clearMetadata()
+        metadataKey = id
+    }
+
+    private func clearMetadata() {
+        metadataKey = nil
+        metadataProgress = NowPlayingPlaybackState()
+        artwork = nil
+        artworkURL = nil
+        lastRequestedURL = nil
+        #if os(iOS)
+        artworkGeneration = UUID()
+        artworkTask?.cancel()
+        artworkTask = nil
+        requestedSource = nil
+        animatedSource = nil
+        installedClips = [:]
+        legacyAnimatedMetadata = [:]
+        #endif
+    }
+
+    #if os(iOS)
+    func setAnimatedArtwork(id: String, source: NowPlayingArtworkSource?) {
+        guard #available(iOS 26, *), metadataKey == id else { return }
+        animatedSource = source
+        refreshAnimatedArtwork()
+    }
+
+    @available(iOS 26, *)
+    private func observeArtworkPolicy() {
+        let names: [Notification.Name] = [
+            .NSProcessInfoPowerStateDidChange,
+            ProcessInfo.thermalStateDidChangeNotification,
+            UIAccessibility.reduceMotionStatusDidChangeNotification
+        ]
+        artworkObservers = names.map { name in
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor [weak self] in self?.refreshAnimatedArtwork() }
+            }
+        }
+        observeArtworkNetwork()
+    }
+
+    @available(iOS 26, *)
+    private func observeArtworkNetwork() {
+        withObservationTracking {
+            _ = NetworkQuality.shared.pathChanges
+        } onChange: { [weak self] in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                self.observeArtworkNetwork()
+                self.refreshAnimatedArtwork()
+            }
+        }
+    }
+
+    @available(iOS 26, *)
+    private var artworkPolicyAllowsMotion: Bool {
+        let device = ProcessInfo.processInfo
+        return NetworkQuality.shared.canvasAllowed && !NetworkQuality.shared.constrained
+            && !UIAccessibility.isReduceMotionEnabled && !device.isLowPowerModeEnabled
+            && device.thermalState.rawValue < ProcessInfo.ThermalState.serious.rawValue
+    }
+
+    @available(iOS 26, *)
+    private func refreshAnimatedArtwork() {
+        let allowedSource = artworkPolicyAllowsMotion ? animatedSource : nil
+        if allowedSource == requestedSource,
+           artworkTask != nil || !installedClips.isEmpty || allowedSource == nil { return }
+        artworkTask?.cancel()
+        artworkTask = nil
+        let generation = UUID()
+        artworkGeneration = generation
+        requestedSource = allowedSource
+        // Settings changes and a genuinely different rendition clear the old
+        // metadata before beginning any new download.
+        installAnimatedClips([:])
+        guard let source = allowedSource else { return }
+        let shapes: Set<NowPlayingArtworkShape>
+        if #available(iOS 27, *) {
+            shapes = Set(AnimatedArtwork.compatibleAspectRatios.compactMap {
+                switch $0 {
+                case .square: .square
+                case .tall: .tall
+                @unknown default: nil
+                }
+            })
+        } else {
+            let keys = MPNowPlayingInfoCenter.supportedAnimatedArtworkKeys
+            shapes = Set(NowPlayingArtworkShape.allCases.filter { keys.contains($0.mediaPlayerKey) })
+        }
+        guard !shapes.isEmpty else { return }
+        let allowDownload = NetworkQuality.shared.connected
+        artworkTask = Task(priority: .utility) { [weak self] in
+            let clips = await NowPlayingArtworkLoader.prepare(source, shapes: shapes, allowDownload: allowDownload)
+            guard !Task.isCancelled, let self, self.artworkGeneration == generation else { return }
+            self.artworkTask = nil
+            guard self.artworkPolicyAllowsMotion else { return }
+            self.installAnimatedClips(clips)
+        }
+    }
+
+    @available(iOS 26, *)
+    private func installAnimatedClips(_ clips: [NowPlayingArtworkShape: NowPlayingClip]) {
+        guard clips.mapValues(\.id) != installedClips.mapValues(\.id) else { return }
+        installedClips = clips
+        if #available(iOS 27, *), let model = modern as? ModernNowPlaying {
+            model.animatedClips = clips
+            return
+        }
+
+        let center = MPNowPlayingInfoCenter.default()
+        var info = center.nowPlayingInfo
+        for key in legacyAnimatedMetadata.keys { info?.removeValue(forKey: key) }
+        legacyAnimatedMetadata.removeAll(keepingCapacity: true)
+        for (shape, clip) in clips {
+            guard let preview = UIImage(data: clip.preview) else { continue }
+            let animated = MPMediaItemAnimatedArtwork(
+                artworkID: clip.id, previewImageRequestHandler: { _ async in preview },
+                videoAssetFileURLRequestHandler: { _ async in clip.file.url }
+            )
+            legacyAnimatedMetadata[shape.mediaPlayerKey] = animated
+            info?[shape.mediaPlayerKey] = animated
+        }
+        if let info {
+            center.nowPlayingInfo = info
+        }
+    }
+    #endif
 
     private func artworkFromBytes(_ data: Data?) -> MPMediaItemArtwork? {
         guard let data else { return nil }
@@ -313,6 +465,16 @@ final class NowPlayingController {
 }
 
 #if os(iOS)
+@available(iOS 26, *)
+private extension NowPlayingArtworkShape {
+    var mediaPlayerKey: String {
+        switch self {
+        case .square: MPNowPlayingInfoProperty1x1AnimatedArtwork
+        case .tall: MPNowPlayingInfoProperty3x4AnimatedArtwork
+        }
+    }
+}
+
 /// iOS 27 publishes an explicit media session, including its playback state.
 /// Keep it separate from the legacy MediaPlayer path: Apple says not to publish
 /// the same local playback through both APIs.
@@ -324,6 +486,7 @@ private final class ModernNowPlaying: MediaSessionRepresentable {
     weak var delegate: NowPlayingController?
     var title = ""
     var artist = ""
+    var album = ""
     var duration: Double = 0
     @ObservationIgnored private var playback = NowPlayingPlaybackState()
     // Observe the actual framework value. Getters must not mutate diagnostic
@@ -334,6 +497,7 @@ private final class ModernNowPlaying: MediaSessionRepresentable {
     var preparing: Bool { playback.preparing }
     var artworkData: Data?
     var artworkURL: String?
+    var animatedClips: [NowPlayingArtworkShape: NowPlayingClip] = [:]
     var canNext = false
     var canPrevious = false
     var canSeek = false
@@ -358,7 +522,7 @@ private final class ModernNowPlaying: MediaSessionRepresentable {
         guard let contentID else { return nil }
         let imageData = artworkData
         let imageURL = artworkURL
-        let artwork: Artwork? = (imageData != nil || imageURL != nil)
+        let staticArtwork: Artwork? = (imageData != nil || imageURL != nil)
             ? Artwork(id: "\(contentID)|\(imageURL ?? "embedded")") { _ in
                 if let imageData { return try ArtworkRepresentation(data: imageData) }
                 guard let imageURL
@@ -370,12 +534,52 @@ private final class ModernNowPlaying: MediaSessionRepresentable {
                 return try ArtworkRepresentation(data: data)
             }
             : nil
+        let total = duration > 0 ? MediaDuration.finite(duration) : nil
+        if !animatedClips.isEmpty {
+            let variants = animatedClips
+            let sortedShapes = NowPlayingArtworkShape.allCases.filter { variants[$0] != nil }
+            let identity = sortedShapes.compactMap { variants[$0]?.id }.joined(separator: "|")
+            let animated = AnimatedArtwork(
+                id: identity,
+                supportedAspectRatios: sortedShapes.map { $0 == .square ? .square : .tall },
+                preview: { _, aspect in
+                    let clip = try Self.clip(for: aspect, in: variants)
+                    return try ArtworkRepresentation(data: clip.preview)
+                },
+                video: { _, aspect in
+                    try Self.clip(for: aspect, in: variants).file.url
+                }
+            )
+            if let primary = sortedShapes.first.flatMap({ variants[$0] }) {
+                let preview = Artwork(id: "preview|\(primary.id)") { _ in
+                    try ArtworkRepresentation(data: primary.preview)
+                }
+                return MusicContent(
+                    id: contentID, songTitle: title, artistName: artist, albumName: album,
+                    type: .audio, duration: total, artwork: staticArtwork ?? preview,
+                    animatedArtwork: animated
+                )
+            }
+        }
         return MusicContent(
-            id: contentID, songTitle: title, artistName: artist,
-            albumName: "", type: .audio,
-            duration: duration > 0 ? .finite(duration) : nil,
-            artwork: artwork
+            id: contentID, songTitle: title, artistName: artist, albumName: album,
+            type: .audio, duration: total, artwork: staticArtwork
         )
+    }
+
+    nonisolated private static func clip(for aspect: AnimatedArtwork.AspectRatio,
+                                         in clips: [NowPlayingArtworkShape: NowPlayingClip]) throws -> NowPlayingClip {
+        let shape: NowPlayingArtworkShape
+        switch aspect {
+        case .square: shape = .square
+        case .tall: shape = .tall
+        @unknown default:
+            throw ArtworkRepresentation.ArtworkRepresentationError.noRepresentationAvailable
+        }
+        guard let clip = clips[shape] else {
+            throw ArtworkRepresentation.ArtworkRepresentationError.noRepresentationAvailable
+        }
+        return clip
     }
 
     private func publishPlayback(_ value: NowPlayingPlaybackState) {
@@ -445,10 +649,10 @@ private final class ModernNowPlaying: MediaSessionRepresentable {
         NSLog("[BitChord] %@", message)
     }
 
-    func prepare(id: String, title: String, artist: String, duration: Double,
+    func prepare(id: String, title: String, artist: String, album: String?, duration: Double,
                  artworkData: Data?, thumbnailUrl: String?, position: Double,
                  canNext: Bool, canPrevious: Bool, canSeek: Bool) {
-        update(id: id, title: title, artist: artist, duration: duration,
+        update(id: id, title: title, artist: artist, album: album, duration: duration,
                artworkData: artworkData, thumbnailUrl: thumbnailUrl,
                isPlaying: false, position: position)
         self.canNext = canNext
@@ -466,13 +670,18 @@ private final class ModernNowPlaying: MediaSessionRepresentable {
         record("audio playback started")
     }
 
-    func update(id: String, title: String, artist: String, duration: Double,
+    func update(id: String, title: String, artist: String, album: String? = nil, duration: Double,
                 artworkData: Data?, thumbnailUrl: String?, isPlaying: Bool,
                 position: Double?) {
-        let elapsed = position ?? (contentID == id ? nil : 0)
-        contentID = id
+        let trackChanged = contentID != id
+        let elapsed = position ?? (trackChanged ? 0 : nil)
+        if trackChanged {
+            animatedClips = [:]
+            contentID = id
+        }
         self.title = title
         self.artist = artist
+        self.album = album ?? ""
         self.duration = duration
         self.artworkData = artworkData
         self.artworkURL = thumbnailUrl
@@ -486,6 +695,11 @@ private final class ModernNowPlaying: MediaSessionRepresentable {
         // keeps the original timestamp instead of restarting native progress.
         publishPlayback(playback.updating(rate: validRate, position: position))
         lifecycle.update(contentID: contentID, playing: self.rate > 0)
+    }
+
+    func synchronizePosition(_ position: Double) {
+        guard playback.needsCorrection(position: position) else { return }
+        updatePosition(position)
     }
 
     func updatePosition(_ position: Double) {

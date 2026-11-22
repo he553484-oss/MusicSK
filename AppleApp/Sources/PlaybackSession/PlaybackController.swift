@@ -778,7 +778,7 @@ final class PlaybackController {
                 }
                 self.position = self.playbackPosition
                 self.positionSampledAt = Date()
-                self.nowPlaying.update(position: self.position)
+                self.nowPlaying.synchronizePosition(self.position)
                 if let sample = self.pendingPlaybackLatency,
                    sample.entryID == self.current?.id,
                    let resolvedAt = sample.resolvedAt,

@@ -433,7 +433,7 @@ actor CanvasFileCache {
 
     var folder: URL { DiskCache.cachesSubfolder("canvas") }
 
-    func cachedFile(for remote: URL) async -> URL {
+    func cachedFile(for remote: URL, allowDownload: Bool = true) async -> URL {
         if remote.isFileURL { return remote }
         let ext = remote.pathExtension.lowercased()
         // AVPlayer must see an HLS playlist as a network resource so it can
@@ -448,6 +448,7 @@ actor CanvasFileCache {
             DiskCache.touch(dest)
             return dest
         }
+        guard allowDownload else { return remote }
         let waiterID = UUID()
         return await withTaskCancellationHandler {
             await withCheckedContinuation { continuation in
@@ -508,20 +509,66 @@ actor CanvasFileCache {
     }
 
     private func download(_ remote: URL, to dest: URL) async -> URL {
-        guard let (data, response) = try? await URLSession.shared.data(for: CanvasMediaRequest.download(remote)),
-              !data.isEmpty else { return remote }
+        var request = CanvasMediaRequest.download(remote)
+        let allowMetered = await MainActor.run {
+            PlatformSettings.shared.getBoolean(key: "canvas_over_cellular", default: false)
+        }
+        guard !Task.isCancelled else { return remote }
+        request.allowsCellularAccess = allowMetered
+        request.allowsExpensiveNetworkAccess = allowMetered
+        request.allowsConstrainedNetworkAccess = false
+        guard let (temporary, response) = try? await URLSession.shared.download(for: request) else { return remote }
+        defer { try? FileManager.default.removeItem(at: temporary) }
+        guard !Task.isCancelled else { return remote }
         if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
             PlaybackDebugLog.shared.record("animated artwork download failed HTTP \(http.statusCode) host=\(remote.host ?? "unknown")")
             return remote
         }
-        if let mimeType = response.mimeType?.lowercased(), mimeType.contains("mpegurl") {
+        if let mimeType = response.mimeType?.lowercased(),
+           mimeType.contains("mpegurl") || mimeType.contains("text/") || mimeType.contains("json") {
             return remote
         }
-        if let mimeType = response.mimeType?.lowercased(),
-           mimeType.contains("text/") || mimeType.contains("json") { return remote }
-        try? data.write(to: dest, options: .atomic)
+        guard let size = try? temporary.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+              size > 0, Int64(size) <= Self.limit else { return remote }
+        do {
+            try FileManager.default.moveItem(at: temporary, to: dest)
+        } catch {
+            return remote
+        }
         DiskCache.trimFolder(folder, limitBytes: Self.limit)
         return FileManager.default.fileExists(atPath: dest.path) ? dest : remote
+    }
+
+    private var publishedFolder: URL?
+
+    func acquirePublishedFile(for url: URL, allowDownload: Bool) async -> PublishedCanvasFile? {
+        // The same cached asset serves both views and the system, where supported.
+        guard url.isFileURL || url.scheme?.lowercased() == "https" else { return nil }
+        let local = await cachedFile(for: url, allowDownload: allowDownload)
+        guard local.isFileURL, !Task.isCancelled,
+              let size = try? local.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+              size > 0, Int64(size) <= Self.limit
+        else { return nil }
+
+        let directory: URL
+        if let publishedFolder {
+            directory = publishedFolder
+        } else {
+            // Start fresh after a crash or relaunch. Live leases belong to this
+            // process and this is the only place that clears their directory.
+            directory = DiskCache.cachesSubfolder("published-canvas")
+            DiskCache.clearFolder(directory)
+            DiskCache.allowLockedPlayback(directory)
+            publishedFolder = directory
+        }
+        let destination = directory.appendingPathComponent(UUID().uuidString).appendingPathExtension(local.pathExtension)
+        do {
+            try FileManager.default.linkItem(at: local, to: destination)
+        } catch {
+            return nil
+        }
+        DiskCache.allowLockedPlayback(destination)
+        return PublishedCanvasFile(url: destination)
     }
 
     func invalidate(_ remote: URL) {

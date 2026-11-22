@@ -136,7 +136,7 @@ extension PlaybackController {
                     self.queue[i].artworkData = data
                 }
                 self.nowPlaying.update(
-                    id: entry.id, title: entry.title, artist: entry.artist,
+                    id: entry.id, title: entry.title, artist: entry.artist, album: entry.albumName,
                     duration: self.duration, artworkData: data,
                     thumbnailUrl: entry.thumbnailUrl, isPlaying: self.isPlaying, position: self.position
                 )

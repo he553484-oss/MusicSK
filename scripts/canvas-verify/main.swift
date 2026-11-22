@@ -104,8 +104,21 @@ private final class CanvasResult: CanvasBridgeCanvasCallback {
             hlsPlayer.replaceCurrentItem(with: nil)
             check(hlsFrame, "Apple motion HLS produces an actual video frame through the same media policy")
         }
+        // Publishing an already-cached clip must neither redownload it nor
+        // leave the system pointing at a path cache cleanup can remove.
+        var published = await CanvasFileCache.shared.acquirePublishedFile(for: starboy, allowDownload: false)
+        let publishedURL = published?.url
+        check(publishedURL?.isFileURL == true && publishedURL != local, "native artwork gets a leased local path")
         await CanvasFileCache.shared.invalidate(starboy)
         check(!FileManager.default.fileExists(atPath: local.path), "failed cached clips can be invalidated for a fresh download")
+        if let publishedURL {
+            check(FileManager.default.fileExists(atPath: publishedURL.path), "an active publication survives eviction from the canvas cache")
+            published = nil
+            for _ in 0..<20 where FileManager.default.fileExists(atPath: publishedURL.path) {
+                try await Task.sleep(for: .milliseconds(10))
+            }
+            check(!FileManager.default.fileExists(atPath: publishedURL.path), "the leased file is deleted after its last publication releases it")
+        }
         print("Canvas verification: \(failures.isEmpty ? "passed" : "failed")")
         if !failures.isEmpty { exit(1) }
     }

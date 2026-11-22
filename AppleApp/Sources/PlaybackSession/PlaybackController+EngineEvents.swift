@@ -32,7 +32,7 @@ extension PlaybackController {
         state = newState
         if let current {
             nowPlaying.update(
-                id: current.id, title: current.title, artist: current.artist,
+                id: current.id, title: current.title, artist: current.artist, album: current.albumName,
                 duration: duration, artworkData: current.artworkData,
                 thumbnailUrl: current.thumbnailUrl,
                 isPlaying: newState == .playing
@@ -98,7 +98,6 @@ extension PlaybackController {
             if !sameSong {
                 refreshArtwork(entry, source: info.source)
                 fetchLyrics(for: entry)
-                fetchCanvas(for: entry)
             }
             nerd = dolbyRenderer?.nerd ?? engine.nerdStats()
             racingLossless = QualityUpgrade.isRacing(entry.id)
@@ -111,10 +110,11 @@ extension PlaybackController {
             }
             publishPresence()
             nowPlaying.update(
-                id: entry.id, title: entry.title, artist: entry.artist,
+                id: entry.id, title: entry.title, artist: entry.artist, album: entry.albumName,
                 duration: info.durationSeconds, artworkData: entry.artworkData,
                 thumbnailUrl: entry.thumbnailUrl, isPlaying: isPlaying, position: position
             )
+            if !sameSong { fetchCanvas(for: entry) }
             engineLoadedId = entry.id
             loadedSourcePath = info.source
             loadedSourceHeaders = sourceHeadersByPath.removeValue(forKey: info.source) ?? [:]

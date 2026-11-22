@@ -9,6 +9,7 @@ import BitChordShared
 final class NetworkQuality {
     static let shared = NetworkQuality()
     private(set) var metered = false
+    private(set) var constrained = false
     private(set) var connected = true
     @ObservationIgnored private let monitor = NWPathMonitor()
     /// Which interface carries traffic, and whether it is up. A change here is
@@ -20,12 +21,14 @@ final class NetworkQuality {
     init() {
         monitor.pathUpdateHandler = { [weak self] path in
             let expensive = path.isExpensive || path.isConstrained
-            let signature = "\(path.status)|" + path.availableInterfaces.filter { path.usesInterfaceType($0.type) }
+            let signature = "\(path.status)|\(path.isExpensive)|\(path.isConstrained)|" + path.availableInterfaces.filter { path.usesInterfaceType($0.type) }
                 .map { "\($0.type):\($0.name)" }.sorted().joined(separator: ",")
             Task { @MainActor in
                 guard let self else { return }
                 let wasConnected = self.connected
-                self.metered = expensive; self.connected = path.status == .satisfied
+                self.metered = expensive
+                self.constrained = path.isConstrained
+                self.connected = path.status == .satisfied
                 StreamDownloadBridge.shared.networkStatus(available: self.connected)
                 AppSettings.shared.setMeteredConnection(value: KotlinBoolean(bool: expensive))
                 DownloadStore.shared.networkPolicyChanged()

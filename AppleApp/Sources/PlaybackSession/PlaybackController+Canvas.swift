@@ -23,12 +23,14 @@ extension PlaybackController {
     func fetchCanvas(for entry: QueueEntry) {
         let titleKey = entry.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         let artistKey = entry.artist.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        let identity = "\(titleKey)|\(artistKey)"
+        let albumKey = entry.albumName?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
+        let identity = "\(titleKey)|\(artistKey)|\(albumKey)"
         if canvasIdentity != identity {
             canvasURL = nil
             canvasFallbackURL = nil
             canvasSource = nil
             canvasIdentity = identity
+            publishCanvas(for: entry.id)
         }
         canvasLookupGeneration &+= 1
         let generation = canvasLookupGeneration
@@ -40,12 +42,14 @@ extension PlaybackController {
             canvasURL = nil
             canvasFallbackURL = nil
             canvasSource = nil
+            publishCanvas(for: entry.id)
             return
         }
+        publishCanvas(for: entry.id)
         CanvasBridge.shared.lookup(title: entry.title, artist: entry.artist, album: entry.albumName, callback: CanvasAdapter { [weak self] json in
             Task { @MainActor in
                 guard let self, self.canvasLookupGeneration == generation,
-                      let active = self.current,
+                      let active = self.current, active.id == entry.id,
                       active.title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == titleKey,
                       active.artist.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() == artistKey else { return }
                 guard let json, let data = json.data(using: .utf8),
@@ -57,6 +61,7 @@ extension PlaybackController {
                 self.canvasURL = url
                 self.canvasFallbackURL = payload.fallbackUrl.flatMap(URL.init(string:))
                 self.canvasSource = payload.source
+                self.publishCanvas(for: active.id)
                 NSLog("[BitChord] animated artwork source=%@ host=%@ for '%@'",
                       payload.source, url.host ?? "unknown", entry.title)
             }
@@ -84,12 +89,20 @@ extension PlaybackController {
                         self.canvasURL = url
                         self.canvasFallbackURL = payload.fallbackUrl.flatMap(URL.init(string:))
                         self.canvasSource = payload.source
+                        self.publishCanvas(for: latest.id)
                         NSLog("[BitChord] animated artwork source=%@ host=%@ for '%@' after album metadata arrived",
                               payload.source, url.host ?? "unknown", latest.title)
                     }
                 })
             }
         }
+    }
+
+    private func publishCanvas(for id: String) {
+        #if os(iOS)
+        let source = canvasURL.map { NowPlayingArtworkSource(primary: $0, fallback: canvasFallbackURL) }
+        nowPlaying.setAnimatedArtwork(id: id, source: source)
+        #endif
     }
 
     private struct CanvasPayload: Codable {

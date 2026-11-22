@@ -244,6 +244,14 @@ struct NowPlayingPlaybackState: Equatable {
     var preparing = false
     var timestamp = Date()
 
+    func predictedPosition(at date: Date) -> Double {
+        position + max(0, date.timeIntervalSince(timestamp)) * rate
+    }
+
+    func needsCorrection(position actual: Double, at date: Date = Date()) -> Bool {
+        rate > 0 && actual.isFinite && abs(actual - predictedPosition(at: date)) > 0.75
+    }
+
     func updating(rate: Double? = nil, position: Double? = nil,
                   preparing: Bool? = nil, at timestamp: Date = Date()) -> Self {
         let nextRate = rate.map { $0.isFinite ? max(0, $0) : 0 } ?? self.rate

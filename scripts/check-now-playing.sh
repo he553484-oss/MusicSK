@@ -7,5 +7,6 @@ xcrun swiftc -parse-as-library -module-cache-path /tmp/bitchord-swift-module-cac
   -o "$scratch/now-playing-verify" \
   "$repo/AppleApp/Sources/PlaybackSession/AudioSessionReadiness.swift" \
   "$repo/AppleApp/Sources/PlaybackSession/NowPlayingLifecycle.swift" \
+  "$repo/AppleApp/Sources/PlaybackSession/NowPlayingArtwork.swift" \
   "$repo/scripts/now-playing-verify/main.swift"
 "$scratch/now-playing-verify"
