@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 
 enum Failure: Error { case transient, invalidated, ineligible }
 
