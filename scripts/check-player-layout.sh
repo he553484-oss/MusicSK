@@ -18,10 +18,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 ROOT="$PWD"
 HERE="$(cd "$(dirname "$0")" && pwd)"
-CHECK_DIR="${TMPDIR:-/tmp}/bitchord-player-layout-check"
-
-rm -rf "$CHECK_DIR"
-mkdir -p "$CHECK_DIR"
+CHECK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/musicsk-player-layout.XXXXXX")"
+trap 'rm -rf "$CHECK_DIR"' EXIT
 
 if command -v xcrun >/dev/null 2>&1; then
   swift_compiler=(xcrun swiftc -sdk "$(xcrun --show-sdk-path --sdk macosx)" -target arm64-apple-macos15.0)

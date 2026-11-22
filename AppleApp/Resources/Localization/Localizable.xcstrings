@@ -9620,6 +9620,16 @@
         }
       }
     },
+    "Play Video Version": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducir versión de vídeo"
+          }
+        }
+      }
+    },
     "Play a few songs and this page will fill in with minutes, top tracks and artists.": {},
     "Play a few songs this year and this page will fill in with minutes, top tracks and artists.": {},
     "Play a song to see lyrics here.": {

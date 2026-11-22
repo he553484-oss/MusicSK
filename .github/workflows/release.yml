@@ -139,6 +139,7 @@ jobs:
           run_check player-layout bash scripts/check-player-layout.sh
           run_check detail-header bash scripts/check-detail-header.sh
           run_check video-gating bash scripts/check-video-gating.sh
+          run_check video-sync bash scripts/check-video-sync.sh
           run_check lyrics-presentation bash scripts/check-lyrics-presentation.sh
           run_check lyrics-source bash scripts/check-lyrics.sh --source-only
           run_check system-volume bash scripts/check-system-volume.sh
@@ -147,9 +148,11 @@ jobs:
           run_check quality-log bash scripts/check-quality-log.sh
           run_check queue bash scripts/check-queue.sh
           run_check session-restore bash scripts/check-session-restore.sh
+          run_check stream-recovery bash scripts/check-stream-recovery.sh
           run_check transport bash scripts/check-transport.sh
           run_check local-library bash scripts/check-local-library.sh
           run_check pages bash scripts/check-pages.sh
+          run_check settings-parity bash scripts/check-settings-parity.sh
           run_check menus bash scripts/check-menus.sh
           run_check ipa-verifier python3 scripts/release-verify/check-ios-ipa.py
           exit "$failed"
