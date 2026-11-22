@@ -10,6 +10,9 @@ import AppKit
 /// Async artwork: YouTube thumbnail URLs, or embedded local artwork bytes.
 /// Upstream sizes via the `w<n>-h<n>` hint (`Song.artworkAt` in shared).
 struct ArtworkView: View {
+    static let playerThumbnailSide: CGFloat = 40
+    static let inlinePlayerThumbnailSide: CGFloat = 30
+
     var url: String?
     var data: Data?
     var side: CGFloat?
@@ -27,15 +30,17 @@ struct ArtworkView: View {
     /// library page, the queue, the mini player and the player itself, which is
     /// upstream's list of `rememberRemoteArtworkUrl` callers as well.
     var remoteId: String?
+    var playerThumbnailSource: String?
     @State private var embedded: Data?
 
-    init(entry: QueueEntry?, side: CGFloat? = nil) {
+    init(entry: QueueEntry?, side: CGFloat? = nil, reusesPlayerThumbnail: Bool = false) {
         self.init(
             url: entry?.thumbnailUrl,
             data: entry?.artworkData,
             side: side,
             remoteId: entry.flatMap { EmbeddedArtwork.trackId(of: $0) }
         )
+        playerThumbnailSource = reusesPlayerThumbnail ? entry?.thumbnailUrl : nil
     }
 
     init(url: String?, data: Data?, side: CGFloat? = nil, remoteId: String? = nil, fill: Bool = false, fallbackInitials: String? = nil) {
@@ -93,10 +98,21 @@ struct ArtworkView: View {
         } else if let url, let cached = ArtworkCache.shared.get(url) {
             scaled(cached)
         } else if let url {
-            RemoteArtwork(url: url, fallbackInitials: fallbackInitials)
+            RemoteArtwork(url: url, fallbackInitials: fallbackInitials, thumbnail: cachedPlayerThumbnail)
         } else {
             placeholder
         }
+    }
+
+    private var cachedPlayerThumbnail: PlatformImage? {
+        guard let source = playerThumbnailSource else { return nil }
+        let scale = PlatformScale.current
+        for side in [Self.playerThumbnailSide, Self.inlinePlayerThumbnailSide] {
+            let pixels = Int((side * scale).rounded())
+            if let url = SharedArtwork.sized(source, pixels),
+               let image = ArtworkCache.shared.get(url) { return image }
+        }
+        return nil
     }
 
     /// One drawing of a decoded image, for both platforms.
@@ -144,48 +160,37 @@ struct ArtworkView: View {
 private struct RemoteArtwork: View {
     let url: String
     var fallbackInitials: String? = nil
-    @State private var finished = false
+    var thumbnail: PlatformImage? = nil
+
+    @State private var result: (url: String, image: PlatformImage?)?
+
+    var body: some View {
+        Group {
+            if let artwork = (result?.url == url ? result?.image : nil) ?? thumbnail {
+                #if os(iOS)
+                Image(uiImage: artwork).resizable().scaledToFill()
+                #else
+                Image(nsImage: artwork).resizable().scaledToFill()
+                #endif
+            } else {
+                Rectangle().fill(.quaternary.opacity(0.6))
+                    .overlay { missingArtwork }
+            }
+        }
+        .task(id: url) {
+            let image = await ArtworkCache.shared.load(url)
+            guard !Task.isCancelled else { return }
+            result = (url, image)
+        }
+    }
 
     @ViewBuilder private var missingArtwork: some View {
         if let fallbackInitials {
             Text(fallbackInitials).font(.title2.weight(.semibold)).foregroundStyle(.secondary)
-        } else if finished && LocalArtwork.isReference(url) {
+        } else if result?.url == url && LocalArtwork.isReference(url) {
             Image(.bchMusicNote).resizable().scaledToFit().padding(20).foregroundStyle(.secondary)
         } else {
             ProgressView().controlSize(.mini)
-        }
-    }
-#if os(iOS)
-    @State private var image: UIImage?
-#else
-    @State private var image: NSImage?
-#endif
-
-    var body: some View {
-        Group {
-#if os(iOS)
-            if let image {
-                Image(uiImage: image).resizable().scaledToFill()
-            } else {
-                Rectangle().fill(.quaternary.opacity(0.6))
-                    .overlay { missingArtwork }
-            }
-#else
-            if let image {
-                Image(nsImage: image).resizable().scaledToFill()
-            } else {
-                Rectangle().fill(.quaternary.opacity(0.6))
-                    .overlay { missingArtwork }
-            }
-#endif
-        }
-        .task(id: url) {
-            image = nil
-            finished = false
-            let result = await ArtworkCache.shared.load(url)
-            guard !Task.isCancelled else { return }
-            image = result
-            finished = true
         }
     }
 }

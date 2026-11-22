@@ -19,6 +19,7 @@ struct PlaybackPill: View {
 
     @Environment(PlaybackController.self) private var controller
     @Environment(AppModel.self) private var appModel
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     #if os(macOS)
     @Environment(\.macInspectorSelection) private var inspector
@@ -56,7 +57,7 @@ struct PlaybackPill: View {
     @State private var lockedPillDrag: (start: CGPoint, axis: PillDragAxis)?
     private var isRegularWidth: Bool { horizontalSizeClass == .regular }
     private var pillPullLift: CGFloat {
-        guard pillDrag.axis == .vertical, pillDrag.translation.height < 0 else { return 0 }
+        guard !reduceMotion, pillDrag.axis == .vertical, pillDrag.translation.height < 0 else { return 0 }
         return min(max(-pillDrag.translation.height * 0.5, 0), 72)
     }
 
@@ -101,7 +102,7 @@ struct PlaybackPill: View {
         // rate. Only the release back to rest springs; the pull itself does not lag.
         .animation(
             pillDrag == PillDragState()
-                ? .spring(response: 0.38, dampingFraction: 0.86)
+                ? Motion.playerDragReturn(reduceMotion)
                 : nil,
             value: pillDrag
         )
@@ -316,7 +317,7 @@ struct PlaybackPill: View {
 
     @ViewBuilder
     private var artworkOrPlaceholder: some View {
-        let side: CGFloat = inline ? 30 : 40
+        let side = inline ? ArtworkView.inlinePlayerThumbnailSide : ArtworkView.playerThumbnailSide
         if controller.current != nil {
             VideoSurface(cornerRadius: 8) {
                 ArtworkView(entry: controller.current, side: side)

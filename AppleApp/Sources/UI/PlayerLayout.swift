@@ -1,4 +1,3 @@
-import CoreGraphics
 import Foundation
 
 /// The player's window-shape rules.
@@ -160,4 +159,17 @@ enum PlayerLayout {
         preferenceEnabled && fullBleedArtworkAvailable(width: width)
     }
 
+}
+
+/// The wide player uses the projected drag position to decide whether to
+/// dismiss. A flick must still start downward and along the vertical axis.
+enum PlayerDismissal {
+    static func isDownward(_ translation: CGSize) -> Bool {
+        translation.height > abs(translation.width)
+    }
+
+    static func shouldDismiss(translation: CGSize, projected: CGSize, height: CGFloat) -> Bool {
+        let threshold = min(max(height * 0.22, 80), 160)
+        return isDownward(translation) && translation.height >= 12 && projected.height >= threshold
+    }
 }

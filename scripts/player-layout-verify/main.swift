@@ -1,4 +1,3 @@
-import CoreGraphics
 import Foundation
 
 // The player's window-shape rules, from the app's own source.
@@ -184,6 +183,21 @@ for (w, h) in [(CGFloat(1), CGFloat(1)), (100, 50), (3000, 2000), (5000, 10)] {
     let side = PlayerLayout.portraitArtworkSide(stageWidth: w, stageHeight: h)
     check("no negative artwork for \(Int(w))×\(Int(h))", side > 0, "\(Int(side))")
 }
+
+// A slow pull can settle back, while a deliberate flick can close the cover.
+let shortPull = CGSize(width: 6, height: 45)
+check("a short slow pull stays open",
+      !PlayerDismissal.shouldDismiss(translation: shortPull, projected: shortPull, height: 800))
+check("a downward flick closes the cover",
+      PlayerDismissal.shouldDismiss(translation: shortPull, projected: CGSize(width: 8, height: 220), height: 800))
+let sideways = CGSize(width: 80, height: 40)
+check("a predominantly horizontal drag cannot close the cover",
+      !PlayerDismissal.shouldDismiss(translation: sideways, projected: CGSize(width: 80, height: 220), height: 800))
+let deliberate = CGSize(width: 5, height: 130)
+check("a deliberate pull closes a short cover",
+      PlayerDismissal.shouldDismiss(translation: deliberate, projected: deliberate, height: 440))
+check("a pull followed by a reversal stays open",
+      !PlayerDismissal.shouldDismiss(translation: deliberate, projected: .zero, height: 440))
 
 print(failures == 0 ? "\nall \(checks) checks passed" : "\n\(failures) of \(checks) checks FAILED")
 exit(failures == 0 ? 0 : 1)

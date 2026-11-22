@@ -995,6 +995,7 @@ struct PlaybackPillMount: ViewModifier {
     /// is up the iPhone's pill rides on top of it instead (the iPad's per-tab
     /// inset does that on its own).
     @State private var keyboardUp = false
+    @Environment(\.nowPlayingZoomNamespace) private var zoomNamespace
     #endif
 
     func body(content: Content) -> some View {
@@ -1054,6 +1055,8 @@ struct PlaybackPillMount: ViewModifier {
         } else {
             content.tabViewBottomAccessory {
                 PlaybackAccessory()
+                    .environment(\.nowPlayingZoomNamespace, keyboardUp ? nil : zoomNamespace)
+                    .accessibilityHidden(keyboardUp)
             }
         }
     }
@@ -1119,30 +1122,35 @@ struct iPadPlaybackChrome: ViewModifier {
 #endif
 
 #if os(iOS)
-/// iPhone: a large swipe-to-dismiss sheet that zooms out of the mini player
-/// (WWDC 323 `MusicPlaybackView` pattern). iPad: a page-sized sheet.
+/// Compact width uses the native zoom sheet and its interactive dismissal.
 struct NowPlayingTakeover: ViewModifier {
     @Binding var isPresented: Bool
     var zoomNamespace: Namespace.ID
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func body(content: Content) -> some View {
-        Group {
-            if sizeClass == .regular {
-                // Full screen, unconditionally: `.page` sheet sizing renders
-                // as a floating card on iPadOS 27, and only a cover is
-                // guaranteed edge to edge.
-                content.fullScreenCover(isPresented: $isPresented) {
-                    PlayerNavigationStack()
-                        .navigationTransition(.zoom(sourceID: NowPlayingZoom.sourceID, in: zoomNamespace))
-                }
-            } else {
-                content.sheet(isPresented: $isPresented) {
-                    PlayerNavigationStack()
-                        .modifier(NowPlayingSheetSizing())
-                        .navigationTransition(.zoom(sourceID: NowPlayingZoom.sourceID, in: zoomNamespace))
-                }
+        if sizeClass == .regular {
+            content.fullScreenCover(isPresented: $isPresented) {
+                player
             }
+        } else {
+            content.sheet(isPresented: $isPresented) {
+                player
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+                    .presentationCornerRadius(24)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var player: some View {
+        if reduceMotion {
+            PlayerNavigationStack()
+        } else {
+            PlayerNavigationStack()
+                .navigationTransition(.zoom(sourceID: NowPlayingZoom.sourceID, in: zoomNamespace))
         }
     }
 }
@@ -1163,25 +1171,6 @@ private struct PlayerNavigationStack: View {
                         DetailView(browseId: browseId, initialTitle: title)
                     }
                 }
-        }
-    }
-}
-
-private struct NowPlayingSheetSizing: ViewModifier {
-    @Environment(\.horizontalSizeClass) private var sizeClass
-
-    @ViewBuilder
-    func body(content: Content) -> some View {
-        if sizeClass == .regular {
-            content
-                .presentationDetents([.large])
-                .presentationSizing(.page)
-                .presentationDragIndicator(.visible)
-        } else {
-            content
-                .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-                .presentationCornerRadius(24)
         }
     }
 }

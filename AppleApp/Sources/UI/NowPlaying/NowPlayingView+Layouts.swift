@@ -39,76 +39,45 @@ extension NowPlayingView {
     // arrangement — which is the only thing that should differ.
     #if os(iOS)
     var iOSBody: some View {
-        NavigationStack {
-            // The arrangement is the only thing that differs between the
-            // shapes, so the arrangement is the only thing decided here. Every
-            // slot below — the sleeve, the panes, the deck — is built once and
-            // used by all of them, which is upstream's arrangement and the
-            // reason rotating mid-song carries the open pane, the scrub and the
-            // translation mode across instead of resetting them.
-            GeometryReader { geo in
-                ZStack {
-                    MeshBackdrop(seed: controller.current?.id.hashValue ?? 0, artwork: controller.current?.artworkData)
+        // The arrangement is the only thing that differs between the
+        // shapes, so the arrangement is the only thing decided here. Every
+        // slot below — the sleeve, the panes, the deck — is built once and
+        // used by all of them, which is upstream's arrangement and the
+        // reason rotating mid-song carries the open pane, the scrub and the
+        // translation mode across instead of resetting them.
+        GeometryReader { geo in
+            ZStack {
+                MeshBackdrop(seed: controller.current?.id.hashValue ?? 0, artwork: controller.current?.artworkData)
+                    .ignoresSafeArea()
+                if !isIPad && pane == .main && !PlayerLayout.takesLandscapeShape(width: geo.size.width, height: geo.size.height) && fullBleedOn && !videoShowing {
+                    ArtworkContinuation(entry: controller.current, seam: geo.size.width)
+                        .ignoresSafeArea(edges: .bottom)
+                }
+                if usesBlurredArtworkBackdrop(width: geo.size.width, height: geo.size.height) {
+                    FullArtworkBlurBackdrop(entry: controller.current)
                         .ignoresSafeArea()
-                    if !isIPad && pane == .main && !PlayerLayout.takesLandscapeShape(width: geo.size.width, height: geo.size.height) && fullBleedOn && !videoShowing {
-                        ArtworkContinuation(entry: controller.current, seam: geo.size.width)
-                            .ignoresSafeArea(edges: .bottom)
-                    }
-                    if usesBlurredArtworkBackdrop(width: geo.size.width, height: geo.size.height) {
-                        FullArtworkBlurBackdrop(entry: controller.current)
-                            .ignoresSafeArea()
+                        .transition(.opacity)
+                }
+
+                // One decision, then one of two arrangements. The
+                // cross-fade is bound to `pane` rather than to the shape,
+                // so rotating still hard-cuts the way it always has.
+                ZStack {
+                    if showsTwoColumns(size: geo.size) {
+                        twoColumnPlayer(size: geo.size)
+                            .transition(.opacity)
+                    } else {
+                        portraitPlayer
                             .transition(.opacity)
                     }
-
-                    // One decision, then one of two arrangements. The
-                    // cross-fade is bound to `pane` rather than to the shape,
-                    // so rotating still hard-cuts the way it always has.
-                    ZStack {
-                        if showsTwoColumns(size: geo.size) {
-                            twoColumnPlayer(size: geo.size)
-                                .transition(.opacity)
-                        } else {
-                            portraitPlayer
-                                .transition(.opacity)
-                        }
-                    }
-                    .animation(Motion.playerPane(reduceMotion), value: pane)
                 }
+                .animation(Motion.playerPane(reduceMotion), value: pane)
             }
-            // Full-screen covers have no swipe-to-dismiss of their own, so the
-            // iPad cover gets Music's treatment: a grabber pill top-center
-            // plus a top-edge downward drag. The iPhone sheet keeps its
-            // system drag indicator and needs no chrome here. The drag is
-            // gated to starts in the top chrome band with a deliberate
-            // downward travel, so queue/lyrics scrolling underneath never
-            // trips it (child scroll gestures win ties by default anyway).
-            .overlay(alignment: .top) {
-                if isIPad {
-                    Capsule()
-                        .fill(.white.opacity(0.35))
-                        .frame(width: 42, height: 5)
-                        .padding(.top, 10)
-                        .accessibilityLabel("Close")
-                        .accessibilityAction { dismiss() }
-                }
-            }
-            .gesture(
-                DragGesture(minimumDistance: 24)
-                    .onEnded { value in
-                        guard isIPad,
-                              value.translation.height > 140,
-                              abs(value.translation.width) < 80,
-                              value.startLocation.y < 120
-                        else { return }
-                        dismiss()
-                    }
-            )
-            .toolbar(.hidden, for: .navigationBar)
-            .toolbarTitleDisplayMode(.inline)
-            // Keep the established edge-to-edge phone artwork. The iPad page
-            // respects its system top inset so the player has room for chrome.
-            .ignoresSafeArea(.container, edges: isIPad ? [] : .top)
         }
+        .modifier(PlayerDragDismissal(enabled: isIPad, dismiss: { dismiss() }))
+        .toolbar(.hidden, for: .navigationBar)
+        .toolbarTitleDisplayMode(.inline)
+        .ignoresSafeArea(.container, edges: isIPad ? [] : .top)
     }
     #endif
 
