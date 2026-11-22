@@ -412,10 +412,20 @@ final class NowPlayingController {
             info?[shape.mediaPlayerKey] = animated
         }
         if let info {
-            center.nowPlayingInfo = info
+            publishLegacyArtwork(info)
         }
     }
     #endif
+
+    private func publishLegacyArtwork(_ info: [String: Any]) {
+        // Replacing nowPlayingInfo restarts the system's interpolation from
+        // the elapsed value in the dictionary. Keep that anchor current even
+        // when the only incoming change is artwork prepared asynchronously.
+        var info = info
+        metadataProgress = metadataProgress.reanchored(at: Date())
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = metadataProgress.position
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
 
     private func artworkFromBytes(_ data: Data?) -> MPMediaItemArtwork? {
         guard let data else { return nil }
@@ -455,10 +465,9 @@ final class NowPlayingController {
                 guard let self, self.metadataKey == id, self.lastRequestedURL == url else { return }
                 guard let item = self.artworkFromBytes(data) else { return }
                 self.artworkURL = url
-                var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+                guard var info = MPNowPlayingInfoCenter.default().nowPlayingInfo else { return }
                 info[MPMediaItemPropertyArtwork] = item
-                info[MPNowPlayingInfoPropertyMediaType] = MPNowPlayingInfoMediaType.audio.rawValue
-                MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+                self.publishLegacyArtwork(info)
             }
         }
     }

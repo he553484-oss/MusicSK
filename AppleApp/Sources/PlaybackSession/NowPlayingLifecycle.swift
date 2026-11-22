@@ -248,6 +248,10 @@ struct NowPlayingPlaybackState: Equatable {
         position + max(0, date.timeIntervalSince(timestamp)) * rate
     }
 
+    func reanchored(at date: Date) -> Self {
+        updating(position: predictedPosition(at: date), at: date)
+    }
+
     func needsCorrection(position actual: Double, at date: Date = Date()) -> Bool {
         rate > 0 && actual.isFinite && abs(actual - predictedPosition(at: date)) > 0.75
     }

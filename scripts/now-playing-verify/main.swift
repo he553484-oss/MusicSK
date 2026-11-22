@@ -115,6 +115,12 @@ struct Verify {
         precondition(!playingSnapshot.needsCorrection(position: .infinity, at: later))
         let fast = NowPlayingPlaybackState(rate: 2, position: 12, timestamp: anchor)
         precondition(fast.predictedPosition(at: later) == 13)
+        // Publishing a thumbnail must not restart the system's clock at the
+        // position stored before the download began.
+        let refreshedArtwork = fast.reanchored(at: later)
+        precondition(refreshedArtwork.position == 13 && refreshedArtwork.timestamp == later)
+        let afterArtwork = later.addingTimeInterval(1)
+        precondition(refreshedArtwork.predictedPosition(at: afterArtwork) == fast.predictedPosition(at: afterArtwork))
         let still = NowPlayingPlaybackState(rate: 0, position: 12, timestamp: anchor)
         precondition(!still.needsCorrection(position: 30, at: later))
 
