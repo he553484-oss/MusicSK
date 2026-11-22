@@ -123,16 +123,36 @@ jobs:
       - name: Verify presentation, playback and package contracts
         if: env.MODE == 'build-ios'
         run: |
-          bash scripts/check-player-layout.sh
-          bash scripts/check-detail-header.sh
-          bash scripts/check-lyrics-presentation.sh
-          bash scripts/check-lyrics.sh --source-only
-          bash scripts/check-now-playing.sh
-          bash scripts/check-queue.sh
-          bash scripts/check-transport.sh
-          bash scripts/check-local-library.sh
-          bash scripts/check-menus.sh
-          python3 scripts/release-verify/check-ios-ipa.py
+          failed=0
+          run_check() {
+            local name="$1"
+            shift
+            printf '::group::%s\n' "$name"
+            if "$@"; then
+              printf 'PASS %s\n' "$name"
+            else
+              printf 'FAIL %s\n' "$name"
+              failed=1
+            fi
+            printf '::endgroup::\n'
+          }
+          run_check player-layout bash scripts/check-player-layout.sh
+          run_check detail-header bash scripts/check-detail-header.sh
+          run_check video-gating bash scripts/check-video-gating.sh
+          run_check lyrics-presentation bash scripts/check-lyrics-presentation.sh
+          run_check lyrics-source bash scripts/check-lyrics.sh --source-only
+          run_check system-volume bash scripts/check-system-volume.sh
+          run_check now-playing bash scripts/check-now-playing.sh
+          run_check lossless-route bash scripts/check-lossless-route.sh
+          run_check quality-log bash scripts/check-quality-log.sh
+          run_check queue bash scripts/check-queue.sh
+          run_check session-restore bash scripts/check-session-restore.sh
+          run_check transport bash scripts/check-transport.sh
+          run_check local-library bash scripts/check-local-library.sh
+          run_check pages bash scripts/check-pages.sh
+          run_check menus bash scripts/check-menus.sh
+          run_check ipa-verifier python3 scripts/release-verify/check-ios-ipa.py
+          exit "$failed"
 
       - name: Build the unsigned iOS IPA
         if: env.MODE == 'build-ios'
@@ -156,6 +176,26 @@ jobs:
           CONFIG=release scripts/build-shared-framework.sh
           xcodegen generate --spec AppleApp/project.yml
           bash scripts/capture-ios-simulator.sh build/simulator-captures
+
+      - name: Compare decoded video startup on the Mac runner
+        if: env.MODE == 'capture-ios'
+        timeout-minutes: 5
+        continue-on-error: true
+        env:
+          VIDEO_STARTUP_BASELINE_REF: 2c3c6aedf0756b777c7293b402737754a7933db3
+        run: |
+          log=build/simulator-captures/video-startup-macos.txt
+          {
+            printf 'First decoded frame on macOS using the local H.264 fixture\n'
+            printf 'Baseline %s\nCandidate %s\n' "$VIDEO_STARTUP_BASELINE_REF" "$GITHUB_SHA"
+            if ! command -v ffmpeg >/dev/null; then
+              printf 'BLOCKED: ffmpeg is unavailable on this runner\n'
+            elif bash scripts/check-video-startup.sh; then
+              printf 'PASS: benchmark completed\n'
+            else
+              printf 'FAIL: benchmark did not complete\n'
+            fi
+          } 2>&1 | tee "$log"
 
       - name: Keep the simulator capture files
         if: env.MODE == 'capture-ios'

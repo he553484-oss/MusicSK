@@ -48,17 +48,23 @@ else:
 ')"
 IFS=$'\t' read -r device_name device_type runtime <<< "$selection"
 device_id="$(xcrun simctl create "Musicsk-Capture-${RANDOM}" "$device_type" "$runtime")"
+revision="$(git -C "$repo" rev-parse HEAD)"
 
 xcodebuild \
     -project "$repo/AppleApp/Musicsk.xcodeproj" -scheme Musicsk \
     -configuration Release -sdk iphonesimulator -destination "id=$device_id" \
     -derivedDataPath "$scratch/DerivedData" \
+    BITCHORD_BUILD_REVISION="${revision:0:12}" \
     CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= build
 
 xcrun simctl boot "$device_id"
 xcrun simctl bootstatus "$device_id" -b
 xcrun simctl ui "$device_id" appearance dark
-xcrun simctl install "$device_id" "$scratch/DerivedData/Build/Products/Release-iphonesimulator/Musicsk.app"
+xcrun simctl status_bar "$device_id" override --time "9:41" --dataNetwork wifi \
+    --wifiMode active --wifiBars 3 --cellularMode active --cellularBars 4 \
+    --batteryState unplugged --batteryLevel 100
+app="$scratch/DerivedData/Build/Products/Release-iphonesimulator/Musicsk.app"
+xcrun simctl install "$device_id" "$app"
 
 bundle_id=app.musicsk.player
 start_app() {
@@ -70,6 +76,11 @@ start_app() {
     # Wait for the scene to render and its first-run tasks to run.
     sleep 4
 }
+stop_app() {
+    xcrun simctl terminate "$device_id" "$bundle_id"
+    wait "$app_pid" || true
+    app_pid=""
+}
 capture() {
     if ! kill -0 "$app_pid" 2>/dev/null; then
         printf 'Musicsk exited before capture.\n' >&2
@@ -77,6 +88,7 @@ capture() {
         exit 1
     fi
     xcrun simctl io "$device_id" screenshot "$output/$1"
+    [[ -s "$output/$1" ]]
 }
 
 start_app MAIN
@@ -84,25 +96,39 @@ capture 01-inicio-es.png
 xcrun simctl openurl "$device_id" musicsk://open-player
 sleep 2
 capture 02-reproductor-vacio-es.png
-xcrun simctl terminate "$device_id" "$bundle_id"
-wait "$app_pid" || true
-app_pid=""
+stop_app
 
 start_app LYRICS
 xcrun simctl openurl "$device_id" 'musicsk://open-player?screen=lyrics'
 sleep 2
 capture 03-letras-vacias-es.png
+stop_app
+
+start_app MAIN
+xcrun simctl openurl "$device_id" 'musicsk://settings/lyrics'
+sleep 2
+capture 04-ajustes-letras-es.png
+stop_app
+
+version="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app/Info.plist")"
+build="$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$app/Info.plist")"
+toolchain="$(xcodebuild -version | paste -sd ' ' -)"
 
 cat >"$output/LEEME.txt" <<EOF
 Capturas del binario para simulador de Musicsk
 Dispositivo: $device_name
 Runtime: ${runtime##*.}
-Git: $(git -C "$repo" rev-parse HEAD)
+Git: $revision
+Versión y build: $version ($build)
+Herramientas: $toolchain
 Idioma solicitado: es_ES
+Apariencia: oscura
+Barra de estado del simulador: 9:41, Wi‑Fi, batería al 100 %
 
-Sesión cerrada, sin pista y sin datos de prueba. El reproductor y las letras
-se abrieron con la ruta existente de la app. Estas capturas sirven para
-revisar el marco del reproductor y la interfaz vacía. La reproducción,
-las transiciones con portada o texto sincronizado, Control Center y la
-pantalla bloqueada requieren validación separada en un iPhone físico.
+Las tres primeras capturas mantienen las pantallas y nombres de 1.2.1 para
+comparar el marco del reproductor y el estado vacío de Letras. La cuarta abre
+Configuración → Letras con el enlace de la aplicación. El simulador se lanzó
+sin sesión iniciada y sin pista. Las capturas documentan la interfaz en ese
+estado. La reproducción, el vídeo, el volumen físico, Control Center y la
+pantalla bloqueada requieren comprobaciones adicionales.
 EOF
