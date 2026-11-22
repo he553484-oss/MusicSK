@@ -53,6 +53,49 @@ enum NowPlayingArtworkShape: String, CaseIterable, Sendable {
     }
 }
 
+/// Separate the request identity from the track and URL. A selection can
+/// return to the same track before an old asynchronous request finishes.
+struct NowPlayingArtworkRequestGate {
+    struct Request: Equatable, Sendable {
+        let url: String
+        fileprivate let token = UUID()
+    }
+
+    private var pending: Request?
+
+    mutating func begin(url: String) -> Request? {
+        guard pending == nil else { return nil }
+        let request = Request(url: url)
+        pending = request
+        return request
+    }
+
+    mutating func finish(_ request: Request) -> Bool {
+        guard pending == request else { return false }
+        pending = nil
+        return true
+    }
+
+    mutating func cancel() { pending = nil }
+}
+
+/// A representation can gain embedded bytes after the URL is published.
+/// Give the system a new artwork identifier only when the rendition changes.
+struct NowPlayingArtworkRevision: Equatable, Sendable {
+    private(set) var id = UUID()
+    private(set) var data: Data?
+    private(set) var url: String?
+
+    mutating func update(data: Data?, url: String?) {
+        let url = url.flatMap { $0.isEmpty ? nil : $0 }
+        let data = data ?? (self.url == url ? self.data : nil)
+        guard self.url != url || self.data != data else { return }
+        self.url = url
+        self.data = data
+        id = UUID()
+    }
+}
+
 #if os(iOS)
 import AVFoundation
 import CryptoKit

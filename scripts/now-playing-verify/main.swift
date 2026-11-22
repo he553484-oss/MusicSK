@@ -106,6 +106,37 @@ struct Verify {
         precondition(NowPlayingArtworkShape(size: CGSize(width: 480, height: 639)) == nil)
         precondition(NowPlayingArtworkShape(size: .zero) == nil)
 
+        // A → B → A with the same URL can leave the first request in flight.
+        // Only the last selection may publish, even if old bytes arrive last.
+        var artworkRequests = NowPlayingArtworkRequestGate()
+        guard let original = artworkRequests.begin(url: "track-a.jpg") else { preconditionFailure() }
+        precondition(artworkRequests.begin(url: "track-a.jpg") == nil)
+        artworkRequests.cancel()
+        guard let other = artworkRequests.begin(url: "track-b.jpg") else { preconditionFailure() }
+        artworkRequests.cancel()
+        guard let returned = artworkRequests.begin(url: original.url) else { preconditionFailure() }
+        precondition(original != returned)
+        precondition(!artworkRequests.finish(original))
+        precondition(!artworkRequests.finish(other))
+        precondition(artworkRequests.finish(returned))
+        // Failure releases the slot so the same thumbnail can be retried.
+        guard let retry = artworkRequests.begin(url: returned.url) else { preconditionFailure() }
+        artworkRequests.cancel() // New embedded bytes supersede the pending thumbnail.
+        precondition(!artworkRequests.finish(retry))
+
+        var artworkRevision = NowPlayingArtworkRevision()
+        artworkRevision.update(data: nil, url: "track-a.jpg")
+        let remoteArtwork = artworkRevision
+        let embedded = Data([1, 2, 3])
+        artworkRevision.update(data: embedded, url: "track-a.jpg")
+        let embeddedArtwork = artworkRevision
+        precondition(remoteArtwork.id != embeddedArtwork.id)
+        artworkRevision.update(data: embedded, url: "track-a.jpg")
+        artworkRevision.update(data: nil, url: "track-a.jpg")
+        precondition(artworkRevision == embeddedArtwork)
+        artworkRevision.update(data: nil, url: "track-b.jpg")
+        precondition(artworkRevision.id != embeddedArtwork.id && artworkRevision.data == nil)
+
         // A native snapshot uses one coherent state/position/time anchor.
         let anchor = Date(timeIntervalSince1970: 100)
         let playingSnapshot = NowPlayingPlaybackState(rate: 1, position: 12, timestamp: anchor)

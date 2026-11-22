@@ -22,9 +22,10 @@ final class NowPlayingController {
     private var metadataKey: String?
     private var metadataProgress = NowPlayingPlaybackState()
     private var artwork: MPMediaItemArtwork?
-    /// URL that `artwork` was built from — not the in-flight request.
     private var artworkURL: String?
-    private var lastRequestedURL: String?
+    private var embeddedArtworkData: Data?
+    private var staticArtworkGate = NowPlayingArtworkRequestGate()
+    private var staticArtworkTask: Task<Void, Never>?
     private var handlers: [Any] = []
 #if os(iOS)
     private var modern: AnyObject?
@@ -35,6 +36,7 @@ final class NowPlayingController {
     private var artworkGeneration = UUID()
     private var installedClips: [NowPlayingArtworkShape: NowPlayingClip] = [:]
     private var legacyAnimatedMetadata: [String: Any] = [:]
+    private var legacyAnimatedPreview: MPMediaItemArtwork?
     private var artworkObservers: [NSObjectProtocol] = []
 #endif
 
@@ -164,22 +166,14 @@ final class NowPlayingController {
         #if os(iOS)
         info.merge(legacyAnimatedMetadata, uniquingKeysWith: { _, animated in animated })
         #endif
-        if lastRequestedURL != thumbnailUrl { lastRequestedURL = nil }
-        if let item = artworkFromBytes(artworkData) {
+        updateLegacyArtwork(data: artworkData, url: thumbnailUrl)
+        if let item = legacyStaticArtwork {
             info[MPMediaItemPropertyArtwork] = item
-            artworkURL = thumbnailUrl
-            lastRequestedURL = thumbnailUrl
-        } else if let artwork, artworkURL == thumbnailUrl {
-            info[MPMediaItemPropertyArtwork] = artwork
         }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
 #if os(macOS)
         MPNowPlayingInfoCenter.default().playbackState = isPlaying ? .playing : .paused
 #endif
-        if let thumbnailUrl, !thumbnailUrl.isEmpty, artworkData == nil,
-           artworkURL != thumbnailUrl, lastRequestedURL != thumbnailUrl {
-            fetchArtwork(id: id, url: thumbnailUrl)
-        }
     }
 
     func updateCommands(canNext: Bool, canPrevious: Bool, canSeek: Bool) {
@@ -297,9 +291,7 @@ final class NowPlayingController {
     private func clearMetadata() {
         metadataKey = nil
         metadataProgress = NowPlayingPlaybackState()
-        artwork = nil
-        artworkURL = nil
-        lastRequestedURL = nil
+        resetLegacyArtwork()
         #if os(iOS)
         artworkGeneration = UUID()
         artworkTask?.cancel()
@@ -309,6 +301,7 @@ final class NowPlayingController {
         animatedSource = nil
         installedClips = [:]
         legacyAnimatedMetadata = [:]
+        legacyAnimatedPreview = nil
         #endif
     }
 
@@ -410,8 +403,12 @@ final class NowPlayingController {
         var info = center.nowPlayingInfo
         for key in legacyAnimatedMetadata.keys { info?.removeValue(forKey: key) }
         legacyAnimatedMetadata.removeAll(keepingCapacity: true)
-        for (shape, clip) in clips {
-            guard let preview = UIImage(data: clip.preview) else { continue }
+        legacyAnimatedPreview = nil
+        for shape in NowPlayingArtworkShape.allCases {
+            guard let clip = clips[shape], let preview = UIImage(data: clip.preview) else { continue }
+            if legacyAnimatedPreview == nil {
+                legacyAnimatedPreview = MPMediaItemArtwork(boundsSize: preview.size) { _ in preview }
+            }
             let animated = MPMediaItemAnimatedArtwork(
                 artworkID: clip.id, previewImageRequestHandler: { _ async in preview },
                 videoAssetFileURLRequestHandler: { _ async in clip.file.url }
@@ -419,6 +416,7 @@ final class NowPlayingController {
             legacyAnimatedMetadata[shape.mediaPlayerKey] = animated
             info?[shape.mediaPlayerKey] = animated
         }
+        info?[MPMediaItemPropertyArtwork] = legacyStaticArtwork
         if let info {
             publishLegacyArtwork(info)
         }
@@ -435,51 +433,77 @@ final class NowPlayingController {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 
+    private var legacyStaticArtwork: MPMediaItemArtwork? {
+        #if os(iOS)
+        artwork ?? legacyAnimatedPreview
+        #else
+        artwork
+        #endif
+    }
+
     private func artworkFromBytes(_ data: Data?) -> MPMediaItemArtwork? {
         guard let data else { return nil }
 #if os(iOS)
         guard let image = UIImage(data: data) else { return nil }
         let size = image.size
-        let item = MPMediaItemArtwork(boundsSize: size) { _ in image }
-        artwork = item
-        return item
+        return MPMediaItemArtwork(boundsSize: size) { _ in image }
 #else
         guard let image = NSImage(data: data) else { return nil }
         let size = image.size
-        let item = MPMediaItemArtwork(boundsSize: size) { requested in
+        return MPMediaItemArtwork(boundsSize: size) { requested in
             let canvas = NSImage(size: requested)
             canvas.lockFocus()
             image.draw(in: NSRect(origin: .zero, size: requested))
             canvas.unlockFocus()
             return canvas
         }
-        artwork = item
-        return item
 #endif
     }
 
-    /// Fetch the thumbnail off-main, then publish it. `lastRequestedURL` is
-    /// the in-flight cache key so a later track cannot land artwork on this one.
-    private func fetchArtwork(id: String, url: String) {
-        lastRequestedURL = url
+    private func cancelLegacyArtworkRequest() {
+        staticArtworkGate.cancel()
+        staticArtworkTask?.cancel()
+        staticArtworkTask = nil
+    }
+
+    private func resetLegacyArtwork() {
+        cancelLegacyArtworkRequest()
+        artwork = nil
+        artworkURL = nil
+        embeddedArtworkData = nil
+    }
+
+    private func updateLegacyArtwork(data: Data?, url: String?) {
+        let url = url.flatMap { $0.isEmpty ? nil : $0 }
+        if artworkURL != url {
+            resetLegacyArtwork()
+            artworkURL = url
+        }
+        if let data, data != embeddedArtworkData {
+            embeddedArtworkData = data
+            if let item = artworkFromBytes(data) {
+                cancelLegacyArtworkRequest()
+                artwork = item
+            }
+        }
+        // Corrupt embedded artwork still falls back to the normal thumbnail.
+        guard artwork == nil, let url, let request = staticArtworkGate.begin(url: url) else { return }
+        fetchArtwork(request)
+    }
+
+    private func fetchArtwork(_ request: NowPlayingArtworkRequestGate.Request) {
+        let url = request.url
         let sized = SharedArtwork.sized(url, 544) ?? url
         let headers = LocalArtwork.isReference(sized) ? [:] : WebDavBridge.shared.playbackHeaders(fileUrl: sized)
-        Task.detached(priority: .utility) { [weak self] in
+        staticArtworkTask = Task(priority: .utility) { [weak self] in
             let data = await ArtworkRequests.shared.data(url: sized, headers: headers)
-            await MainActor.run { [weak self] in
-                guard let self, self.metadataKey == id, self.lastRequestedURL == url else { return }
-                guard self.artworkURL != url else { return }
-                guard let item = self.artworkFromBytes(data) else {
-                    // A failed download must not suppress every later lookup for
-                    // the same playing track, including after reconnection.
-                    self.lastRequestedURL = nil
-                    return
-                }
-                self.artworkURL = url
-                guard var info = MPNowPlayingInfoCenter.default().nowPlayingInfo else { return }
-                info[MPMediaItemPropertyArtwork] = item
-                self.publishLegacyArtwork(info)
-            }
+            guard !Task.isCancelled, let self, self.staticArtworkGate.finish(request) else { return }
+            self.staticArtworkTask = nil
+            guard let item = self.artworkFromBytes(data) else { return }
+            self.artwork = item
+            guard var info = MPNowPlayingInfoCenter.default().nowPlayingInfo else { return }
+            info[MPMediaItemPropertyArtwork] = item
+            self.publishLegacyArtwork(info)
         }
     }
 }
@@ -515,8 +539,7 @@ private final class ModernNowPlaying: MediaSessionRepresentable {
     var position: Double { playback.position }
     var rate: Double { playback.rate }
     var preparing: Bool { playback.preparing }
-    var artworkData: Data?
-    var artworkURL: String?
+    private var artworkRevision = NowPlayingArtworkRevision()
     var animatedClips: [NowPlayingArtworkShape: NowPlayingClip] = [:]
     var canNext = false
     var canPrevious = false
@@ -540,11 +563,13 @@ private final class ModernNowPlaying: MediaSessionRepresentable {
 
     var content: (any MediaContentRepresentable)? {
         guard let contentID else { return nil }
-        let imageData = artworkData
-        let imageURL = artworkURL
-        let preview = NowPlayingArtworkShape.allCases.lazy.compactMap { self.animatedClips[$0]?.preview }.first
-        let staticArtwork: Artwork? = (imageData != nil || imageURL != nil)
-            ? Artwork(id: "\(contentID)|\(imageURL ?? "embedded")") { _ in
+        let imageData = artworkRevision.data
+        let imageURL = artworkRevision.url
+        let primaryClip = NowPlayingArtworkShape.allCases.lazy.compactMap { self.animatedClips[$0] }.first
+        let preview = primaryClip?.preview
+        let previewIdentity = primaryClip?.id ?? ""
+        let staticArtwork: Artwork? = (imageData != nil || imageURL != nil || preview != nil)
+            ? Artwork(id: "\(contentID)|\(artworkRevision.id)|\(previewIdentity)") { _ in
                 if let imageData, let image = try? ArtworkRepresentation(data: imageData) { return image }
                 if let imageURL {
                     let sized = SharedArtwork.sized(imageURL, 544) ?? imageURL
@@ -572,16 +597,11 @@ private final class ModernNowPlaying: MediaSessionRepresentable {
                     try Self.clip(for: aspect, in: variants).file.url
                 }
             )
-            if let primary = sortedShapes.first.flatMap({ variants[$0] }) {
-                let preview = Artwork(id: "preview|\(primary.id)") { _ in
-                    try ArtworkRepresentation(data: primary.preview)
-                }
-                return MusicContent(
-                    id: contentID, songTitle: title, artistName: artist, albumName: album,
-                    type: .audio, duration: total, artwork: staticArtwork ?? preview,
-                    animatedArtwork: animated
-                )
-            }
+            return MusicContent(
+                id: contentID, songTitle: title, artistName: artist, albumName: album,
+                type: .audio, duration: total, artwork: staticArtwork,
+                animatedArtwork: animated
+            )
         }
         return MusicContent(
             id: contentID, songTitle: title, artistName: artist, albumName: album,
@@ -699,14 +719,16 @@ private final class ModernNowPlaying: MediaSessionRepresentable {
         let elapsed = position ?? (trackChanged ? 0 : nil)
         if trackChanged {
             animatedClips = [:]
+            artworkRevision = NowPlayingArtworkRevision()
             contentID = id
         }
         self.title = title
         self.artist = artist
         self.album = album ?? ""
         self.duration = duration
-        self.artworkData = artworkData
-        self.artworkURL = thumbnailUrl
+        var revision = artworkRevision
+        revision.update(data: artworkData, url: thumbnailUrl)
+        if revision != artworkRevision { artworkRevision = revision }
         let speed = Double(PlatformSettings.shared.getFloat(key: "playback_speed", default: 1))
         updateRate(isPlaying ? speed : 0, position: elapsed)
     }
