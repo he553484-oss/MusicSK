@@ -312,10 +312,15 @@ struct ShelfScroller<Content: View>: View {
     var inset: CGFloat = 24
     @ViewBuilder var content: Content
 
+    private struct PagerMetrics: Equatable {
+        var offset: CGFloat = 0
+        var viewport: CGFloat = 0
+        var extent: CGFloat = 0
+    }
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var position = ScrollPosition(edge: .leading)
-    @State private var offset: CGFloat = 0
-    @State private var viewport: CGFloat = 0
-    @State private var extent: CGFloat = 0
+    @State private var metrics = PagerMetrics()
     @State private var hovering = false
 
     var body: some View {
@@ -325,10 +330,11 @@ struct ShelfScroller<Content: View>: View {
         .scrollTargetBehavior(.viewAligned)
         .contentMargins(.horizontal, inset, for: .scrollContent)
         .scrollPosition($position)
-        .onScrollGeometryChange(for: [CGFloat].self) { geometry in
-            [geometry.contentOffset.x, geometry.containerSize.width, geometry.contentSize.width]
+        .onScrollGeometryChange(for: PagerMetrics.self) { geometry in
+            PagerMetrics(offset: geometry.contentOffset.x, viewport: geometry.containerSize.width,
+                         extent: geometry.contentSize.width)
         } action: { _, value in
-            offset = value[0]; viewport = value[1]; extent = value[2]
+            metrics = value
         }
         .padding(.horizontal, -inset)
         .overlay(alignment: .leading) { pager(forward: false) }
@@ -338,14 +344,23 @@ struct ShelfScroller<Content: View>: View {
 
     @ViewBuilder
     private func pager(forward: Bool) -> some View {
-        let canPage = forward ? offset + viewport < extent - 1 : offset > -inset + 1
-        if hovering, canPage {
+        // Read geometry only when pointer paging is visible. Touch scrolling
+        // needs neither a pager update nor a rebuild of the shelf.
+        if hovering {
+            pagerButton(forward: forward, metrics: metrics)
+        }
+    }
+
+    @ViewBuilder
+    private func pagerButton(forward: Bool, metrics: PagerMetrics) -> some View {
+        let canPage = forward ? metrics.offset + metrics.viewport < metrics.extent - 1 : metrics.offset > -inset + 1
+        if canPage {
             Button {
-                let page = max(viewport - inset * 3, 120)
+                let page = max(metrics.viewport - inset * 3, 120)
                 let target = forward
-                    ? min(offset + page, extent - viewport)
-                    : max(offset - page, -inset)
-                withAnimation(.smooth(duration: 0.35)) { position.scrollTo(x: target) }
+                    ? min(metrics.offset + page, metrics.extent - metrics.viewport)
+                    : max(metrics.offset - page, -inset)
+                withAnimation(reduceMotion ? nil : .smooth(duration: 0.35)) { position.scrollTo(x: target) }
             } label: {
                 Image(systemName: forward ? "chevron.right" : "chevron.left")
                     .font(.body.weight(.semibold))

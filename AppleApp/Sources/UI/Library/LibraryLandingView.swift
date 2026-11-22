@@ -26,7 +26,7 @@ struct LibraryLandingView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 26) {
+            LazyVStack(alignment: .leading, spacing: 26) {
                 // 1. Replay hero: cards when there is listening data, banner before.
                 ReplayHeroSection { page in appModel.openReplay(at: page) }
 
@@ -161,7 +161,7 @@ struct LibraryLandingView: View {
     }
 
     private var signedInShelves: some View {
-        VStack(alignment: .leading, spacing: 26) {
+        LazyVStack(alignment: .leading, spacing: 26) {
             let sortedShelves = pinnedShelves(shelves)
             let hasPlaylists = sortedShelves.contains { isPlaylistsShelf($0) }
 

@@ -254,24 +254,32 @@ final class ArtworkCache: @unchecked Sendable {
 
     /// The warm path. A memory hit returns immediately; a miss returns nil and
     /// the caller falls back to its async load, which populates both tiers.
-    private func cacheKey(_ url: String) -> String {
-        if LocalArtwork.isReference(url) { return PageRequestCoordinator.digest(url) }
-        let headers = WebDavBridge.shared.playbackHeaders(fileUrl: url)
-        return PageRequestCoordinator.digest(url + headers.sorted { $0.key < $1.key }.map { "\($0.key):\($0.value)" }.joined(separator: "\u{0}"))
-    }
-    func get(_ url: String) -> PlatformImage? {
-        memory.object(forKey: cacheKey(url) as NSString)
+    private func headers(for url: String) -> [String: String] {
+        LocalArtwork.isReference(url) ? [:] : WebDavBridge.shared.playbackHeaders(fileUrl: url)
     }
 
-    /// Synchronous disk read, for the rare caller that genuinely needs the bytes
-    /// before it can lay out. Off the main thread by construction.
+    private func memoryKey(url: String, headers: [String: String]) -> NSString {
+        guard !headers.isEmpty else { return url as NSString }
+        return diskKey(url: url, headers: headers) as NSString
+    }
+
+    private func diskKey(url: String, headers: [String: String]) -> String {
+        PageRequestCoordinator.digest(url + headers.sorted { $0.key < $1.key }
+            .map { "\($0.key):\($0.value)" }.joined(separator: "\u{0}"))
+    }
+
+    func get(_ url: String) -> PlatformImage? {
+        memory.object(forKey: memoryKey(url: url, headers: headers(for: url)))
+    }
+
+    /// Synchronous disk read for callers already running on a worker thread.
     func getBlocking(_ url: String) -> PlatformImage? {
-        if let hit = get(url) { return hit }
-        var resolved: PlatformImage?
-        readQueue.sync {
-            resolved = readFromDisk(url)
+        let headers = headers(for: url)
+        let key = memoryKey(url: url, headers: headers)
+        if let hit = memory.object(forKey: key) { return hit }
+        return readQueue.sync {
+            readFromDisk(url, headers: headers, key: key)
         }
-        return resolved
     }
 
     private static func decode(_ data: Data, url: String) -> PlatformImage? {
@@ -307,8 +315,8 @@ final class ArtworkCache: @unchecked Sendable {
         #endif
     }
 
-    private func readFromDisk(_ url: String) -> PlatformImage? {
-        let file = diskURL(url)
+    private func readFromDisk(_ url: String, headers: [String: String], key: NSString) -> PlatformImage? {
+        let file = folder.appendingPathComponent(diskKey(url: url, headers: headers))
         guard let data = try? Data(contentsOf: file), let image = Self.decode(data, url: url) else { return nil }
         // 1.0.4 could save a list thumbnail under a player-sized URL (issue 12).
         // A copy well under the size its URL asks for is passed over, so the
@@ -316,26 +324,33 @@ final class ArtworkCache: @unchecked Sendable {
         // with a cover at least that large (or the CDN's best).
         let requested = min(1200, OfflineArtworkStore.requestedPixels(url))
         if requested > 0, Self.longestSide(image) * 10 < requested * 9 { return nil }
-        memory.setObject(image, forKey: cacheKey(url) as NSString, cost: imageCost(image))
+        guard headers == self.headers(for: url) else { return nil }
+        memory.setObject(image, forKey: key, cost: imageCost(image))
         return image
     }
 
     func load(_ url: String) async -> PlatformImage? {
-        if let hit = get(url) { return hit }
-        let onDisk = await withCheckedContinuation { (cont: CheckedContinuation<PlatformImage?, Never>) in
-            readQueue.async { [weak self] in cont.resume(returning: self?.readFromDisk(url)) }
+        let headers = headers(for: url)
+        let key = memoryKey(url: url, headers: headers)
+        if let hit = memory.object(forKey: key) { return hit }
+        let onDisk = await withCheckedContinuation { (continuation: CheckedContinuation<PlatformImage?, Never>) in
+            readQueue.async { [weak self] in
+                continuation.resume(returning: self?.readFromDisk(url, headers: headers, key: key))
+            }
         }
+        guard !Task.isCancelled, headers == self.headers(for: url) else { return nil }
         if let onDisk { return onDisk }
-        let headers = WebDavBridge.shared.playbackHeaders(fileUrl: url)
-        let key = cacheKey(url)
         guard let data = await ArtworkRequests.shared.data(url: url, headers: headers), !Task.isCancelled else { return nil }
         return await withCheckedContinuation { continuation in
             readQueue.async { [weak self] in
-                guard let self, key == self.cacheKey(url), let image = Self.decode(data, url: url) else {
-                    continuation.resume(returning: nil); return
+                guard let self, headers == self.headers(for: url),
+                      let image = Self.decode(data, url: url) else {
+                    continuation.resume(returning: nil)
+                    return
                 }
-                self.memory.setObject(image, forKey: key as NSString, cost: self.imageCost(image))
-                try? data.write(to: self.diskURL(url), options: .atomic)
+                self.memory.setObject(image, forKey: key, cost: self.imageCost(image))
+                let file = self.folder.appendingPathComponent(self.diskKey(url: url, headers: headers))
+                try? data.write(to: file, options: .atomic)
                 // Trim per batch, rather than walking the folder after every tile.
                 if Date().timeIntervalSince(self.lastTrim) > 60 {
                     self.lastTrim = Date()
@@ -352,9 +367,6 @@ final class ArtworkCache: @unchecked Sendable {
         DiskCache.clearFolder(folder)
     }
 
-    private func diskURL(_ url: String) -> URL {
-        folder.appendingPathComponent(cacheKey(url))
-    }
 }
 
 enum SharedArtwork {

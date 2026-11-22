@@ -317,6 +317,8 @@ private struct CompactPhoneSearchDrawer: ViewModifier {
 #endif
 
 struct SearchView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     /// Upstream `TYPEAHEAD_MAX_RESULTS` in MainViewModel.kt.
     private static let typeaheadMaxResults = 15
     @Environment(PlaybackController.self) private var controller
@@ -681,34 +683,31 @@ struct SearchView: View {
         guard wanted != appModel.iPadSearchExpanded || wanted != pillOpen else { return }
         pillGeneration &+= 1
         let generation = pillGeneration
-        guard animated else {
+        guard animated, !reduceMotion else {
             pillOpen = wanted
             pillRoomy = wanted
             appModel.iPadSearchExpanded = wanted
+            if wanted && focus { searchFieldFocused = true }
             return
         }
-        Task { @MainActor in
-            func current() -> Bool { generation == pillGeneration }
-            if wanted {
-                withAnimation(.smooth(duration: 0.3)) { appModel.iPadSearchExpanded = true }
-                try? await Task.sleep(for: .milliseconds(300))
-                guard current() else { return }
+        if wanted {
+            withAnimation(.smooth(duration: 0.3)) {
+                appModel.iPadSearchExpanded = true
+            } completion: {
+                guard generation == pillGeneration else { return }
                 pillRoomy = true
-                // A few frames for the bar to lay out the wider slot and for
-                // the field to be built, so neither lands inside the animation.
-                try? await Task.sleep(for: .milliseconds(60))
-                guard current() else { return }
-                withAnimation(.smooth(duration: 0.35)) { pillOpen = true }
-                guard focus else { return }
-                // After the glass has settled: the keyboard's arrival relays
-                // out the whole page, and mid-animation that froze the pill.
-                try? await Task.sleep(for: .milliseconds(360))
-                guard current() else { return }
-                searchFieldFocused = true
-            } else {
-                withAnimation(.smooth(duration: 0.3)) { pillOpen = false }
-                try? await Task.sleep(for: .milliseconds(300))
-                guard current() else { return }
+                withAnimation(.smooth(duration: 0.35)) {
+                    pillOpen = true
+                } completion: {
+                    guard generation == pillGeneration, focus else { return }
+                    searchFieldFocused = true
+                }
+            }
+        } else {
+            withAnimation(.smooth(duration: 0.3)) {
+                pillOpen = false
+            } completion: {
+                guard generation == pillGeneration else { return }
                 pillRoomy = false
                 withAnimation(.smooth(duration: 0.3)) { appModel.iPadSearchExpanded = false }
             }
@@ -1556,20 +1555,20 @@ struct SearchView: View {
                             generator.prepare()
                             generator.selectionChanged()
                             #endif
-                            withAnimation(.snappy(duration: 0.25)) {
-                                scope = entry
-                            }
+                            scope = entry
                         }
                     } label: {
                         Text(entry.label)
                             .font(.subheadline.weight(selected ? .semibold : .regular))
                             .padding(.horizontal, 14)
                             .padding(.vertical, 7)
-                            .background(
-                                selected ? Color.primary : Color.secondary.opacity(0.12),
-                                in: Capsule()
-                            )
-                            .foregroundStyle(selected ? pillSelectedTextColor : Color.primary)
+                            .animation(reduceMotion ? nil : .easeOut(duration: 0.16)) {
+                                $0.background(
+                                    selected ? Color.primary : Color.secondary.opacity(0.12),
+                                    in: Capsule()
+                                )
+                                .foregroundStyle(selected ? pillSelectedTextColor : Color.primary)
+                            }
                     }
                     .buttonStyle(.plain)
                 }

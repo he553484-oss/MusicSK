@@ -78,28 +78,22 @@ struct HomeView: View {
             ) { Task { await feed.load() } }
         case .loaded(let shelves):
             ScrollView {
-                VStack(alignment: .leading, spacing: 28) {
+                LazyVStack(alignment: .leading, spacing: 28) {
                     if !auth.signedIn {
                         SignInBanner { auth.loginPresented = true }
                     }
                     ForEach(Array(shelves.enumerated()), id: \.element.id) { index, shelf in
-                        if index == 0, isRecentsShelf(shelf) {
-                            RecentShelf(shelf: shelf)
-                                .onAppear {
-                                    if shelf.id == shelves.last?.id { Task { await feed.loadMore() } }
-                                }
-                        } else if index == 0 {
-                            HeroShelf(shelf: shelf, preferTrack: true)
-                                .onAppear {
-                                    if shelf.id == shelves.last?.id { Task { await feed.loadMore() } }
-                                }
-                        } else {
-                            ShelfCarousel(shelf: shelf, preferTrack: true)
-                                .onAppear {
-                                    if shelf.id == shelves.last?.id {
-                                        Task { await feed.loadMore() }
-                                    }
-                                }
+                        Group {
+                            if index == 0, isRecentsShelf(shelf) {
+                                RecentShelf(shelf: shelf)
+                            } else if index == 0 {
+                                HeroShelf(shelf: shelf, preferTrack: true)
+                            } else {
+                                ShelfCarousel(shelf: shelf, preferTrack: true)
+                            }
+                        }
+                        .onAppear {
+                            if index == shelves.count - 1 { Task { await feed.loadMore() } }
                         }
                     }
                 }
