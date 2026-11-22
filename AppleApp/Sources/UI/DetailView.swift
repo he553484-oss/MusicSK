@@ -16,6 +16,7 @@ struct DetailView: View {
     @Environment(PlaybackController.self) private var controller
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.dismiss) private var dismiss
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -197,14 +198,11 @@ struct DetailView: View {
         return GeometryReader { geo in
             let width = geo.size.width
             let height = geo.size.height
-            // Upstream's ARTIST_PHOTO_RATIO = 0.95, capped against the window
-            // height so the tracks aren't buried under a portrait hero.
-            let artHeight = min(width / 0.95, height * 0.55)
             ScrollView {
                 VStack(spacing: 0) {
                     Group {
                         if isArtist {
-                            artistHeader(page, tint: tint, artHeight: artHeight)
+                            artistHeader(page, tint: tint, width: width, height: height)
                         } else if immersiveAlbum {
                             albumHeader(page, tint: tint, width: width, height: height)
                         } else {
@@ -215,8 +213,10 @@ struct DetailView: View {
 
                     if isArtist, let shelf = latestReleaseShelf(page), let card = shelf.items.first {
                         latestReleaseCard(card)
+                            .frame(maxWidth: DetailHeaderLayout.maxContentWidth)
                             .padding(.horizontal, 16)
-                            .padding(.bottom, 10)
+                            .padding(.top, 12)
+                            .padding(.bottom, 14)
                             .task(id: card.browseId) {
                                 await loadLatestReleaseLibrary(card)
                             }
@@ -389,90 +389,108 @@ struct DetailView: View {
         }
     }
 
-    /// The artist page's hero: the photo edge to edge, dissolved into the page
-    /// wash at its foot, with the name and controls sitting on the join.
-    ///
-    /// Upstream's `ArtistHeader` plus `PageBackground`: an artist's picture is
-    /// the page's colour story rather than a framed sleeve, which is what tells
-    /// an artist page apart from a release at a glance.
     private func artistHeader(
         _ page: DetailPageModel,
         tint: ArtworkPalette.PageTint,
-        artHeight: CGFloat
+        width: CGFloat,
+        height: CGFloat
     ) -> some View {
         let title = page.title.isEmpty ? initialTitle : page.title
+        let artHeight = DetailHeaderLayout.artistArtworkHeight(width: width, viewportHeight: height)
+        let overlaysTitle = !dynamicTypeSize.isAccessibilitySize && artHeight >= 200
 
-        return ZStack(alignment: .bottom) {
-            ZStack(alignment: .top) {
-                heroImage(url: page.thumbnailUrl, data: headerArt, height: artHeight)
-
-                if let canvasURL {
-                    CanvasPlayer(url: canvasURL, fallbackURL: canvasFallbackURL, isPlaying: true)
-                        .frame(height: artHeight)
-                        .clipped()
+        return VStack(alignment: .leading, spacing: 0) {
+            ArtworkView(url: page.thumbnailUrl, data: headerArt, side: max(width, artHeight), fill: true)
+                .frame(width: width, height: artHeight)
+                .clipped()
+                .overlay {
+                    LinearGradient(
+                        stops: [
+                            .init(color: .clear, location: 0.42),
+                            .init(color: .black.opacity(0.34), location: 0.67),
+                            .init(color: .black.opacity(0.86), location: 1)
+                        ],
+                        startPoint: .top, endPoint: .bottom
+                    )
+                    .allowsHitTesting(false)
+                }
+                .overlay(alignment: .bottom) {
+                    if overlaysTitle {
+                        artistIdentity(title)
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: DetailHeaderLayout.maxContentWidth, alignment: .leading)
+                            .padding(.horizontal, 22)
+                            .padding(.bottom, 18)
+                    }
                 }
 
-                // Upstream's gradient: settling the foot of the picture onto the
-                // wash colour the page is painted in.
-                LinearGradient(
-                    stops: [
-                        .init(color: .clear, location: 0.35),
-                        .init(color: tint.wash.opacity(0.92), location: 1.0)
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(height: artHeight)
-                .allowsHitTesting(false)
+            VStack(alignment: .leading, spacing: 12) {
+                if !overlaysTitle { artistIdentity(title) }
+                if !page.songs.isEmpty {
+                    artistActions(page, tint: tint)
+                }
             }
-            .frame(height: artHeight)
-            .frame(maxHeight: .infinity, alignment: .top)
-            .overlay(alignment: .bottom) {
-                mergeBand(tint: tint)
-                    .frame(height: 80)
-                    .offset(y: 20)
+            .frame(maxWidth: DetailHeaderLayout.maxContentWidth, alignment: .leading)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 22)
+            .padding(.vertical, 14)
+            .background {
+                LinearGradient(colors: [tint.elevated, tint.elevated.opacity(0)], startPoint: .top, endPoint: .bottom)
                     .allowsHitTesting(false)
             }
+        }
+    }
 
-            VStack(spacing: 6) {
-                if let signature = artistSignature, signature.artistName == title {
-                    VStack(spacing: 3) {
-                        AsyncImage(url: signature.imageURL) { image in
-                            image.resizable()
-                                .renderingMode(.template)
-                                .scaledToFit()
-                                .foregroundStyle(.white)
-                        } placeholder: {
-                            Text(title).font(.largeTitle.bold())
-                        }
-                        .frame(maxWidth: 320, maxHeight: 84)
-                        .accessibilityLabel("Artist signature for \(title)")
-                        Text("Signed by \(title)")
-                            .font(.caption.weight(.medium))
-                            .foregroundStyle(.white.opacity(0.85))
-                            .lineLimit(1)
-                    }
-                    .padding(.horizontal, 24)
-                } else {
-                    Text(title)
-                        .font(.largeTitle.bold())
-                        .multilineTextAlignment(.center)
-                        .lineLimit(2)
-                        .minimumScaleFactor(0.8)
-                        .padding(.horizontal, 24)
+    private func artistIdentity(_ title: String) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(title)
+                .font(.largeTitle.bold())
+                .accessibilityAddTraits(.isHeader)
+                .lineLimit(3)
+                .minimumScaleFactor(0.8)
+            if let signature = artistSignature, signature.artistName == title {
+                AsyncImage(url: signature.imageURL) { image in
+                    image.resizable()
+                        .renderingMode(.template)
+                        .scaledToFit()
+                } placeholder: {
+                    Color.clear
                 }
+                .frame(width: 144, height: 36, alignment: .leading)
+                .accessibilityLabel("Artist signature for \(title)")
+            }
+        }
+    }
 
-                // Upstream's header is the name (or its logo) alone: the
-                // subscriber and listener counts close the page, in About.
-                if !page.songs.isEmpty {
-                    actionRow(page, tint: tint, isArtist: true)
-                        .padding(.top, 14)
+    private func artistActions(_ page: DetailPageModel, tint: ArtworkPalette.PageTint) -> some View {
+        let isPlaying = controller.isPlaybackContextPlaying(browseId)
+        let subscription = auth.signedIn ? page.subscription : nil
+        let subscribed = subscription.map { subscriptionOverride ?? $0.subscribed } ?? false
+        return HStack(spacing: 10) {
+            ViewThatFits(in: .horizontal) {
+                PlayPill(iconOnly: false, isPlaying: isPlaying) { playContext(page) }
+                PlayPill(iconOnly: true, isPlaying: isPlaying) { playContext(page) }
+            }
+
+            CircleIconButton(icon: Image(.bchShuffle), label: "Shuffle", veiled: true) {
+                playContext(page, shuffled: true)
+            }
+
+            Spacer(minLength: 4)
+
+            CircleIconButton(
+                icon: Image(systemName: subscribed ? "star.fill" : "star"),
+                label: subscribed ? "Unsubscribe" : "Subscribe",
+                veiled: true,
+                active: subscribed,
+                activeColor: tint.accent,
+                disabled: subscription == nil || subscribing
+            ) {
+                if let subscription {
+                    Task { await toggleSubscription(subscription, artistName: page.title) }
                 }
             }
-            .padding(.bottom, 12)
-            .frame(maxWidth: 860)
         }
-        .frame(height: artHeight + 44) // Upstream's HEADER_DROP = 44dp
     }
 
     private func usesImmersiveAlbum(_ kind: Kind) -> Bool {
@@ -643,7 +661,7 @@ struct DetailView: View {
             .padding(.horizontal, 8)
 
             if !page.songs.isEmpty {
-                actionRow(page, tint: tint, isArtist: false)
+                releaseActions(page, tint: tint)
                     .padding(.top, 6)
             } else if kind(of: page) == .playlist {
                 // Nothing to play, but an empty playlist is still one to
@@ -659,73 +677,23 @@ struct DetailView: View {
         .padding(.bottom, 22)
     }
 
-    /// The header's controls.
-    ///
-    /// A release on a wide window gets the two capsules Apple Music uses; a
-    /// phone gets the circular pair, which keeps the row inside a 375pt screen
-    /// at any text size. The artist page keeps its labelled Play beside
-    /// Subscribe, Follow's equivalent.
-    private func actionRow(
-        _ page: DetailPageModel,
-        tint: ArtworkPalette.PageTint,
-        isArtist: Bool
-    ) -> some View {
-        // Upstream's artist ActionRow: Shuffle and Subscribe (52) either side
-        // of a 70pt Play circle, 24 apart, centred. The page's overflow is the
-        // navigation bar's, so the row carries no menu of its own.
-        HStack(spacing: isArtist ? 24 : 12) {
-            if isArtist {
-                CircleIconButton(icon: Image(.bchShuffle), label: "Shuffle", size: 52, veiled: true) {
-                    controller.play(
-                        page.songs.map { toEntry($0, fallbackArt: fallbackArt(page)) },
-                        context: page.title, contextID: browseId, shuffleRequested: true, shuffleStart: true,
-                        boundedContext: true, continuationToken: handoffContinuation(page)
-                    )
-                }
-
-                PlayCircle(isPlaying: controller.isPlaybackContextPlaying(browseId), size: 70) {
-                    let entries = page.songs.map { toEntry($0, fallbackArt: fallbackArt(page)) }
-                    controller.togglePlaybackContext(
-                        entries, title: page.title, contextID: browseId,
-                        shuffleRequested: controller.shuffleEnabled,
-                        continuationToken: handoffContinuation(page)
-                    )
-                }
-
-                // A guest sees Subscribe dimmed rather than missing, so the row
-                // keeps its shape (upstream's disabled star).
-                let subscription = auth.signedIn ? page.subscription : nil
-                let isSub = subscription.map { subscriptionOverride ?? $0.subscribed } ?? false
-                CircleIconButton(
-                    icon: Image(systemName: isSub ? "star.fill" : "star"),
-                    label: isSub ? "Unsubscribe" : "Subscribe",
-                    size: 52,
-                    veiled: true,
-                    disabled: subscription == nil || subscribing
-                ) {
-                    if let subscription {
-                        Task { await toggleSubscription(subscription, artistName: page.title) }
-                    }
+    private func releaseActions(_ page: DetailPageModel, tint: ArtworkPalette.PageTint) -> some View {
+        HStack(spacing: 12) {
+            if isWide {
+                ShufflePill { playContext(page, shuffled: true) }
+                PlayPill(iconOnly: false, isPlaying: controller.isPlaybackContextPlaying(browseId)) {
+                    playContext(page)
                 }
             } else {
-                if isWide {
-                    ShufflePill {
-                        playContext(page, shuffled: true)
-                    }
-                    PlayPill(iconOnly: false, isPlaying: controller.isPlaybackContextPlaying(browseId)) {
-                        playContext(page)
-                    }
-                } else {
-                    CircleIconButton(icon: Image(.bchShuffle), label: "Shuffle") {
-                        playContext(page, shuffled: true)
-                    }
-                    PlayPill(iconOnly: true, isPlaying: controller.isPlaybackContextPlaying(browseId)) {
-                        playContext(page)
-                    }
+                CircleIconButton(icon: Image(.bchShuffle), label: "Shuffle") {
+                    playContext(page, shuffled: true)
                 }
-
-                releaseSecondaryActions(page, tint: tint)
+                PlayPill(iconOnly: true, isPlaying: controller.isPlaybackContextPlaying(browseId)) {
+                    playContext(page)
+                }
             }
+
+            releaseSecondaryActions(page, tint: tint)
         }
         .frame(maxWidth: .infinity, alignment: .center)
     }
@@ -969,71 +937,6 @@ struct DetailView: View {
                 .overlay(Capsule().stroke(Color.primary.opacity(0.08), lineWidth: 0.5))
         }
         .chromeGlass(in: Capsule())
-    }
-
-    @ViewBuilder
-    private func heroImage(url: String?, data: Data?, height: CGFloat) -> some View {
-        Group {
-            if let data, let image = PlatformImage(data: data) {
-                #if os(iOS)
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                #else
-                Image(nsImage: image)
-                    .resizable()
-                    .scaledToFill()
-                #endif
-            } else if let url, let image = ArtworkCache.shared.get(url) {
-                #if os(iOS)
-                Image(uiImage: image)
-                    .resizable()
-                    .scaledToFill()
-                #else
-                Image(nsImage: image)
-                    .resizable()
-                    .scaledToFill()
-                #endif
-            } else if let url, let imageURL = URL(string: SharedArtwork.sized(url, 720) ?? url) {
-                AsyncImage(url: imageURL) { phase in
-                    if let image = phase.image {
-                        image.resizable().scaledToFill()
-                    } else {
-                        Rectangle().fill(Color.secondary.opacity(0.15))
-                    }
-                }
-            } else {
-                Rectangle().fill(Color.secondary.opacity(0.15))
-            }
-        }
-        .frame(height: height)
-        .clipped()
-    }
-
-    /// One pane of glass across the artwork/page join, masked to arrive from
-    /// nothing and leave to nothing so neither of its own edges shows.
-    /// Skipped with Reduce Motion's blur sibling (`reduce_dynamic_blur`), like
-    /// upstream, leaving the wash gradient to settle the join on its own.
-    private func mergeBand(tint: ArtworkPalette.PageTint) -> some View {
-        Group {
-            if PlatformSettings.shared.getBoolean(key: "reduce_dynamic_blur", default: false) {
-                EmptyView()
-            } else {
-                Rectangle()
-                    .fill(.ultraThinMaterial)
-                    .mask(
-                        LinearGradient(
-                            stops: [
-                                .init(color: .clear, location: 0),
-                                .init(color: .black, location: 0.5),
-                                .init(color: .clear, location: 1),
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    )
-            }
-        }
     }
 
     private func pageWash(tint: ArtworkPalette.PageTint) -> some View {
@@ -1729,26 +1632,24 @@ private struct DetailSkeleton: View {
         .accessibilityLabel("Loading")
     }
 
-    /// `artistHeader`'s box: the hero at its real height, the name and the
-    /// Shuffle / Play / Subscribe circles on its foot, then "Top songs".
     private func artist(width: CGFloat, height: CGFloat) -> some View {
-        let artHeight = min(width / 0.95, height * 0.55)
+        let artHeight = DetailHeaderLayout.artistArtworkHeight(width: width, viewportHeight: height)
         return VStack(spacing: 0) {
-            ZStack(alignment: .bottom) {
-                SkeletonBlock(height: artHeight, cornerRadius: 0)
-                    .frame(maxHeight: .infinity, alignment: .top)
-                VStack(spacing: 14) {
-                    SkeletonBlock(height: 30, cornerRadius: 8)
-                        .frame(width: min(width * 0.5, 260))
-                    HStack(spacing: 24) {
-                        Circle().fill(.quaternary).frame(width: 52, height: 52)
-                        Circle().fill(.quaternary).frame(width: 70, height: 70)
-                        Circle().fill(.quaternary).frame(width: 52, height: 52)
-                    }
+            SkeletonBlock(height: artHeight, cornerRadius: 0)
+                .overlay(alignment: .bottomLeading) {
+                    SkeletonBlock(height: 32, cornerRadius: 7)
+                        .frame(width: min(width * 0.56, 320))
+                        .padding(22)
                 }
-                .padding(.bottom, 12)
+            HStack(spacing: 10) {
+                SkeletonBlock(height: 46, cornerRadius: 23).frame(width: 96)
+                Circle().fill(.quaternary).frame(width: 46, height: 46)
+                Spacer()
+                Circle().fill(.quaternary).frame(width: 46, height: 46)
             }
-            .frame(height: artHeight + 44)
+            .padding(.horizontal, 22)
+            .padding(.vertical, 14)
+            .frame(maxWidth: DetailHeaderLayout.maxContentWidth)
 
             VStack(alignment: .leading, spacing: 8) {
                 SkeletonBlock(height: 20, cornerRadius: 6).frame(width: 110)
@@ -1759,7 +1660,7 @@ private struct DetailSkeleton: View {
                 }
             }
             .padding(.horizontal, 16)
-            .frame(maxWidth: 860, alignment: .leading)
+            .frame(maxWidth: DetailHeaderLayout.maxContentWidth, alignment: .leading)
             .frame(maxWidth: .infinity)
         }
     }
@@ -1862,36 +1763,6 @@ private struct CircleIconButton: View {
         .opacity(disabled ? 0.45 : 1)
         .accessibilityLabel(label)
         .help(label)
-    }
-}
-
-/// The artist page's Play: a filled circle with the glyph punched out of it,
-/// so the page shows through, as Apple's does (upstream `PlayCircle`, icon
-/// at 56% of the circle).
-private struct PlayCircle: View {
-    var isPlaying: Bool
-    var size: CGFloat = 70
-    var color: Color = .white
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            ZStack {
-                Circle().fill(color)
-                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: size * 0.56 * 0.6, height: size * 0.56 * 0.6)
-                    .offset(x: isPlaying ? 0 : size * 0.03)
-                    .blendMode(.destinationOut)
-            }
-            .compositingGroup()
-            .frame(width: size, height: size)
-            .contentShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(isPlaying ? "Pause" : "Play")
-        .help(isPlaying ? "Pause" : "Play")
     }
 }
 
