@@ -102,7 +102,6 @@ struct MiniPlayerView: View {
                 VideoSurface(cornerRadius: 8) {
                     ArtworkView(entry: controller.current, side: 56)
                 }
-                .id(controller.current?.id)
             } else {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(.quaternary)

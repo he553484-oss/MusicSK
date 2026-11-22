@@ -22,9 +22,7 @@ func check(_ label: String, _ ok: Bool, _ detail: String = "") {
     }
 }
 
-func videoSide(kbpsPerMegapixel: Double, musicVideoType: String?) -> ResolvedVideoSide {
-    let width = 1920
-    let height = 1080
+func videoSide(kbpsPerMegapixel: Double, musicVideoType: String?, width: Int = 1920, height: Int = 1080) -> ResolvedVideoSide {
     let bitrate = Int((kbpsPerMegapixel * 1000 * Double(width * height) / 1_000_000).rounded())
     return ResolvedVideoSide(
         url: "https://example.invalid/video",
@@ -62,6 +60,13 @@ check("a static OMV qualifies for neither search nor counterpart",
       !staticOMV.qualifiesAsSearchVideo(isOfficialMusicVideo: true) && !staticOMV.qualifiesAsCounterpartVideo(),
       "\(Int(staticOMV.kbpsPerMegapixel ?? 0)) kbps/MP")
 
+let verticalOMV = videoSide(kbpsPerMegapixel: 120, musicVideoType: "MUSIC_VIDEO_TYPE_OMV", width: 1080, height: 1920)
+check("an official vertical video qualifies and keeps its original aspect",
+      verticalOMV.qualifiesAsSearchVideo(isOfficialMusicVideo: true) && verticalOMV.aspectRatio == 9.0 / 16.0)
+let ambiguousVertical = videoSide(kbpsPerMegapixel: 120, musicVideoType: nil, width: 1080, height: 1920)
+check("a vertical art upload still needs an authoritative video match",
+      !ambiguousVertical.qualifiesAsSearchVideo(isOfficialMusicVideo: false))
+
 var gate = VideoSurfaceState()
 gate.setEnabled(true)
 
@@ -94,6 +99,40 @@ check("the switch on allows a request again", gate.canRequest)
 
 gate.setTrack("")
 check("an empty video id is not a request", !gate.canRequest)
+
+var pipGate = VideoSurfaceState()
+pipGate.setEnabled(true)
+pipGate.surfaceAppeared(videoId: "pip-")
+pipGate.setPictureInPictureActive(true)
+pipGate.surfaceDisappeared()
+pipGate.setActive(false)
+check("an active PiP picture carries its own visible surface into the background", pipGate.canRequest)
+pipGate.setTrack(nil)
+check("a track without video clears a background PiP source", !pipGate.canRequest)
+pipGate.setTrack("another-")
+pipGate.setPictureInPictureActive(false)
+check("closing PiP releases the last video request", !pipGate.canRequest)
+
+var frames = VideoPresentedFrames()
+let mainSurface = UUID()
+let miniSurface = UUID()
+let first = VideoPictureIdentity(trackID: "A", itemRevision: 1)
+let retry = VideoPictureIdentity(trackID: "A", itemRevision: 2)
+let next = VideoPictureIdentity(trackID: "B", itemRevision: 3)
+check("an item without a decoded display frame keeps the artwork", !frames.displays(first, on: mainSurface))
+frames.report(surface: miniSurface, picture: first, ready: true, current: first)
+check("a mini-player frame cannot reveal the immersive stage", frames.displays(first) && !frames.displays(first, on: mainSurface))
+frames.report(surface: mainSurface, picture: first, ready: true, current: first)
+check("a new item always needs its own display frame", frames.displays(first, on: mainSurface) && !frames.displays(retry, on: mainSurface))
+frames.report(surface: mainSurface, picture: retry, ready: true, current: retry)
+frames.report(surface: mainSurface, picture: first, ready: false, current: retry)
+check("stale first-frame notifications do not hide a replacement for the same song", frames.displays(retry, on: mainSurface))
+frames.report(surface: mainSurface, picture: retry, ready: true, current: next)
+check("a different song cannot inherit a ready frame", !frames.displays(next))
+frames.remove(surface: mainSurface)
+check("a removed surface leaves only the independently ready mini player", !frames.displays(retry) && frames.displays(first, on: miniSurface))
+frames.reset()
+check("closing the picture clears all frames", !frames.displays(first) && !frames.displays(nil))
 
 print(failures == 0 ? "\nall \(checks) checks passed" : "\n\(failures) of \(checks) checks FAILED")
 exit(failures == 0 ? 0 : 1)

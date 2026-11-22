@@ -314,7 +314,7 @@ struct PlaybackPill: View {
     private var artworkOrPlaceholder: some View {
         let side = inline ? ArtworkView.inlinePlayerThumbnailSide : ArtworkView.playerThumbnailSide
         if controller.current != nil {
-            VideoSurface(cornerRadius: 8) {
+            VideoSurface(cornerRadius: 8, presented: !appModel.nowPlayingPresented) {
                 ArtworkView(entry: controller.current, side: side)
             }
             .frame(width: side, height: side)
@@ -323,7 +323,6 @@ struct PlaybackPill: View {
                     RoundedRectangle(cornerRadius: 8, style: .continuous)
                         .stroke(.white.opacity(0.10), lineWidth: 0.5)
                 }
-                .id(controller.current?.id)
         } else {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(.quaternary.opacity(0.6))

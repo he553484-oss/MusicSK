@@ -156,7 +156,7 @@ struct NowPlayingView: View {
     /// sleeve, as on Mac and iPad: the cover continued under the hero fought
     /// the video for contrast.
     var videoShowing: Bool {
-        showMusicVideos && VideoPlayback.shared.showsVideo
+        showMusicVideos && VideoPlayback.shared.isDisplayingVideo(for: controller.current?.videoId)
     }
 
     /// A regular-width window: an iPad, or a Max phone on its side. The player

@@ -165,14 +165,13 @@ extension NowPlayingView {
                 canvasURL: controller.canvasURL,
                 fallbackURL: controller.canvasFallbackURL,
                 isPlaying: controller.isPlaying,
-                canvasActive: !VideoPlayback.shared.showsVideo
+                canvasActive: !videoShowing
             )
-            .id(controller.current?.id)
             // Hero size is the actual viewport width, independent of the
             // remaining height above the controls.
             .frame(width: side, height: side)
             .overlay(alignment: .top) {
-                if let caption = playbackOriginCaption {
+                if !videoShowing, let caption = playbackOriginCaption {
                     Text(caption)
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(.white.opacity(0.92))
@@ -188,11 +187,10 @@ extension NowPlayingView {
                     canvasURL: controller.canvasURL,
                     fallbackURL: controller.canvasFallbackURL,
                     isPlaying: controller.isPlaying,
-                    canvasActive: !VideoPlayback.shared.showsVideo,
+                    canvasActive: !videoShowing,
                     side: side
                 )
             }
-            .id(controller.current?.id)
             .padding(.top, 12)
             .padding(.bottom, 20)
             .accessibilityLabel(controller.current?.title ?? "Nothing playing")

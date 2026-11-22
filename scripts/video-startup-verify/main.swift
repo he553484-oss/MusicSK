@@ -61,6 +61,8 @@ final class PlaybackDebugLog: @unchecked Sendable {
                 try await Task.sleep(for: .milliseconds(10))
             }
             guard controller.state == .ready else { fatalError("paused fixture never became ready") }
+            let player = controller.player
+            let item = player.currentItem
             let map = VideoVersionAlignment.Map(segments: [.init(songStart: 0, songEnd: 3, offset: 1)], confident: true, minimumWindowSimilarity: 1)
             controller.attach(side, timeMap: map)
             while abs(controller.player.currentTime().seconds - 1) > 0.12 && CACurrentMediaTime() < deadline {
@@ -69,8 +71,15 @@ final class PlaybackDebugLog: @unchecked Sendable {
             guard abs(controller.player.currentTime().seconds - 1) <= 0.12, controller.player.rate == 0 else {
                 fatalError("paused picture did not adopt its new alignment without a timer or transport event")
             }
+            guard controller.player === player, player.currentItem === item, player.isMuted, player.volume == 0 else {
+                fatalError("the picture update replaced the active item or started an audio output")
+            }
             controller.detach()
+            guard controller.player === player, player.currentItem == nil, player.rate == 0 else {
+                fatalError("detaching the last picture left its decoder active")
+            }
             print("PASS paused video adopts a new alignment without restarting playback")
+            print("PASS same rendition retains one muted item and detach releases it")
         }
     }
 }

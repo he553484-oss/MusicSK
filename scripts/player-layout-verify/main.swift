@@ -226,6 +226,14 @@ check("a modal without an upper inset leaves the artwork frame intact",
 check("an absent anchor cannot draw over the status bar",
       PlayerLayout.extendedArtworkFrame(.zero, topInset: topChrome).isEmpty)
 
+let filmFootprint = PlayerLayout.containedCanvasSize(bounds: edgeToEdge.size, aspect: 16.0 / 9.0)
+let portraitFootprint = PlayerLayout.containedCanvasSize(bounds: edgeToEdge.size, aspect: 9.0 / 16.0)
+check("a contained landscape video keeps its aspect at the slot's width",
+      filmFootprint.width == edgeToEdge.width && abs(filmFootprint.width / filmFootprint.height - 16.0 / 9.0) < 0.001)
+check("a contained vertical video keeps its aspect at the slot's height",
+      portraitFootprint.height == edgeToEdge.height && abs(portraitFootprint.width / portraitFootprint.height - 9.0 / 16.0) < 0.001)
+check("invalid dimensions cannot rescale the picture", PlayerLayout.containedCanvasSize(bounds: edgeToEdge.size, aspect: .infinity) == .zero)
+
 let shortStage = CGSize(width: 393, height: 260)
 let croppedAnchor = PlayerLayout.compactPortraitArtworkFrame(stage: shortStage, fullBleed: true)
 check("short full-bleed cover stops above the measured deck",

@@ -223,7 +223,17 @@ extension NowPlayingView {
         let main = pane == .main
         let artwork = PlayerLayout.extendedArtworkFrame(frame, topInset: fullBleed ? topInset : 0)
         let extraTop = frame.minY - artwork.minY
-        return ZStack(alignment: .top) {
+        // The player swaps art and video inside the same measured frame.
+        // Only the buttons are inset from the status bar.
+        return VideoSurface(
+            cornerRadius: fullBleed ? 0 : 12,
+            fillSlot: false,
+            announcesLoading: true,
+            presentation: fullBleed ? .fill : .card,
+            presented: main && !frame.isEmpty,
+            fadesToBackdrop: fullBleed,
+            controlsTopInset: extraTop
+        ) {
             MovingPlayerArtwork(
                 entry: controller.current,
                 canvasURL: controller.canvasURL,
@@ -233,15 +243,6 @@ extension NowPlayingView {
                 fullBleed: fullBleed,
                 sourceSide: sourceSide
             )
-            .frame(width: artwork.width, height: artwork.height)
-            if main && showMusicVideos {
-                VideoSurface(cornerRadius: 12, fillSlot: false, announcesLoading: true,
-                             presentation: fullBleed ? .fill : .card) { Color.clear }
-                    .clipShape(.rect(cornerRadius: fullBleed ? 0 : 12, style: .continuous))
-                    .frame(width: frame.width, height: frame.height)
-                    .padding(.top, extraTop)
-                    .transition(.opacity)
-            }
         }
         .frame(width: artwork.width, height: artwork.height)
         .overlay(alignment: .top) {
@@ -251,7 +252,7 @@ extension NowPlayingView {
                 .accessibilityHidden(true)
         }
         .overlay(alignment: .top) {
-            if main, fullBleed, let caption = playbackOriginCaption {
+            if main, fullBleed, !videoShowing, let caption = playbackOriginCaption {
                 Text(caption)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.white)
@@ -265,7 +266,6 @@ extension NowPlayingView {
                     .transition(.opacity)
             }
         }
-        .allowsHitTesting(main && videoShowing)
         .position(x: artwork.midX, y: artwork.midY)
     }
     #endif

@@ -24,10 +24,11 @@ final class VideoPlayback: NSObject, AVPictureInPictureControllerDelegate {
     let controller = VideoSideController(clock: VideoClock(position: { 0 }, isPlaying: { false }))
 
     @ObservationIgnored private var gate = VideoSurfaceState()
-    @ObservationIgnored private var mountedId: String?
+    private var mountedId: String?
     @ObservationIgnored private var resolvedId: String?
     @ObservationIgnored private var retriedId: String?
     @ObservationIgnored private var resolveTask: Task<Void, Never>?
+    @ObservationIgnored private var surfaceRelease: Task<Void, Never>?
     @ObservationIgnored private var lastGateLog: String?
     @ObservationIgnored private var aheadTask: Task<Void, Never>?
     @ObservationIgnored private var aheadId: String?
@@ -38,21 +39,57 @@ final class VideoPlayback: NSObject, AVPictureInPictureControllerDelegate {
         let saved: Date
     }
     @ObservationIgnored private var preparedAhead: PreparedVideo?
+    private var presentedFrames = VideoPresentedFrames()
+    private var alternateVersion: VideoVersion?
 
     private override init() { super.init() }
 
     var player: AVPlayer { controller.player }
     var state: VideoSideController.State { controller.state }
-    /// Whether a surface should draw the picture instead of the artwork.
-    var showsVideo: Bool { side != nil && controller.state == .ready }
-    /// Until the picture is on screen, not just until it is chosen: the
-    /// player can still be filling its buffer after the map is ready.
-    var isLoading: Bool { preparing || (side != nil && controller.state == .loading) }
+    var videoAspect: CGFloat {
+        let size = controller.presentationSize
+        if size.width > 0, size.height > 0 { return size.width / size.height }
+        return CGFloat(side?.aspectRatio ?? (16.0 / 9.0))
+    }
+    func picture(for trackID: String?) -> VideoPictureIdentity? {
+        guard let trackID, mountedId == trackID, side != nil, gate.canRequest,
+              controller.state == .loading || controller.state == .ready else { return nil }
+        return VideoPictureIdentity(trackID: trackID, itemRevision: controller.itemRevision)
+    }
+
+    func isDisplayingVideo(for trackID: String?, on surface: UUID? = nil) -> Bool {
+        controller.hasAppliedClock && presentedFrames.displays(picture(for: trackID), on: surface)
+    }
+
+    func reportFrame(on surface: UUID, picture source: VideoPictureIdentity, ready: Bool) {
+        presentedFrames.report(surface: surface, picture: source, ready: ready, current: picture(for: source.trackID))
+    }
+
+    func clearFrame(on surface: UUID) { presentedFrames.remove(surface: surface) }
+
+    func offersVideoVersion(for trackID: String?) -> Bool {
+        trackID != nil && mountedId == trackID && alternateVersion != nil
+    }
+
+    func playAlternateVideo(for trackID: String?) {
+        guard offersVideoVersion(for: trackID), let alternateVersion else { return }
+        self.alternateVersion = nil
+        hooks?.playVideoVersion(alternateVersion.videoId, alternateVersion.durationText)
+    }
     /// A short answer when the toggle found nothing, so it does not look dead.
     private(set) var notice: String?
     @ObservationIgnored private var noticeTask: Task<Void, Never>?
     @ObservationIgnored private var pictureInPictureController: AVPictureInPictureController?
     @ObservationIgnored private weak var pictureInPictureLayer: AVPlayerLayer?
+    @ObservationIgnored private var pictureInPicturePossibility: NSKeyValueObservation?
+    @ObservationIgnored private var isStartingPictureInPicture = false
+    @ObservationIgnored private var detachedPictureInPictureLayer: AVPlayerLayer?
+    @ObservationIgnored private var pictureLayers: [PictureLayerReference] = []
+    private final class PictureLayerReference {
+        weak var layer: AVPlayerLayer?
+        init(_ layer: AVPlayerLayer) { self.layer = layer }
+    }
+    private(set) var canStartPictureInPicture = false
     private(set) var pictureInPictureActive = false
     @ObservationIgnored private var networkAllowed = true
 
@@ -74,7 +111,6 @@ final class VideoPlayback: NSObject, AVPictureInPictureControllerDelegate {
     struct PlayerHooks {
         var track: () -> (title: String, artist: String, seconds: Double, durationText: String?)?
         var playVideoVersion: (_ videoId: String, _ durationText: String?) -> Void
-        var playSongVersion: () -> Void
         var next: () -> (videoId: String, title: String, artist: String, seconds: Double, durationText: String?)? = { nil }
     }
 
@@ -91,10 +127,7 @@ final class VideoPlayback: NSObject, AVPictureInPictureControllerDelegate {
         guard gate.enabled != on else { return }
         PlaybackDebugLog.shared.record("video: switch \(on ? "on" : "off")", about: gate.trackId)
         gate.setEnabled(on)
-        if on { UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: Self.lastUsedKey) }
-        // Off puts the song back if the music-video upload had taken its place.
         if !on {
-            hooks?.playSongVersion()
             pictureInPictureController?.stopPictureInPicture()
         }
         reconcile()
@@ -102,10 +135,24 @@ final class VideoPlayback: NSObject, AVPictureInPictureControllerDelegate {
 
 
     func setSurfaceVisible(_ visible: Bool, videoId: String?) {
+        surfaceRelease?.cancel()
+        surfaceRelease = nil
         if visible {
             gate.surfaceAppeared(videoId: videoId)
         } else {
             gate.surfaceDisappeared()
+            if gate.surfaces == 0, gate.enabled, gate.active, networkAllowed,
+               !gate.pictureInPictureActive, mountedId != nil {
+                // SwiftUI can notify the disappearing host before mounting its
+                // replacement. Keep the current item through that handoff.
+                surfaceRelease = Task { [weak self] in
+                    try? await Task.sleep(for: .milliseconds(160))
+                    guard !Task.isCancelled, let self else { return }
+                    self.surfaceRelease = nil
+                    self.reconcile()
+                }
+                return
+            }
         }
         reconcile()
     }
@@ -134,32 +181,58 @@ final class VideoPlayback: NSObject, AVPictureInPictureControllerDelegate {
         AVPictureInPictureController.isPictureInPictureSupported()
     }
 
-    var canStartPictureInPicture: Bool {
-        pictureInPictureSupported && pictureInPictureController?.isPictureInPicturePossible == true
-    }
-
     func registerPictureInPictureLayer(_ layer: AVPlayerLayer) {
         guard pictureInPictureSupported else { return }
-        // Keep PiP attached to the first stable player surface. Theater and
-        // secondary surfaces share the same player but can be short lived.
+        if !pictureLayers.contains(where: { $0.layer === layer }) {
+            pictureLayers.append(PictureLayerReference(layer))
+        }
+        selectPictureInPictureLayer()
+    }
+
+    private func selectPictureInPictureLayer() {
         guard pictureInPictureLayer == nil else { return }
-        guard let pip = AVPictureInPictureController(playerLayer: layer) else { return }
+        pictureLayers.removeAll { $0.layer == nil }
+        guard let layer = pictureLayers.first?.layer,
+              let pip = AVPictureInPictureController(playerLayer: layer) else { return }
         pip.delegate = self
         pictureInPictureLayer = layer
         pictureInPictureController = pip
+        pictureInPicturePossibility = pip.observe(\.isPictureInPicturePossible, options: [.initial, .new]) { [weak self] pip, _ in
+            Task { @MainActor [weak self, weak pip] in
+                guard let self, let pip, self.pictureInPictureController === pip else { return }
+                self.canStartPictureInPicture = pip.isPictureInPicturePossible
+            }
+        }
     }
 
-    func unregisterPictureInPictureLayer(_ layer: AVPlayerLayer) {
-        guard pictureInPictureLayer === layer else { return }
-        pictureInPictureController?.stopPictureInPicture()
+    /// A PiP window can outlive the SwiftUI surface that opened it.
+    func unregisterPictureInPictureLayer(_ layer: AVPlayerLayer) -> Bool {
+        pictureLayers.removeAll { $0.layer == nil || $0.layer === layer }
+        guard pictureInPictureLayer === layer else { return false }
+        if pictureInPictureActive || isStartingPictureInPicture {
+            detachedPictureInPictureLayer = layer
+            return true
+        }
+        releasePictureInPictureSource()
+        return false
+    }
+
+    private func releasePictureInPictureSource() {
+        pictureInPicturePossibility = nil
+        canStartPictureInPicture = false
+        detachedPictureInPictureLayer?.player = nil
+        detachedPictureInPictureLayer = nil
+        pictureInPictureLayer = nil
         pictureInPictureController?.delegate = nil
         pictureInPictureController = nil
-        pictureInPictureLayer = nil
+        selectPictureInPictureLayer()
     }
 
     func startPictureInPicture() {
-        guard canStartPictureInPicture else { return }
-        pictureInPictureController?.startPictureInPicture()
+        guard !isStartingPictureInPicture, let pictureInPictureController,
+              pictureInPictureController.isPictureInPicturePossible else { return }
+        isStartingPictureInPicture = true
+        pictureInPictureController.startPictureInPicture()
     }
 
     nonisolated func pictureInPictureControllerDidStartPictureInPicture(_ pictureInPictureController: AVPictureInPictureController) {
@@ -170,7 +243,9 @@ final class VideoPlayback: NSObject, AVPictureInPictureControllerDelegate {
 
     @MainActor
     private func didStartPictureInPicture() {
+        isStartingPictureInPicture = false
         pictureInPictureActive = true
+        player.audiovisualBackgroundPlaybackPolicy = .continuesIfPossible
         gate.setPictureInPictureActive(true)
         reconcile()
     }
@@ -183,8 +258,11 @@ final class VideoPlayback: NSObject, AVPictureInPictureControllerDelegate {
 
     @MainActor
     private func didStopPictureInPicture() {
+        isStartingPictureInPicture = false
         pictureInPictureActive = false
+        player.audiovisualBackgroundPlaybackPolicy = .pauses
         gate.setPictureInPictureActive(false)
+        if detachedPictureInPictureLayer != nil { releasePictureInPictureSource() }
         reconcile()
     }
 
@@ -200,6 +278,8 @@ final class VideoPlayback: NSObject, AVPictureInPictureControllerDelegate {
 
     @MainActor
     private func didFailToStartPictureInPicture(message: String) {
+        isStartingPictureInPicture = false
+        if detachedPictureInPictureLayer != nil { releasePictureInPictureSource() }
         PlaybackDebugLog.shared.record("video: PiP failed to start: \(message)", about: gate.trackId)
     }
 
@@ -216,7 +296,6 @@ final class VideoPlayback: NSObject, AVPictureInPictureControllerDelegate {
         }
         guard networkAllowed, gate.canRequest, let id = gate.trackId else {
             stop()
-            warmWhileOff()
             return
         }
         if mountedId == id, resolvedId == id { return }
@@ -231,6 +310,8 @@ final class VideoPlayback: NSObject, AVPictureInPictureControllerDelegate {
         mountedId = id
         resolvedId = nil
         side = nil
+        alternateVersion = nil
+        presentedFrames.reset()
         preparing = true
         say(nil)
         controller.detach()
@@ -255,11 +336,16 @@ final class VideoPlayback: NSObject, AVPictureInPictureControllerDelegate {
         )
         resolveTask = Task { [weak self] in
             guard let self else { return }
+            defer {
+                if !Task.isCancelled, self.mountedId == id {
+                    if self.acceptsResolution(for: id) { self.resolvedId = id }
+                    self.resolveTask = nil
+                    self.preparing = false
+                }
+            }
             do {
                 let side = try await InnertubeStreamResolver.shared.resolveVideo(videoId: id, forceRefresh: forceRefresh)
-                guard !Task.isCancelled, self.mountedId == id, self.gate.canRequest else { return }
-                self.resolvedId = id
-                self.resolveTask = nil
+                guard self.acceptsResolution(for: id) else { return }
                 // The upload is itself a music video (and not a still image
                 // posted as one): same file, same timeline.
                 let sameFileIsPlayable = side.isAuthoritativeMusicVideo
@@ -278,11 +364,11 @@ final class VideoPlayback: NSObject, AVPictureInPictureControllerDelegate {
                 // picture, and map the song onto it.
                 guard let track = self.hooks?.track() else { self.preparing = false; return }
                 let candidates = await Self.findVideoVersions(videoId: id, track: track)
-                guard !Task.isCancelled, self.mountedId == id, self.gate.canRequest else { return }
+                guard self.acceptsResolution(for: id) else { return }
                 var fallback: VideoVersion?
                 for candidate in candidates.prefix(3) {
                     let videoSide = try await InnertubeStreamResolver.shared.resolveVideo(videoId: candidate.videoId)
-                    guard !Task.isCancelled, self.mountedId == id, self.gate.canRequest else { return }
+                    guard self.acceptsResolution(for: id) else { return }
                     let isCounterpart = candidate.source == "counterpart"
                     let qualifies = isCounterpart
                         ? videoSide.qualifiesAsCounterpartVideo()
@@ -306,12 +392,8 @@ final class VideoPlayback: NSObject, AVPictureInPictureControllerDelegate {
                         "video: aligning \(requestedTrack?.title ?? id) by \(requestedTrack?.artist ?? "") with \(candidate.videoId) (\(candidate.type ?? "untyped"), \(candidate.durationText ?? "?"), source=\(candidate.source ?? "search"))",
                         about: id
                     )
-                    // The picture loads while the two recordings are lined up,
-                    // hidden (`side` stays nil), so it is ready the moment the
-                    // map is.
-                    self.controller.attach(videoSide)
                     let map = await VideoVersionAlignment.shared.map(songId: id, videoId: candidate.videoId)
-                    guard !Task.isCancelled, self.mountedId == id, self.gate.canRequest else { return }
+                    guard self.acceptsResolution(for: id) else { return }
                     if let map, map.confident {
                         PlaybackDebugLog.shared.record(
                             "video: picture of \(candidate.videoId) for \(requestedTrack?.title ?? id) by \(requestedTrack?.artist ?? "") aligned: \(map.summary) min-window=\(String(format: "%.3f", map.minimumWindowSimilarity))",
@@ -323,7 +405,6 @@ final class VideoPlayback: NSObject, AVPictureInPictureControllerDelegate {
                         self.prepareAhead()
                         return
                     }
-                    self.controller.detach()
                 }
                 self.preparing = false
                 guard let fallback else {
@@ -334,25 +415,25 @@ final class VideoPlayback: NSObject, AVPictureInPictureControllerDelegate {
                     self.controller.detach()
                     return
                 }
-                // A music video exists but is not this song's audio under a
-                // different cut (a remix, a live take, a re-edit): YouTube
-                // Music's Song/Video switch plays the video's own audio, and
-                // so does this — picture and sound from one file.
+                // Different cuts use their own audio only when the listener
+                // explicitly chooses that recording.
                 PlaybackDebugLog.shared.record(
-                    "video: \(fallback.videoId) does not align with the song; playing the music video itself", about: id
+                    "video: \(fallback.videoId) does not align; keeping the song and offering the video version", about: id
                 )
-                self.hooks?.playVideoVersion(fallback.videoId, fallback.durationText)
+                self.alternateVersion = fallback
             } catch {
                 PlaybackDebugLog.shared.record("video: resolve failed: \(error)", about: id)
-                guard !Task.isCancelled, self.mountedId == id else { return }
+                guard self.acceptsResolution(for: id) else { return }
                 self.preparing = false
-                self.resolvedId = id
-                self.resolveTask = nil
                 self.side = nil
                 self.controller.detach()
                 self.say("The music video couldn’t be loaded")
             }
         }
+    }
+
+    private func acceptsResolution(for id: String) -> Bool {
+        !Task.isCancelled && mountedId == id && gate.trackId == id && gate.canRequest && networkAllowed
     }
 
     /// The picture failed (usually an expired signed URL): ask once more,
@@ -377,24 +458,6 @@ final class VideoPlayback: NSObject, AVPictureInPictureControllerDelegate {
     /// A signed video URL lives for hours; a stale one is refreshed by the
     /// player-failure retry, so a prepared choice can be kept for a while.
     private static let preparedLifetime: TimeInterval = 20 * 60
-    private static let lastUsedKey = "VideoSwitchLastUsedAt"
-
-    /// Listeners who use the picture get the playing song's video found and
-    /// lined up while the switch is off, so turning it on shows the picture
-    /// from the prepared path (~0.3 s) instead of a cold search and alignment
-    /// (~7 s). Nothing is decoded or rendered; it waits until the track is
-    /// under way so it never lands on a transition. Listeners who have not
-    /// used the switch in two weeks pay nothing.
-    private func warmWhileOff() {
-        guard !gate.canRequest, networkAllowed, gate.active,
-              let id = gate.trackId, !id.isEmpty,
-              preparedAhead?.songId != id else { return }
-        let lastUsed = UserDefaults.standard.double(forKey: Self.lastUsedKey)
-        guard lastUsed > 0, Date().timeIntervalSince1970 - lastUsed < 14 * 24 * 3600 else { return }
-        // Credits are read after the delay: at the track change they can
-        // still describe the previous song.
-        prepare((videoId: id, title: "", artist: "", seconds: 0, durationText: nil), delay: 15)
-    }
 
     private func prepare(
         _ next: (videoId: String, title: String, artist: String, seconds: Double, durationText: String?),
@@ -404,16 +467,9 @@ final class VideoPlayback: NSObject, AVPictureInPictureControllerDelegate {
         aheadId = next.videoId
         aheadTask?.cancel()
         aheadTask = Task(priority: .utility) { [weak self] in
-            var next = next
             if delay > 0 {
                 try? await Task.sleep(for: .seconds(delay))
                 guard !Task.isCancelled else { return }
-                if next.title.isEmpty {
-                    guard let self, self.gate.trackId == next.videoId,
-                          let track = self.hooks?.track() else { return }
-                    next = (videoId: next.videoId, title: track.title, artist: track.artist,
-                            seconds: track.seconds, durationText: track.durationText)
-                }
             }
             let own = try? await InnertubeStreamResolver.shared.resolveVideo(videoId: next.videoId)
             if let own {
@@ -459,19 +515,20 @@ final class VideoPlayback: NSObject, AVPictureInPictureControllerDelegate {
     }
 
     private func stop() {
-        // A preparation for the playing song survives the switch being off:
-        // that is the whole point of warming it.
-        if aheadId != gate.trackId || gate.trackId == nil {
-            aheadTask?.cancel()
-            aheadTask = nil
-            aheadId = nil
-        }
+        surfaceRelease?.cancel()
+        surfaceRelease = nil
+        aheadTask?.cancel()
+        aheadTask = nil
+        aheadId = nil
         if preparedAhead?.songId != gate.trackId { preparedAhead = nil }
+        guard mountedId != nil else { return }
         resolveTask?.cancel()
         resolveTask = nil
         mountedId = nil
         resolvedId = nil
         side = nil
+        alternateVersion = nil
+        presentedFrames.reset()
         preparing = false
         say(nil)
         controller.detach()
@@ -510,132 +567,170 @@ private final class VideoVersionAdapter: VideoVersionBridgeVideoVersionCallback 
     func onResult(json: String?, message: String?) { handler(json, message) }
 }
 
-/// One place the picture can appear. The fallback is what the surface shows
-/// when the switch is off, the track has no video side, or the picture failed;
-/// the video is an overlay on top, never a replacement for the artwork view
-/// that already owns its corner, shadow and tap behaviour.
+/// Hosts the shared muted player over its artwork fallback. Opening another
+/// pane changes the surface's visibility without replacing the audio session.
 struct VideoSurface<Fallback: View>: View {
     var cornerRadius: CGFloat = 12
-    /// Fill the surface's box with black behind a 16:9 picture. False for a
-    /// full-bleed hero, where the artwork must stay visible around the picture.
     var fillSlot = true
-    /// Say "Loading music video" while one is being prepared. Only the large
-    /// surfaces do: a thumbnail has no room for it.
     var announcesLoading = false
     var presentation: Presentation = .letterbox
+    var presented = true
+    /// Both the artwork and picture use this mask in the edge-to-edge stage.
+    /// Nil is used by hosts that never fade into the background.
+    var fadesToBackdrop: Bool? = nil
+    var controlsTopInset: CGFloat = 0
+    var showsPictureControls = true
     @ViewBuilder var fallback: () -> Fallback
 
     enum Presentation {
-        /// A 16:9 picture inside the slot (`fillSlot` says what is behind it):
-        /// the thumbnails, where the slot's shape cannot change.
         case letterbox
-        /// The picture covers the whole slot, cropped: the full-bleed hero,
-        /// where it takes the artwork's place edge to edge.
         case fill
-        /// The card takes the picture's own shape, full width and shorter,
-        /// with nothing around it: the large square artwork card.
         case card
     }
 
     @Environment(PlaybackController.self) private var controller
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("show_music_videos") private var showMusicVideos = false
     @AppStorage("video_over_cellular") private var videoOverCellular = false
+    @State private var surfaceID = UUID()
+    @State private var appeared = false
     @State private var registered = false
     @State private var theaterPresented = false
 
+    private var playback: VideoPlayback { .shared }
+    private var trackID: String? { controller.current?.videoId }
+
     private func caption(_ text: String, loading: Bool) -> some View {
-        VStack {
-            Spacer()
-            HStack(spacing: 6) {
-                if loading {
-                    ProgressView().controlSize(.small)
-                } else {
-                    Image(systemName: "video.slash")
-                        .font(.caption)
-                }
-                Text(text)
-                    .font(.caption.weight(.medium))
+        HStack(spacing: 6) {
+            if loading {
+                ProgressView().controlSize(.small)
+            } else {
+                Image(systemName: "video.slash")
+                    .font(.caption)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 6)
-            .background(.ultraThinMaterial, in: Capsule())
-            .padding(10)
+            Text(text)
+                .font(.caption.weight(.medium))
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(.ultraThinMaterial, in: Capsule())
+        .padding(10)
+        .allowsHitTesting(false)
+    }
+
+    private func picture(_ source: VideoPictureIdentity, visible: Bool) -> some View {
+        GeometryReader { geometry in
+            let aspect = playback.videoAspect
+            let size = presentation == .fill
+                ? geometry.size
+                : PlayerLayout.containedCanvasSize(bounds: geometry.size, aspect: aspect)
+            ZStack {
+                if presentation == .letterbox && fillSlot && visible { Color.black }
+                VideoLayerView(
+                    player: playback.player,
+                    gravity: presentation == .fill ? .resizeAspectFill : .resizeAspect,
+                    onDisplayChanged: { ready in
+                        playback.reportFrame(on: surfaceID, picture: source, ready: ready)
+                    }
+                )
+                .id(source)
+                .frame(width: size.width, height: size.height)
+                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                .shadow(color: presentation == .card ? .black.opacity(0.35) : .clear, radius: 20, y: 10)
+                .opacity(visible ? 1 : 0)
+                .animation(visible && !reduceMotion ? .easeOut(duration: 0.20) : nil, value: visible)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .allowsHitTesting(false)
-        .transition(.opacity)
+        .accessibilityHidden(true)
+        // A previous track must disappear immediately; only verified frames
+        // for the new item fade in over its cover.
+        .transition(.identity)
     }
 
     @ViewBuilder
-    private var picture: some View {
-        let player = VideoPlayback.shared.player
-        // The rendition's own shape (a 1590x1080 upload is not 16:9).
-        let aspect = VideoPlayback.shared.side?.aspectRatio ?? 16.0 / 9.0
-        switch presentation {
-        case .fill:
-            VideoLayerView(player: player, gravity: .resizeAspectFill)
-                .allowsHitTesting(false)
-                .transition(.opacity)
-        case .card:
-            VideoLayerView(player: player, gravity: .resizeAspectFill)
-                .aspectRatio(aspect, contentMode: .fit)
-                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-                .shadow(color: .black.opacity(0.35), radius: 20, y: 10)
-                .allowsHitTesting(false)
-                .transition(.opacity)
-        case .letterbox:
-            if fillSlot { Color.black }
-            VideoLayerView(player: player)
-                .aspectRatio(aspect, contentMode: .fit)
-                .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-                .allowsHitTesting(false)
-                .transition(.opacity)
+    private func visualContent(source: VideoPictureIdentity?, visible: Bool) -> some View {
+        let content = ZStack {
+            fallback()
+                .opacity(presentation == .card && visible ? 0 : 1)
+                .animation(visible && !reduceMotion ? .easeOut(duration: 0.20) : nil, value: visible)
+            if let source {
+                picture(source, visible: visible)
+            }
+        }
+        .allowsHitTesting(false)
+        if let fadesToBackdrop {
+            content.mask {
+                LinearGradient(
+                    stops: [
+                        .init(color: .white, location: 0),
+                        .init(color: .white, location: 0.62),
+                        .init(color: .white.opacity(fadesToBackdrop ? 0 : 1), location: 1),
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+            }
+        } else {
+            content
         }
     }
 
-    var body: some View {
-        ZStack {
-            fallback()
-                // A reshaped card leaves the square around the picture empty:
-                // the artwork must not show in it.
-                .opacity(presentation == .card && VideoPlayback.shared.showsVideo ? 0 : 1)
-            if VideoPlayback.shared.showsVideo {
-                picture
-                    .overlay(alignment: presentation == .fill ? .topTrailing : .bottomTrailing) {
-                        HStack(spacing: 8) {
-                            Button {
-                                theaterPresented = true
-                            } label: {
-                                Image(systemName: "arrow.up.left.and.arrow.down.right")
-                                    .accessibilityLabel("Open video theater")
-                            }
-                            .help("Open Video Theater")
-                            if VideoPlayback.shared.pictureInPictureSupported {
-                                Button {
-                                    VideoPlayback.shared.startPictureInPicture()
-                                } label: {
-                                    Image(systemName: "pip.enter")
-                                        .accessibilityLabel("Start Picture in Picture")
-                                }
-                                .help("Picture in Picture")
-                                .disabled(!VideoPlayback.shared.canStartPictureInPicture)
-                            }
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        .padding(10)
-                    }
-            } else if announcesLoading, showMusicVideos, VideoPlayback.shared.isLoading {
-                caption("Loading music video", loading: true)
-                    .accessibilityIdentifier("player.musicVideoLoading")
-            } else if announcesLoading, showMusicVideos, let notice = VideoPlayback.shared.notice {
-                caption(notice, loading: false)
-                    .accessibilityIdentifier("player.musicVideoNotice")
+    private var pictureControls: some View {
+        HStack(spacing: 8) {
+            Button {
+                theaterPresented = true
+            } label: {
+                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                    .accessibilityLabel("Open video theater")
+            }
+            .help("Open Video Theater")
+            if playback.pictureInPictureSupported {
+                Button {
+                    playback.startPictureInPicture()
+                } label: {
+                    Image(systemName: "pip.enter")
+                        .accessibilityLabel("Start Picture in Picture")
+                }
+                .help("Picture in Picture")
+                .disabled(!playback.canStartPictureInPicture)
             }
         }
-        .animation(.easeInOut(duration: 0.25), value: VideoPlayback.shared.showsVideo)
-        .animation(.easeInOut(duration: 0.25), value: VideoPlayback.shared.isLoading)
-        .animation(.easeInOut(duration: 0.25), value: VideoPlayback.shared.notice)
+        .buttonStyle(.bordered)
+        .controlSize(.small)
+        .padding(10)
+        .padding(.top, presentation == .fill ? controlsTopInset : 0)
+    }
+
+    var body: some View {
+        let active = registered && presented && showMusicVideos
+        let source = active ? playback.picture(for: trackID) : nil
+        let visible = source != nil && playback.isDisplayingVideo(for: trackID, on: surfaceID)
+        visualContent(source: source, visible: visible)
+            .overlay(alignment: presentation == .fill ? .topTrailing : .bottomTrailing) {
+                if visible && showsPictureControls { pictureControls }
+            }
+            .overlay(alignment: .bottom) {
+                if active && announcesLoading && !visible {
+                    if playback.offersVideoVersion(for: trackID) {
+                        Button("Play Video Version", systemImage: "film") {
+                            playback.playAlternateVideo(for: trackID)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                        .padding(10)
+                        .accessibilityIdentifier("player.musicVideoVersion")
+                    } else if playback.preparing || source != nil {
+                        caption(String(localized: "Loading music video"), loading: true)
+                            .accessibilityIdentifier("player.musicVideoLoading")
+                    } else if let notice = playback.notice {
+                        caption(notice, loading: false)
+                            .accessibilityIdentifier("player.musicVideoNotice")
+                    }
+                }
+            }
         #if os(iOS)
         .fullScreenCover(isPresented: $theaterPresented) {
             VideoTheaterView(controller: controller)
@@ -647,61 +742,102 @@ struct VideoSurface<Fallback: View>: View {
         }
         #endif
         .onAppear {
-            guard !registered else { return }
-            registered = true
-            VideoPlayback.shared.configure(
-                clock: VideoClock(
-                    position: { controller.livePosition(at: Date()) },
-                    isPlaying: { controller.isPlaying },
-                    rate: { controller.effectivePlaybackRate }
-                ),
-                hooks: .init(
-                    track: { [controller] in
-                        guard let entry = controller.current else { return nil }
-                        let seconds = controller.duration > 0 ? controller.duration : entry.durationSeconds
-                        return (entry.title, entry.artist, seconds, entry.durationText)
-                    },
-                    playVideoVersion: { [controller] id, durationText in
-                        controller.playVideoVersion(videoId: id, durationText: durationText)
-                    },
-                    playSongVersion: { [controller] in controller.playSongVersion() },
-                    next: { [controller] in
-                        guard let entry = controller.upNextEntry, let videoId = entry.videoId else { return nil }
-                        return (videoId, entry.title, entry.artist, entry.durationSeconds, entry.durationText)
-                    }
-                )
-            )
-            VideoPlayback.shared.setActive(scenePhase == .active)
-            VideoPlayback.shared.refreshNetworkPolicy()
-            VideoPlayback.shared.setEnabled(showMusicVideos)
-            VideoPlayback.shared.setSurfaceVisible(true, videoId: controller.current?.videoId)
+            appeared = true
+            updateRegistration(presented)
         }
         .onDisappear {
-            guard registered else { return }
-            registered = false
-            VideoPlayback.shared.setSurfaceVisible(false, videoId: nil)
+            appeared = false
+            updateRegistration(false)
         }
-        .onChange(of: controller.current?.videoId) { _, id in
-            guard registered else { return }
-            VideoPlayback.shared.setTrack(id)
+        .onChange(of: presented) { _, visible in
+            if appeared { updateRegistration(visible) }
         }
-        .onChange(of: scenePhase) { _, phase in
-            guard registered else { return }
-            VideoPlayback.shared.setActive(phase == .active)
-        }
-        .onChange(of: showMusicVideos) { _, on in
-            guard registered else { return }
-            VideoPlayback.shared.setEnabled(on)
+        .onChange(of: showMusicVideos) { _, enabled in
+            if registered || playback.pictureInPictureActive { playback.setEnabled(enabled) }
         }
         .onChange(of: NetworkQuality.shared.metered) { _, _ in
-            VideoPlayback.shared.refreshNetworkPolicy()
+            if registered { playback.refreshNetworkPolicy() }
         }
         .onChange(of: videoOverCellular) { _, _ in
-            VideoPlayback.shared.refreshNetworkPolicy()
+            if registered { playback.refreshNetworkPolicy() }
         }
-        .onChange(of: VideoPlayback.shared.state) { _, state in
-            guard registered, state == .failed else { return }
-            VideoPlayback.shared.videoFailed()
+        .onChange(of: playback.state) { _, state in
+            if registered && state == .failed { playback.videoFailed() }
+        }
+    }
+
+    private func updateRegistration(_ visible: Bool) {
+        guard registered != visible else { return }
+        registered = visible
+        guard visible else {
+            playback.clearFrame(on: surfaceID)
+            playback.setSurfaceVisible(false, videoId: nil)
+            return
+        }
+        playback.configure(
+            clock: VideoClock(
+                position: { controller.livePosition(at: Date()) },
+                isPlaying: { controller.isPlaying },
+                rate: { controller.effectivePlaybackRate }
+            ),
+            hooks: .init(
+                track: { [controller] in
+                    guard let entry = controller.current else { return nil }
+                    let seconds = controller.duration > 0 ? controller.duration : entry.durationSeconds
+                    return (entry.title, entry.artist, seconds, entry.durationText)
+                },
+                playVideoVersion: { [controller] id, durationText in
+                    controller.playVideoVersion(videoId: id, durationText: durationText)
+                },
+                next: { [controller] in
+                    guard let entry = controller.upNextEntry, let videoId = entry.videoId else { return nil }
+                    return (videoId, entry.title, entry.artist, entry.durationSeconds, entry.durationText)
+                }
+            )
+        )
+        playback.setActive(scenePhase == .active)
+        playback.refreshNetworkPolicy()
+        playback.setEnabled(showMusicVideos)
+        playback.setSurfaceVisible(true, videoId: trackID)
+    }
+}
+
+@MainActor
+final class VideoLayerCoordinator {
+    private weak var watchedItem: AVPlayerItem?
+    private var displayObservation: NSKeyValueObservation?
+    private var report: ((Bool) -> Void)?
+
+    func update(
+        layer: AVPlayerLayer,
+        player: AVPlayer,
+        gravity: AVLayerVideoGravity,
+        onDisplayChanged: @escaping (Bool) -> Void
+    ) {
+        if layer.videoGravity != gravity { layer.videoGravity = gravity }
+        if layer.player !== player { layer.player = player }
+        report = onDisplayChanged
+        let item = player.currentItem
+        guard displayObservation == nil || watchedItem !== item else { return }
+        watchedItem = item
+        displayObservation = nil
+        guard let item else { return }
+        displayObservation = layer.observe(\.isReadyForDisplay, options: [.initial, .new]) { [weak self, weak player, weak item] layer, _ in
+            Task { @MainActor [weak self, weak player, weak item, weak layer] in
+                guard let self, let layer, let player, let item,
+                      self.watchedItem === item, player.currentItem === item,
+                      layer.player === player else { return }
+                self.report?(layer.isReadyForDisplay)
+            }
+        }
+    }
+
+    func dismantle(_ layer: AVPlayerLayer) {
+        displayObservation = nil
+        watchedItem = nil
+        report = nil
+        if !VideoPlayback.shared.unregisterPictureInPictureLayer(layer) {
+            layer.player = nil
         }
     }
 }
@@ -710,54 +846,47 @@ struct VideoSurface<Fallback: View>: View {
 struct VideoLayerView: UIViewRepresentable {
     let player: AVPlayer
     var gravity: AVLayerVideoGravity = .resizeAspect
+    let onDisplayChanged: (Bool) -> Void
+
+    func makeCoordinator() -> VideoLayerCoordinator { VideoLayerCoordinator() }
     func makeUIView(context: Context) -> VideoLayerHost {
         let view = VideoLayerHost()
-        view.player = player
-        view.gravity = gravity
+        updateUIView(view, context: context)
         VideoPlayback.shared.registerPictureInPictureLayer(view.playerLayer)
         return view
     }
     func updateUIView(_ view: VideoLayerHost, context: Context) {
-        view.player = player
-        view.gravity = gravity
-        VideoPlayback.shared.registerPictureInPictureLayer(view.playerLayer)
+        context.coordinator.update(layer: view.playerLayer, player: player, gravity: gravity,
+                                   onDisplayChanged: onDisplayChanged)
     }
-    static func dismantleUIView(_ view: VideoLayerHost, coordinator: ()) {
-        VideoPlayback.shared.unregisterPictureInPictureLayer(view.playerLayer)
+    static func dismantleUIView(_ view: VideoLayerHost, coordinator: VideoLayerCoordinator) {
+        coordinator.dismantle(view.playerLayer)
     }
 }
 
 final class VideoLayerHost: UIView {
     override class var layerClass: AnyClass { AVPlayerLayer.self }
     var playerLayer: AVPlayerLayer { layer as! AVPlayerLayer }
-
-    var player: AVPlayer? {
-        get { playerLayer.player }
-        set { playerLayer.player = newValue }
-    }
-    var gravity: AVLayerVideoGravity {
-        get { playerLayer.videoGravity }
-        set { playerLayer.videoGravity = newValue }
-    }
 }
 #else
 struct VideoLayerView: NSViewRepresentable {
     let player: AVPlayer
     var gravity: AVLayerVideoGravity = .resizeAspect
+    let onDisplayChanged: (Bool) -> Void
+
+    func makeCoordinator() -> VideoLayerCoordinator { VideoLayerCoordinator() }
     func makeNSView(context: Context) -> VideoLayerHost {
         let view = VideoLayerHost()
-        view.player = player
-        view.gravity = gravity
+        updateNSView(view, context: context)
         VideoPlayback.shared.registerPictureInPictureLayer(view.playerLayer)
         return view
     }
     func updateNSView(_ view: VideoLayerHost, context: Context) {
-        view.player = player
-        view.gravity = gravity
-        VideoPlayback.shared.registerPictureInPictureLayer(view.playerLayer)
+        context.coordinator.update(layer: view.playerLayer, player: player, gravity: gravity,
+                                   onDisplayChanged: onDisplayChanged)
     }
-    static func dismantleNSView(_ view: VideoLayerHost, coordinator: ()) {
-        VideoPlayback.shared.unregisterPictureInPictureLayer(view.playerLayer)
+    static func dismantleNSView(_ view: VideoLayerHost, coordinator: VideoLayerCoordinator) {
+        coordinator.dismantle(view.playerLayer)
     }
 }
 
@@ -767,7 +896,6 @@ final class VideoLayerHost: NSView {
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
         wantsLayer = true
-        playerLayer.videoGravity = .resizeAspect
         layer?.addSublayer(playerLayer)
     }
 
@@ -778,15 +906,6 @@ final class VideoLayerHost: NSView {
     override func layout() {
         super.layout()
         playerLayer.frame = bounds
-    }
-
-    var player: AVPlayer? {
-        get { playerLayer.player }
-        set { playerLayer.player = newValue }
-    }
-    var gravity: AVLayerVideoGravity {
-        get { playerLayer.videoGravity }
-        set { playerLayer.videoGravity = newValue }
     }
 }
 #endif

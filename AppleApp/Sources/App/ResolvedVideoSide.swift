@@ -54,8 +54,12 @@ struct ResolvedVideoSide: Sendable {
         hasVideoURL && isAVCInMP4 && !isTrulyStatic
     }
     func qualifiesAsSearchVideo(isOfficialMusicVideo: Bool) -> Bool {
-        let hasMovingPicture = (isOfficialMusicVideo || isAuthoritativeMusicVideo) ? !isTrulyStatic : !isStillImage
-        return hasVideoURL && isAVCInMP4 && looksLikeMusicVideo && hasMovingPicture
+        guard hasVideoURL, isAVCInMP4 else { return false }
+        // An authoritative moving rendition can be square or vertical.
+        if isOfficialMusicVideo || isAuthoritativeMusicVideo {
+            return (aspectRatio ?? 0) > 0 && !isTrulyStatic
+        }
+        return looksLikeMusicVideo && !isStillImage
     }
     /// AVC in MP4 is the only container/codec pair AVFoundation decodes here.
     var isAVCInMP4: Bool {

@@ -192,6 +192,7 @@ struct BitChordApp: App {
                 .onChange(of: scenePhase) { _, phase in
                     appModel.scenePhase = phase
                     LoadingMonitor.shared.setActive(phase == .active)
+                    VideoPlayback.shared.setActive(phase == .active)
                     if phase == .background {
                         // No GPU work back here: a Music Understanding inference
                         // caught mid-flight aborts with
@@ -269,6 +270,10 @@ struct BitChordApp: App {
                     // What Siri may match a song title against has changed with
                     // the queue. Throttled inside.
                     AppShortcutRefresh.schedule()
+                }
+                .onChange(of: controller.current?.videoId) { _, id in
+                    // An active PiP window can outlive every in-app surface.
+                    VideoPlayback.shared.setTrack(id)
                 }
                 .onChange(of: controller.isPlaying) { _, _ in
                     PlaybackHandoff.shared.refresh(controller: controller)

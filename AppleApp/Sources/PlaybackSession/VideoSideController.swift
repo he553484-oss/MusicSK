@@ -22,9 +22,8 @@ struct VideoClock {
 /// Any video failure is contained here: the state becomes `.failed`, the layer
 /// disappears, and the artwork returns while the audio keeps playing.
 ///
-/// A surface owns the `AVPlayerLayer`; this class only owns the player and the
-/// policy. Nothing is wired to the player UI yet: the O9 surfaces pass a
-/// `VideoClock` and call `attach`/`detach`.
+/// A surface owns the `AVPlayerLayer` and its first-frame readiness. This
+/// controller owns the player and audio-clock synchronization.
 @MainActor
 @Observable
 final class VideoSideController {
@@ -39,6 +38,11 @@ final class VideoSideController {
     private(set) var state: State = .idle
     /// The side currently attached, for the surface's aspect ratio and title.
     private(set) var side: ResolvedVideoSide?
+    /// Each replacement gives the surface a fresh layer. An AVPlayerItem can
+    /// already be ready to play before it has supplied a displayable frame.
+    private(set) var itemRevision: UInt = 0
+    private(set) var presentationSize: CGSize = .zero
+    private(set) var hasAppliedClock = false
     /// Song time to picture time, when the picture is another upload of the
     /// song with its own cut (an intro, an interlude). Nil: the same timeline.
     @ObservationIgnored private var timeMap: VideoVersionAlignment.Map?
@@ -47,6 +51,7 @@ final class VideoSideController {
     @ObservationIgnored private var clock: VideoClock
     @ObservationIgnored private var timer: Timer?
     @ObservationIgnored private var statusObservation: NSKeyValueObservation?
+    @ObservationIgnored private var sizeObservation: NSKeyValueObservation?
     @ObservationIgnored private var failedObserver: NSObjectProtocol?
     /// The asset's resource loader holds its delegate weakly.
     @ObservationIgnored private var loader: ChunkedVideoLoader?
@@ -175,6 +180,12 @@ final class VideoSideController {
                 }
             }
         }
+        sizeObservation = item.observe(\.presentationSize, options: [.initial, .new]) { [weak self] item, _ in
+            Task { @MainActor [weak self] in
+                guard let self, self.player.currentItem === item, self.presentationSize != item.presentationSize else { return }
+                self.presentationSize = item.presentationSize
+            }
+        }
         failedObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: .main
         ) { [weak self] _ in
@@ -184,6 +195,7 @@ final class VideoSideController {
             }
         }
         player.replaceCurrentItem(with: item)
+        itemRevision &+= 1
         tick()
     }
 
@@ -250,9 +262,9 @@ final class VideoSideController {
             lastSeekAt = now
             let time = CMTime(seconds: max(0, seconds), preferredTimescale: 600)
             let tolerance = CMTime(seconds: 0.05, preferredTimescale: 600)
-            player.seek(to: time, toleranceBefore: tolerance, toleranceAfter: tolerance) { [weak self] finished in
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
+            player.seek(to: time, toleranceBefore: tolerance, toleranceAfter: tolerance) { [weak self, weak item] finished in
+                Task { @MainActor [weak self, weak item] in
+                    guard let self, let item, self.player.currentItem === item else { return }
                     self.isSeeking = false
                     if finished {
                         let took = CACurrentMediaTime() - now
@@ -261,7 +273,9 @@ final class VideoSideController {
                     self.tick()
                 }
             }
+            return
         }
+        if !hasAppliedClock { hasAppliedClock = true }
     }
 
     private func fail() {
@@ -301,6 +315,7 @@ final class VideoSideController {
 
     private func tearDownItem() {
         statusObservation = nil
+        sizeObservation = nil
         if let failedObserver {
             NotificationCenter.default.removeObserver(failedObserver)
         }
@@ -309,6 +324,8 @@ final class VideoSideController {
         player.pause()
         player.replaceCurrentItem(with: nil)
         loader = nil
+        presentationSize = .zero
+        hasAppliedClock = false
         isSeeking = false
         lastSeekAt = 0
     }

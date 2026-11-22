@@ -47,3 +47,34 @@ struct VideoSurfaceState: Equatable {
         // closing Now Playing while the pill still shows must not stop it.
     }
 }
+
+/// AVPlayer is shared, while each surface has its own display readiness. Item
+/// revisions also change on a retry for the same track.
+struct VideoPictureIdentity: Hashable {
+    let trackID: String
+    let itemRevision: UInt
+}
+
+struct VideoPresentedFrames: Equatable {
+    private var frames: [UUID: VideoPictureIdentity] = [:]
+
+    mutating func report(surface: UUID, picture: VideoPictureIdentity, ready: Bool,
+                         current: VideoPictureIdentity?) {
+        guard picture == current else { return }
+        if ready {
+            frames[surface] = picture
+        } else if frames[surface] == picture {
+            frames.removeValue(forKey: surface)
+        }
+    }
+
+    mutating func remove(surface: UUID) { frames.removeValue(forKey: surface) }
+
+    mutating func reset() { frames.removeAll() }
+
+    func displays(_ picture: VideoPictureIdentity?, on surface: UUID? = nil) -> Bool {
+        guard let picture else { return false }
+        if let surface { return frames[surface] == picture }
+        return frames.values.contains(picture)
+    }
+}

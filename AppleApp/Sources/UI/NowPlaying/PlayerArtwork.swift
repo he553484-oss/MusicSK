@@ -53,16 +53,6 @@ struct MovingPlayerArtwork: View {
             }
         }
         .clipShape(.rect(cornerRadius: fullBleed ? 0 : 12, style: .continuous))
-        .mask {
-            LinearGradient(
-                stops: [
-                    .init(color: .white, location: 0),
-                    .init(color: .white, location: 0.62),
-                    .init(color: .white.opacity(fullBleed ? 0 : 1), location: 1),
-                ],
-                startPoint: .top, endPoint: .bottom
-            )
-        }
         .scaleEffect(isPlaying || fullBleed || reduceMotion ? 1 : 0.86)
         .animation(reduceMotion ? nil : .smooth(duration: 0.36), value: isPlaying)
         .allowsHitTesting(false)
@@ -110,36 +100,19 @@ struct HeroArtwork: View {
     var isPlaying: Bool
     var canvasActive = true
 
-    private let fadeFraction: CGFloat = 0.42
-
     var body: some View {
         GeometryReader { geo in
-            ZStack {
-                ArtworkView(entry: entry, side: max(geo.size.width, geo.size.height), reusesPlayerThumbnail: true)
-                    .frame(width: geo.size.width, height: geo.size.height)
-                    .clipped()
-                    .allowsHitTesting(false)
-                if let canvasURL {
-                    CanvasPlayer(url: canvasURL, fallbackURL: fallbackURL, isPlaying: isPlaying && canvasActive)
+            VideoSurface(cornerRadius: 0, fillSlot: false, announcesLoading: true,
+                         presentation: .fill, fadesToBackdrop: true) {
+                ZStack {
+                    ArtworkView(entry: entry, side: max(geo.size.width, geo.size.height), reusesPlayerThumbnail: true)
                         .frame(width: geo.size.width, height: geo.size.height)
-                        .allowsHitTesting(false)
+                        .clipped()
+                    if let canvasURL {
+                        CanvasPlayer(url: canvasURL, fallbackURL: fallbackURL, isPlaying: isPlaying && canvasActive)
+                            .frame(width: geo.size.width, height: geo.size.height)
+                    }
                 }
-                // The picture takes the artwork's place edge to edge, cropped
-                // to the hero and dissolving under the same mask: a 16:9 band
-                // across the middle left the cover showing above and below.
-                VideoSurface(cornerRadius: 0, fillSlot: false, announcesLoading: true, presentation: .fill) { Color.clear }
-            }
-            .compositingGroup()
-            .mask {
-                LinearGradient(
-                    stops: [
-                        .init(color: .white, location: 0),
-                        .init(color: .white, location: 1 - fadeFraction),
-                        .init(color: .clear, location: 1),
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
             }
         }
         .aspectRatio(1, contentMode: .fit)

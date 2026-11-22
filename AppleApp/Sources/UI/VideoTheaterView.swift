@@ -29,7 +29,11 @@ struct VideoTheaterView: View {
         GeometryReader { geometry in
             ZStack {
                 Color.black
-                VideoLayerView(player: VideoPlayback.shared.player)
+                VideoSurface(cornerRadius: 0, announcesLoading: true, showsPictureControls: false) {
+                    ArtworkView(entry: controller.current,
+                                side: min(geometry.size.width, geometry.size.height),
+                                reusesPlayerThumbnail: true)
+                }
                     .frame(width: geometry.size.width, height: geometry.size.height)
                     .contentShape(Rectangle())
                     .onTapGesture { revealControls() }
@@ -117,12 +121,6 @@ struct VideoTheaterView: View {
             .ignoresSafeArea()
         }
         .background(.black)
-        .onAppear {
-            VideoPlayback.shared.setSurfaceVisible(true, videoId: controller.current?.videoId)
-        }
-        .onDisappear {
-            VideoPlayback.shared.setSurfaceVisible(false, videoId: nil)
-        }
         .task(id: controlActivity) {
             guard controlsVisible else { return }
             do {
