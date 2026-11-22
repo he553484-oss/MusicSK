@@ -11,6 +11,66 @@ import AVFAudio
 import AppKit
 #endif
 
+#if os(iOS)
+enum PlayerArtworkSlot: Hashable {
+    case cover, lyrics
+}
+
+struct PlayerArtworkFrames: PreferenceKey {
+    static let defaultValue: [PlayerArtworkSlot: Anchor<CGRect>] = [:]
+
+    static func reduce(
+        value: inout [PlayerArtworkSlot: Anchor<CGRect>],
+        nextValue: () -> [PlayerArtworkSlot: Anchor<CGRect>]
+    ) {
+        value.merge(nextValue(), uniquingKeysWith: { _, next in next })
+    }
+}
+
+/// Draws the cover once as the destination changes between the stage and the
+/// lyrics header. The original viewport determines the requested image size.
+struct MovingPlayerArtwork: View {
+    let entry: QueueEntry?
+    let canvasURL: URL?
+    let fallbackURL: URL?
+    let isPlaying: Bool
+    let canvasActive: Bool
+    let fullBleed: Bool
+    let sourceSide: CGFloat
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var still: ArtworkView {
+        var view = ArtworkView(entry: entry, side: sourceSide, reusesPlayerThumbnail: true)
+        view.fill = true
+        return view
+    }
+
+    var body: some View {
+        ZStack {
+            still
+            if let canvasURL {
+                CanvasPlayer(url: canvasURL, fallbackURL: fallbackURL, isPlaying: isPlaying && canvasActive)
+            }
+        }
+        .clipShape(.rect(cornerRadius: fullBleed ? 0 : 12, style: .continuous))
+        .mask {
+            LinearGradient(
+                stops: [
+                    .init(color: .white, location: 0),
+                    .init(color: .white, location: 0.62),
+                    .init(color: .white.opacity(fullBleed ? 0 : 1), location: 1),
+                ],
+                startPoint: .top, endPoint: .bottom
+            )
+        }
+        .scaleEffect(isPlaying || fullBleed || reduceMotion ? 1 : 0.86)
+        .animation(reduceMotion ? nil : .smooth(duration: 0.36), value: isPlaying)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+#endif
+
 /// Square sleeve: still art, motion canvas cropped to fill, Apple Music pause
 /// shrink inside a fixed slot so the column does not reflow. Used when the
 /// full-bleed banner is off.

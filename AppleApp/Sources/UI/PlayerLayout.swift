@@ -135,6 +135,20 @@ enum PlayerLayout {
         return max(sleeveCollapsedSide, fitted)
     }
 
+    /// The full-bleed option uses the whole width while keeping the image out
+    /// above the measured control deck. On short screens the visible crop is
+    /// wider than it is tall. A contained sleeve stays square.
+    static func compactPortraitArtworkFrame(stage: CGSize, fullBleed: Bool) -> CGRect {
+        let width = max(0, stage.width)
+        let availableHeight = max(0, stage.height)
+        if fullBleed {
+            return CGRect(x: 0, y: 0, width: width, height: min(width, availableHeight))
+        }
+        let top = min(12, availableHeight)
+        let side = min(max(0, width - 48), max(0, availableHeight - top - 20))
+        return CGRect(x: (width - side) / 2, y: top, width: side, height: side)
+    }
+
     /// A contained iPad portrait sleeve should read as a centered album cover,
     /// not as a full-width banner.
     static let ipadPortraitArtworkMaxSide: CGFloat = 600

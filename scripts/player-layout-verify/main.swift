@@ -228,5 +228,22 @@ check("artist artwork leaves room in a short layout",
 check("wide album header has a finite width ceiling",
       DetailHeaderLayout.albumWidth(in: 1700) == DetailHeaderLayout.maxContentWidth)
 
+let expandedStage = CGSize(width: 393, height: 430)
+let expandedAnchor = PlayerLayout.compactPortraitArtworkFrame(stage: expandedStage, fullBleed: true)
+check("the full-bleed cover uses the real player width", expandedAnchor == CGRect(x: 0, y: 0, width: 393, height: 393))
+
+let shortStage = CGSize(width: 393, height: 260)
+let croppedAnchor = PlayerLayout.compactPortraitArtworkFrame(stage: shortStage, fullBleed: true)
+check("short full-bleed cover stops above the measured deck",
+      croppedAnchor == CGRect(x: 0, y: 0, width: 393, height: 260))
+let squareAnchor = PlayerLayout.compactPortraitArtworkFrame(stage: shortStage, fullBleed: false)
+check("contained cover remains square and centered", squareAnchor.minX > 0 && squareAnchor.midX == 196.5
+      && squareAnchor.width == squareAnchor.height && squareAnchor.maxY < shortStage.height)
+
+let exhaustedStage = CGSize(width: 393, height: 0)
+check("the cover cannot intrude into controls if they need the whole height",
+      PlayerLayout.compactPortraitArtworkFrame(stage: exhaustedStage, fullBleed: true).isEmpty
+      && PlayerLayout.compactPortraitArtworkFrame(stage: exhaustedStage, fullBleed: false).isEmpty)
+
 print(failures == 0 ? "\nall \(checks) checks passed" : "\n\(failures) of \(checks) checks FAILED")
 exit(failures == 0 ? 0 : 1)

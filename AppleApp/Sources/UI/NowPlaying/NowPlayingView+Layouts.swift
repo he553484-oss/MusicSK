@@ -46,32 +46,45 @@ extension NowPlayingView {
         // reason rotating mid-song carries the open pane, the scrub and the
         // translation mode across instead of resetting them.
         GeometryReader { geo in
+            let columns = showsTwoColumns(size: geo.size)
+            let compactPortrait = !isIPad && !columns
+            let fullBleed = compactPortrait && PlayerLayout.usesFullBleedArtwork(
+                width: geo.size.width, preferenceEnabled: fullBleedOn
+            )
+            let blurred = usesBlurredArtworkBackdrop(width: geo.size.width, height: geo.size.height)
             ZStack {
                 MeshBackdrop(seed: controller.current?.id.hashValue ?? 0, artwork: controller.current?.artworkData)
                     .ignoresSafeArea()
-                if !isIPad && pane == .main && !PlayerLayout.takesLandscapeShape(width: geo.size.width, height: geo.size.height) && fullBleedOn && !videoShowing {
+                // Keep the prepared backgrounds mounted while changing panes.
+                // The previous branches started a new cover load on each reveal.
+                if fullBleed {
                     ArtworkContinuation(entry: controller.current, seam: geo.size.width)
-                        .ignoresSafeArea(edges: .bottom)
+                        .ignoresSafeArea()
+                        .opacity(pane == .main && !videoShowing ? 1 : 0)
+                        .animation(Motion.playerPane(reduceMotion), value: blurred)
                 }
-                if usesBlurredArtworkBackdrop(width: geo.size.width, height: geo.size.height) {
+                if compactPortrait || blurred {
                     FullArtworkBlurBackdrop(entry: controller.current)
                         .ignoresSafeArea()
-                        .transition(.opacity)
+                        .opacity(blurred ? 1 : 0)
+                        .animation(Motion.playerPane(reduceMotion), value: blurred)
+                        .allowsHitTesting(false)
                 }
 
-                // One decision, then one of two arrangements. The
-                // cross-fade is bound to `pane` rather than to the shape,
-                // so rotating still hard-cuts the way it always has.
-                ZStack {
-                    if showsTwoColumns(size: geo.size) {
-                        twoColumnPlayer(size: geo.size)
-                            .transition(.opacity)
-                    } else {
-                        portraitPlayer
-                            .transition(.opacity)
+                if compactPortrait {
+                    compactPortraitPlayer(width: geo.size.width, fullBleed: fullBleed)
+                } else {
+                    ZStack {
+                        if columns {
+                            twoColumnPlayer(size: geo.size)
+                                .transition(.opacity)
+                        } else {
+                            portraitPlayer
+                                .transition(.opacity)
+                        }
                     }
+                    .animation(Motion.playerPane(reduceMotion), value: pane)
                 }
-                .animation(Motion.playerPane(reduceMotion), value: pane)
             }
         }
         .modifier(PlayerDragDismissal(enabled: usesFullscreenCover, dismiss: { dismiss() }))
@@ -104,52 +117,129 @@ extension NowPlayingView {
         )
     }
 
-    /// The ordinary portrait panes keep their pinned transport. Phone lyrics
-    /// get an uninterrupted viewport with independently fading controls.
-    @ViewBuilder
     var portraitPlayer: some View {
-        if pane == .lyrics && !keepsLyricsPlaybackDeckVisible {
-            immersiveLyricsPlayer
-                .transition(portraitPaneTransition)
-        } else {
+        VStack(spacing: 0) {
+            stage
+            deck
+        }
+    }
+
+    #if os(iOS)
+    private func compactPortraitPlayer(width: CGFloat, fullBleed: Bool) -> some View {
+        let showsLyrics = pane == .lyrics
+        let showsDeck = !showsLyrics || lyricsControlsOpen
+        return ZStack(alignment: .top) {
+            if showsLyrics {
+                panel(lyricsChrome: EdgeInsets(top: lyricsHeaderHeight, leading: 0, bottom: lyricsDeckHeight, trailing: 0))
+                    .transition(.opacity)
+            }
+
+            // The deck has one identity on this screen. The lyrics are laid
+            // out behind it and retain their viewport when it fades.
             VStack(spacing: 0) {
-                stage
-                deck
-            }
-            .transition(portraitPaneTransition)
-        }
-    }
-
-    /// One layer clears before the next becomes visible. Fading both over
-    /// each other put the album sleeve and the ordinary credits behind verses.
-    private var portraitPaneTransition: AnyTransition {
-        if reduceMotion {
-            return .asymmetric(insertion: .opacity.animation(.easeIn(duration: 0.12)), removal: .identity)
-        }
-        return .asymmetric(
-            insertion: .opacity.animation(.easeOut(duration: 0.16).delay(0.10)),
-            removal: .opacity.animation(.easeIn(duration: 0.10))
-        )
-    }
-
-    private var immersiveLyricsPlayer: some View {
-        panel(lyricsChrome: EdgeInsets(top: lyricsHeaderHeight, leading: 0, bottom: lyricsDeckHeight, trailing: 0))
-            .overlay(alignment: .top) {
-                lyricsHeader
-                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { lyricsHeaderHeight = $0 }
-            }
-            .overlay(alignment: .bottom) {
+                ZStack {
+                    compactCoverSlot(fullBleed: fullBleed)
+                        .allowsHitTesting(pane == .main)
+                        .accessibilityHidden(pane != .main)
+                    if pane == .queue {
+                        stage.transition(.opacity)
+                    }
+                }
                 deck
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { lyricsDeckHeight = $0 }
-                    .modifier(LyricPlaybackChrome(visible: lyricsControlsOpen, reduceMotion: reduceMotion))
+                    .modifier(LyricPlaybackChrome(visible: showsDeck, reduceMotion: reduceMotion))
             }
-            .overlay(alignment: .bottomTrailing) {
+
+            // Both geometry slots are measured before a transition starts.
+            // The thumbnail button owns the hit area the artwork moves into.
+            lyricsHeader(usesSharedArtwork: true)
+                .opacity(showsLyrics ? 1 : 0)
+                .allowsHitTesting(showsLyrics)
+                .accessibilityHidden(!showsLyrics)
+                .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { lyricsHeaderHeight = $0 }
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if showsLyrics {
                 lyricsToolsButton
                     .padding(.trailing, 20)
                     .padding(.bottom, lyricsDeckHeight + 8)
                     .modifier(LyricPlaybackChrome(visible: lyricsControlsOpen, reduceMotion: reduceMotion))
             }
+        }
+        .overlayPreferenceValue(PlayerArtworkFrames.self) { frames in
+            GeometryReader { geometry in
+                let target: PlayerArtworkSlot = showsLyrics ? .lyrics : .cover
+                let frame = frames[target].map { geometry[$0] } ?? .zero
+                compactMovingArtwork(frame: frame, sourceSide: width, fullBleed: fullBleed && !showsLyrics)
+                    .opacity(pane == .queue || frame.isEmpty ? 0 : 1)
+                    .animation(reduceMotion ? nil : .smooth(duration: 0.34), value: target)
+            }
+        }
+        .animation(Motion.playerPane(reduceMotion), value: pane)
     }
+
+    private func compactCoverSlot(fullBleed: Bool) -> some View {
+        GeometryReader { geometry in
+            let art = PlayerLayout.compactPortraitArtworkFrame(stage: geometry.size, fullBleed: fullBleed)
+            Color.clear
+                .frame(width: art.width, height: art.height)
+                .anchorPreference(key: PlayerArtworkFrames.self, value: .bounds) { [.cover: $0] }
+                .contentShape(Rectangle())
+                .position(x: art.midX, y: art.midY)
+        }
+        .contentShape(Rectangle())
+        .gesture(
+            DragGesture(minimumDistance: 30).onEnded { value in
+                let drag = value.translation
+                guard pane == .main, drag.height < -60, abs(drag.height) > abs(drag.width) else { return }
+                Haptics.play(.expand)
+                pane = .queue
+            }
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(controller.current?.title ?? String(localized: "Nothing playing")))
+        .accessibilityHint("Swipe up for Up Next")
+    }
+
+    private func compactMovingArtwork(frame: CGRect, sourceSide: CGFloat, fullBleed: Bool) -> some View {
+        let main = pane == .main
+        return ZStack {
+            MovingPlayerArtwork(
+                entry: controller.current,
+                canvasURL: controller.canvasURL,
+                fallbackURL: controller.canvasFallbackURL,
+                isPlaying: controller.isPlaying,
+                canvasActive: pane != .queue && !(main && videoShowing),
+                fullBleed: fullBleed,
+                sourceSide: sourceSide
+            )
+            if main && showMusicVideos {
+                VideoSurface(cornerRadius: 12, fillSlot: false, announcesLoading: true,
+                             presentation: fullBleed ? .fill : .card) { Color.clear }
+                    .clipShape(.rect(cornerRadius: fullBleed ? 0 : 12, style: .continuous))
+                    .transition(.opacity)
+            }
+        }
+        .frame(width: frame.width, height: frame.height)
+        .overlay(alignment: .top) {
+            if main, fullBleed, let caption = playbackOriginCaption {
+                Text(caption)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .lineLimit(2)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(.black.opacity(0.68), in: Capsule())
+                    .padding(.top, 12)
+                    .padding(.horizontal, 16)
+                    .allowsHitTesting(false)
+                    .transition(.opacity)
+            }
+        }
+        .allowsHitTesting(main && showMusicVideos)
+        .position(x: frame.midX, y: frame.midY)
+    }
+    #endif
 
     /// The two-column player: the sleeve and the deck on the left, the open pane
     /// on the right.
