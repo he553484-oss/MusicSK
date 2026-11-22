@@ -33,6 +33,7 @@ fi
   -swift-version 5 \
   -o "$CHECK_DIR/check" \
   "$ROOT/AppleApp/Sources/UI/PlayerLayout.swift" \
+  "$ROOT/AppleApp/Sources/UI/DetailHeaderLayout.swift" \
   "$HERE/player-layout-verify/main.swift"
 
 "$CHECK_DIR/check"

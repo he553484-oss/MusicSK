@@ -116,6 +116,14 @@ jobs:
           key: build-${{ runner.os }}-${{ hashFiles('native-core/Cargo.lock', '*.gradle.kts', 'shared/*.gradle.kts','gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: build-${{ runner.os }}-
 
+      - name: Verify presentation and Now Playing contracts
+        if: env.MODE == 'build-ios'
+        run: |
+          bash scripts/check-player-layout.sh
+          bash scripts/check-lyrics-presentation.sh
+          bash scripts/check-lyrics.sh --source-only
+          bash scripts/check-now-playing.sh
+
       - name: Build the unsigned iOS IPA
         if: env.MODE == 'build-ios'
         run: |

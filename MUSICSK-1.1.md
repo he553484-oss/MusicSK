@@ -57,3 +57,31 @@ xcodegen generate --spec AppleApp/project.yml
 ```
 
 Ejecuta estos comandos con Xcode 27 en macOS Apple Silicon. La IPA esperada es `build/release/Musicsk-1.1.0-build2-ios-unsigned.ipa`. El workflow `release.yml` ofrece `build-ios` para compilar únicamente la IPA como artefacto de Actions. La IPA se firma e instala desde AltStore o SideStore. Usa la misma identidad del firmador de 1.0 para conservar la instalación y los datos.
+
+
+## Cambios integrados y diferencias pendientes
+
+| Área | Cambio en 1.1 | Verificación pendiente |
+| --- | --- | --- |
+| Letras | Filas medidas con identidad y altura estables, pausas instrumentales con espacio reservado, blur limitado por línea y énfasis que progresa con los timestamps de palabras reales. Se aplaza el fundido de entrada hasta que sale el panel anterior. El pie se desvanece sobre un área de lectura estable. El seguimiento nativo distingue toques, arrastres e inercia. | Capturar los mismos versos en 1.1. Revisar el blur, el brillo, el cambio reverso de panel, Reducir movimiento y los casos de versos largos y duetos. |
+| Reproductor | Conserva el zoom del sistema en compacto y un fondo oscuro entre presentaciones. El gesto ancho mantiene la dirección inicial y decide el cierre por posición proyectada. El mini usa coordenadas globales durante el arrastre. | Probar continuidad entre portada, textos y controles, cancelación y rotación en iPhone. |
+| Álbum | Tarjeta enmarcada con arte y crédito en composición continua, degradado basado en el recurso disponible y controles separados. A 393 × 852 pt el cuadro de arte calcula 361 × 296 pt. | Comparar recorte y foco del propio arte con las capturas. El marco, los créditos alineados a la izquierda y el grupo de acciones mantienen la identidad de Musicsk. |
+| Biblioteca | Cuadrícula adaptable de datos sincronizados o de música real en el dispositivo. A 393 pt usa tres columnas de 108 pt con texto estándar. Categorías y utilidades, incluido Replay, siguen accesibles. | Capturar una cuenta sincronizada y un dispositivo sin datos. La cuadrícula respeta las agrupaciones y el catálogo de Musicsk. |
+| Artista | Transición gradual entre foto y fondo, identidad en el borde de la composición, controles separados y conservación de los lanzamientos y Top Songs disponibles. | Verificar contraste y el recorte de la foto del proveedor. La referencia muestra una foto y metadatos distintos. |
+| Navegación | Una sola superficie de material por accesorio, sincronización con el teclado y cuatro destinos nativos. | Revisar temas claro y oscuro. La pestaña Radio de la referencia queda fuera del conjunto funcional actual. |
+
+La reproducción y los proveedores mantienen sus módulos Rust y Kotlin. Cambia la publicación Swift de metadatos nativos.
+
+### Portadas del sistema
+
+iOS 26 publica variantes cuadradas o verticales mediante `MPMediaItemAnimatedArtwork` y las claves admitidas por `MPNowPlayingInfoCenter`. iOS 27 usa `NowPlaying.AnimatedArtwork` en su sesión exclusiva de medios, que ya existía antes de 1.0. La disponibilidad de 1:1 y 3:4 depende del dispositivo. La vista previa usa un fotograma del clip elegido. Los callbacks conservan una referencia al archivo local mientras el sistema puede solicitarlo. El reloj nativo interpola el progreso y la app corrige desviaciones, saltos y cambios de velocidad.
+
+El sistema conserva arte estático con una pista que solo tenga foto, una fuente HLS sin variante local compatible, una forma distinta o un modo que limite la animación. Reducir movimiento, Bajo consumo, temperatura, red restringida y preferencias del usuario limitan la preparación y la reproducción. La expansión y el estilo de la pantalla bloqueada corresponden a iOS. El historial confirma que la antigua Live Activity mostraba JPEG y el upstream Android consumía los vídeos Canvas dentro de la app, con una URI estática en los metadatos de Media3. [Documentación de MediaPlayer](https://developer.apple.com/documentation/mediaplayer/providing-animated-artwork-for-media-items) · [Documentación de NowPlaying](https://developer.apple.com/documentation/nowplaying/animatedartwork)
+
+### Pruebas locales
+
+- Swift 6.2.4 ejecutó las suites de geometría, intención del gesto, separación visual y motor de seguimiento de letras, formas de portada, reloj y ciclo de Now Playing. La geometría cubre 51 casos.
+- Kotlin 2.4.10 ejecutó las 17 pruebas TTML. Pasaron los controles de menús, ajustes, Handoff y empaquetado de fixtures.
+- `check-lyrics.sh --source-only` pasa tras apuntar la aserción RTL al archivo que dibuja la tarjeta. Las pruebas de proveedores en vivo y la suite Canvas con AVFoundation requieren los frameworks Apple.
+- Siguen pendientes dos fallos de contratos estáticos heredados y reproducidos en 1.0. `check-quality-log.sh` espera una fila de calidad declarada. `check-lossless-route.sh` espera la reoferta automática al volver a una ruta con cable.
+- No hay medición de FPS. Instalar la IPA, iniciar sesión, reproducir YouTube Music y comprobar la pantalla bloqueada requieren un dispositivo. La gestión de portadas de MediaPlayer también requiere una pista compatible con la fuente habilitada.
