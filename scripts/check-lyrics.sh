@@ -17,7 +17,7 @@ lyrics_pane="$repo/AppleApp/Sources/UI/NowPlaying/LyricsPane.swift"
 share_card="$repo/AppleApp/Sources/UI/NowPlaying/LyricShareCard.swift"
 if ! grep -Fq 'private let maxSharedCharacters = 250' "$lyrics_pane" ||
    ! grep -Fq 'selection.isEmpty || nextTotal <= maxSharedCharacters' "$lyrics_pane" ||
-   ! grep -Fq 'lyricTextIsRightToLeft(line.text)' "$lyrics_pane" ||
+   ! grep -Fq 'lyricTextIsRightToLeft(line.text)' "$share_card" ||
    ! grep -Fq 'PHAssetCreationRequest.forAsset()' "$lyrics_pane" ||
    ! grep -Fq 'storyFormat: storyCardFormat' "$lyrics_pane" ||
    ! grep -Fq 'renderer.scale = 2' "$lyrics_pane" ||
@@ -28,6 +28,7 @@ if ! grep -Fq 'private let maxSharedCharacters = 250' "$lyrics_pane" ||
   exit 1
 fi
 echo "  ok  lyric sharing enforces its character budget and export formats"
+if [[ "${1:-}" == --source-only ]]; then exit 0; fi
 
 fw="$repo/AppleApp/Frameworks/BitChordShared.xcframework/macos-arm64"
 bin="$(mktemp -d)/lyrics-verify"

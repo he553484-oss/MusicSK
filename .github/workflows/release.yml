@@ -123,6 +123,13 @@ jobs:
           CONFIG=release scripts/build-shared-framework.sh
           xcodegen generate --spec AppleApp/project.yml
           scripts/package-ios-ipa.sh "$VERSION" --output-dir build/release
+          (
+            cd build/release
+            ipas=(Musicsk-"$VERSION"-build*-ios-unsigned.ipa)
+            [[ ${#ipas[@]} -eq 1 && -f "${ipas[0]}" ]]
+            unzip -tq "${ipas[0]}"
+            shasum -a 256 "${ipas[0]}" > SHA256.txt
+          )
 
       - name: Build the paired release files
         if: env.MODE != 'build-ios'
