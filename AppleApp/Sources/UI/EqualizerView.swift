@@ -23,7 +23,9 @@ enum EqualizerTuning {
     nonisolated static func loadBands() -> [Double] {
         let raw = PlatformSettings.shared.getString(key: "equalizer_bands", default: "0,0,0,0,0,0,0")
         let parts = raw.split(separator: ",").compactMap { Double($0) }
-        if parts.count == 7 { return parts }
+        if parts.count == 7, parts.allSatisfy(\.isFinite) {
+            return parts.map { min(max($0, -manualRangeDb), manualRangeDb) }
+        }
         return Array(repeating: 0, count: 7)
     }
 
@@ -175,8 +177,11 @@ struct EqualizerView: View {
                             .font(.caption2.monospacedDigit())
                             .foregroundStyle(abs(bands[i]) < 0.05 ? Color.secondary : Color.accentColor)
                         Slider(value: $bands[i], in: -12...12, step: 0.5)
+                            .frame(width: 140)
                             .rotationEffect(.degrees(-90))
-                            .frame(width: 120, height: 28)
+                            .frame(width: 36, height: 140)
+                            .accessibilityLabel("\(Self.labels[i]) Hz")
+                            .accessibilityValue("\(Self.formatGain(bands[i])) dB")
                         Text(Self.labels[i]).font(.caption2).foregroundStyle(.secondary)
                     }
                     .frame(maxWidth: .infinity)
