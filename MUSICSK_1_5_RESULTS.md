@@ -27,3 +27,7 @@ Para investigar el crash real: reproducirlo en iPhone anotando versión y pasos;
 El contenedor Swift sigue descargándose; no se ha compilado la app ni comprobado la IPA. No hay validación en iPhone. Los commits anteriores son locales y no se han publicado.
 - `376c1da`: la pantalla identifica los valores de flujo como informados o estimados y no presenta ceros de protección cuando faltan datos. El cálculo y la procedencia exacta del bitrate en cada ruta siguen **PENDIENTES**; cambio visual sin verificar en iOS.
 - `9d1877f`: exige coincidencia de identificador en detalles de JioSaavn para evitar asociar la primera respuesta disponible a una canción distinta; sus casos de regresión Swift aún no se han ejecutado.
+- `a30cb23`: valida los meses antes de reemplazar historial importado; un archivo sin meses válidos ya no inicia el borrado. Prueba de regresión añadida, **PENDIENTE** de ejecutar con Swift.
+- `4945967`: para caché completa con duración disponible, estima kbps a partir del tamaño total y duración; incluye la sobrecarga del contenedor y no es bitrate nominal. Con datos insuficientes conserva la selección previa. Prueba añadida, **PENDIENTE** de ejecutar con Swift. No se reprodujo el caso reportado de 1 kbps.
+
+La descarga de la imagen completa de Swift falló al registrar una capa por falta de espacio; la imagen `swift:6.2-slim` descargada solo contiene el runtime y no incluye `swiftc`. La comprobación `git diff --check` pasó. `rustfmt --check` no se ejecutó porque el componente no está instalado.
