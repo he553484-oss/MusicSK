@@ -7,6 +7,7 @@ This inventory describes software and resources included in the Apple app or lin
 ## Main project and derived code
 
 - The project is licensed under GPLv3; the complete text is [`LICENSE`](LICENSE).
+- The native Auden presentation is based on the GPLv3 Compose layouts of [Auden by Yahel0506 and contributors](https://github.com/Yahel0506/Auden/tree/d53ae77e8a0c482ecf9037fa2ab29261511bd931), itself derived from BitChord. The SwiftUI source and the mapping to its reference are included in this repository. The iOS edition uses Apple's system fonts and symbols.
 - `vendor/innertubex` is vendored at revision `64c7df4d88d27e6964157b3b341f7ec70f88ea6e` (v0.11.6). It is GPLv3.
 - `vendor/quackjs`, the JavaScript interpreter InnerTubeX runs player scripts in, is vendored at revision `d867d98f9f2562009399cdfecd67e626a086f878` (0.1.4). It is GPL-3.0-only; `vendor/quackjs/THIRD_PARTY_NOTICES.md` covers its test fixtures, which are not shipped.
 - Files ported from Orchard in `native-core/src/analyzer/` retain their source headers and AGPL-3.0-or-later terms. [`LICENSES/AGPL-3.0.txt`](LICENSES/AGPL-3.0.txt) contains the license text. AGPLv3 section 13 permits combining AGPLv3-covered code with GPLv3 code into one work: the AGPL terms continue to govern the Orchard-derived part, and the combined work's GPLv3 part remains under GPLv3. Section 13 also describes source access for remote network interaction when that condition applies.

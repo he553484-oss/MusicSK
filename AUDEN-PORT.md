@@ -20,3 +20,16 @@ La referencia es Auden GPLv3 en `d53ae77e8a0c482ecf9037fa2ab29261511bd931`, por 
 | `AudenDb`, MediaStore, DJ Android, sincronización Drive, TV y Wear | Esos servicios y destinos requieren componentes independientes de Android. El port de presentación usa las operaciones y datos que Musicsk ya ofrece. |
 
 El objeto de reproducción, el reloj, la cola y los coordinadores se crean en `BitChordApp`. El selector escribe una preferencia de presentación y el shell cambia las vistas que consumen esos objetos. Las superficies de audio y las sesiones no dependen de la edición.
+
+## Diferencias y alcance
+
+- El plegado reproduce los estados expandido y compacto de Compose. SwiftUI interpola el tamaño y la posición de la misma superficie del minirreproductor en una animación nativa. Queda pendiente igualar y comparar las tres curvas de plegado, anchura y descenso de Android.
+- Auden en Android dispone de un índice MediaStore y Room, listas locales y destinos de carpetas y géneros ligados a ese índice. Esta rama muestra el contenido real de `LocalLibrary` y `DownloadStore`, junto con el catálogo y las listas existentes de Musicsk. El límite de fijados sigue siendo el del almacenamiento compartido de Musicsk.
+- Las vistas de cola, letras, menús de pista, AVFoundation, volumen y edición avanzada de ajustes se reutilizan con sus acciones. Los contextos de vídeo activo, autenticación, bloqueo, cambios de ruta y gestos físicos requieren una prueba del nuevo build en el iPhone 15 Pro.
+- La auditoría comparó layouts, constantes y estados de Compose. La comparación lado a lado con la app Android en ejecución sigue pendiente.
+
+## Verificación
+
+`scripts/check-auden.sh` comprueba el valor predeterminado de edición, la lectura de preferencias, plegado por desplazamiento gradual, tolerancia a pequeñas inversiones, categorías persistidas y geometría del reproductor. En Linux pasaron también las suites locales de vídeo, letras, volumen, Now Playing, rutas, cola, recuperación, Replay, ajustes y menús. El verificador de IPA pasó sus 17 casos de paquete.
+
+El candidato build 7 se archiva con el flujo Release en modo `build-ios`. El modo `capture-ios` abre Original, repite la regresión de Biblioteca de build 6, reproduce un WAV local sintético y cambia varias veces el mismo binding que usa el selector. Comprueba la generación de reproducción, el identificador de pista, los identificadores de la cola y el avance del playhead Rust. Tras relanzar comprueba la edición persistida. Los argumentos de prueba solo se compilan para el simulador.
