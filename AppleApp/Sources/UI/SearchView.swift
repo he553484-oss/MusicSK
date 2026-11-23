@@ -405,6 +405,8 @@ struct SearchView: View {
     @Environment(\.scenePhase) private var scenePhase
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.musicAppearance) private var appearance
+    @Environment(\.audenTabActive) private var audenTabActive
     #endif
     private let showsMacToolbar: Bool
     private let hostsWindowControls: Bool
@@ -469,7 +471,9 @@ struct SearchView: View {
                 .toolbar {
                     #if os(iOS)
                     TopBarLeadingItems()
-                    if horizontalSizeClass == .regular {
+                    if appearance == .auden {
+                        ToolbarItem(placement: .topBarTrailing) { TopBarAccountButton() }
+                    } else if horizontalSizeClass == .regular {
                         // iPad: the top bar carries the search button (the
                         // pill, once open) and then the YouTube / Library /
                         // Addons switcher, separated into two distinct glass
@@ -513,7 +517,7 @@ struct SearchView: View {
                 })
                 .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { pageWidth = $0 }
                 .modifier(CompactPhoneSearchDrawer(
-                    isCompact: horizontalSizeClass != .regular,
+                    isCompact: appearance == .original && horizontalSizeClass != .regular,
                     query: $query,
                     isPresented: $isSearchPresented,
                     focused: $searchFieldFocused,
@@ -547,7 +551,11 @@ struct SearchView: View {
                     // below an empty field.
                     if value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                         resetToHistory()
+                        #if os(iOS)
+                        if appearance == .original, !searchFieldFocused { setIPadSearchExpanded(false) }
+                        #else
                         if !searchFieldFocused { setIPadSearchExpanded(false) }
+                        #endif
                     }
                 }
                 #if os(iOS)
@@ -555,12 +563,15 @@ struct SearchView: View {
                 // returns, once it is left with nothing in it. While it holds a
                 // query it stays open: its results are what the page shows.
                 .onChange(of: searchFieldFocused) { _, focused in
-                    if !focused && term.isEmpty { setIPadSearchExpanded(false) }
+                    if appearance == .original, !focused && term.isEmpty { setIPadSearchExpanded(false) }
                 }
                 .onAppear {
                     // Back on a page that still holds results: the pill shows
                     // what they are for, without raising the keyboard.
-                    if !term.isEmpty { setIPadSearchExpanded(true, focus: false) }
+                    if appearance == .original, !term.isEmpty { setIPadSearchExpanded(true, focus: false) }
+                }
+                .onChange(of: audenTabActive) { _, active in
+                    if !active { searchFieldFocused = false }
                 }
                 #endif
                 .onChange(of: isSearchPresented) { _, presented in
@@ -622,6 +633,10 @@ struct SearchView: View {
     /// yet.
     private func focusTheField() {
         #if os(iOS)
+        if appearance == .auden {
+            searchFieldFocused = true
+            return
+        }
         if horizontalSizeClass == .regular {
             // The pill's field only exists once it is open; opening focuses it.
             setIPadSearchExpanded(true)
@@ -639,7 +654,7 @@ struct SearchView: View {
     #if os(iOS)
     /// An iPad too narrow for the switcher in the top bar: the title and the
     /// switcher share a row under it, one on each margin.
-    private var titleRow: Bool { horizontalSizeClass == .regular && !switcherInBar }
+    private var titleRow: Bool { appearance == .original && horizontalSizeClass == .regular && !switcherInBar }
 
     /// The source switcher, measured in the top bar so the search button
     /// stands its height. Under the bar it is a plain segmented control, a
@@ -777,16 +792,19 @@ struct SearchView: View {
             // regular-width iPad and on the Mac it lives in the titlebar,
             // beside the search field, where it pushes nothing and stays
             // reachable.
-            if horizontalSizeClass != .regular, term.isEmpty {
+            if appearance == .auden {
+                audenSearchField
+            }
+            if (appearance == .auden || horizontalSizeClass != .regular), term.isEmpty {
                 sourceSwitcher
                     .padding(.horizontal, 16)
                     .padding(.bottom, 10)
             }
             #endif
             switch searchSource {
-            case .youtube: youtubeResultsColumn
-            case .library: libraryResultsColumn
-            case .addons: addonResultsColumn
+            case .youtube: trackAudenSearchScroll(youtubeResultsColumn)
+            case .library: trackAudenSearchScroll(libraryResultsColumn)
+            case .addons: trackAudenSearchScroll(addonResultsColumn)
             }
         }
         .task(id: searchSource == .library ? auth.sessionEpoch : -1) {
@@ -829,6 +847,53 @@ struct SearchView: View {
     private func refreshAddonCount() {
         addonCount = Int(SourceResolverBridge.shared.addonCount())
     }
+
+    @ViewBuilder
+    private func trackAudenSearchScroll<V: View>(_ content: V) -> some View {
+        #if os(iOS)
+        content.modifier(AudenScrollTracking())
+        #else
+        content
+        #endif
+    }
+
+    #if os(iOS)
+    private var audenSearchField: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+            TextField(audenSearchPrompt, text: $query)
+                .focused($searchFieldFocused)
+                .submitLabel(.search)
+                .autocorrectionDisabled()
+                .onSubmit {
+                    searchFieldFocused = false
+                    Task { await performSearch() }
+                }
+                .accessibilityIdentifier("auden.search.field")
+            if !query.isEmpty {
+                Button("Clear Search", systemImage: "xmark.circle.fill") { query = "" }
+                    .labelStyle(.iconOnly)
+                    .foregroundStyle(.secondary)
+                    .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 14)
+        .frame(minHeight: 46)
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: 15))
+        .padding(.horizontal, AudenDesign.gutter)
+        .padding(.bottom, 8)
+    }
+
+    private var audenSearchPrompt: LocalizedStringKey {
+        switch searchSource {
+        case .youtube: "Search YouTube Music"
+        case .library: "Search Library"
+        case .addons: "Search Addons"
+        }
+    }
+    #endif
 
     private var youtubeResultsColumn: some View {
         VStack(spacing: 0) {

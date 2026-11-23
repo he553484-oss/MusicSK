@@ -31,6 +31,7 @@ struct AudenShell: View {
                         .opacity(current == tab ? 1 : 0)
                         .allowsHitTesting(current == tab)
                         .accessibilityHidden(current != tab)
+                        .environment(\.audenTabActive, current == tab)
                         .environment(\.audenScrollChanged, current == tab ? scrollChanged : nil)
                 }
             }

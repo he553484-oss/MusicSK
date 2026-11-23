@@ -26,11 +26,19 @@ struct AudenDockPolicy {
     }
 }
 
+extension Sequence where Element: Identifiable {
+    func audenUnique() -> [Element] {
+        var seen: Set<Element.ID> = []
+        return filter { seen.insert($0.id).inserted }
+    }
+}
+
 #if canImport(SwiftUI)
 import SwiftUI
 
 extension EnvironmentValues {
     @Entry var musicAppearance: MusicAppearance = .original
+    @Entry var audenTabActive = true
     @Entry var audenScrollChanged: ((Double, Double) -> Void)? = nil
 }
 

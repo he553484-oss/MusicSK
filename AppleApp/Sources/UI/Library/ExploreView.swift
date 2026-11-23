@@ -50,6 +50,9 @@ struct ExploreView: View {
                 .padding(.horizontal, 24)
                 .padding(.vertical, 20)
             }
+            #if os(iOS)
+            .modifier(AudenScrollTracking())
+            #endif
         }
     }
 

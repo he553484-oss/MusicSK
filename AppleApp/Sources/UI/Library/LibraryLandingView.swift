@@ -15,6 +15,10 @@ struct LibraryLandingView: View {
     @Environment(AppModel.self) private var appModel
     @Environment(PlaybackController.self) private var controller
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    #if os(iOS)
+    @Environment(\.musicAppearance) private var appearance
+    @AppStorage("pinned_playlists") private var pinnedPlaylists = ""
+    #endif
     @State private var downloadStore = DownloadStore.shared
     @State private var local = LocalLibrary.shared
     @State private var shelves: [FeedShelf] = []
@@ -26,10 +30,10 @@ struct LibraryLandingView: View {
         let count: Int
         private let spacing: CGFloat = 14
 
-        init(viewportWidth: CGFloat, accessibilitySize: Bool) {
+        init(viewportWidth: CGFloat, accessibilitySize: Bool, auden: Bool) {
             width = min(860, max(1, viewportWidth - 40))
             let minimum: CGFloat = accessibilitySize ? 192 : 105
-            count = max(1, min(4, Int((width + spacing) / (minimum + spacing))))
+            count = max(1, min(auden ? 3 : 4, Int((width + spacing) / (minimum + spacing))))
         }
 
         var side: CGFloat { floor((width - spacing * CGFloat(count - 1)) / CGFloat(count)) }
@@ -41,18 +45,19 @@ struct LibraryLandingView: View {
 
     var body: some View {
         GeometryReader { viewport in
-            let grid = ArtworkGrid(viewportWidth: viewport.size.width, accessibilitySize: dynamicTypeSize.isAccessibilitySize)
+            let grid = ArtworkGrid(viewportWidth: viewport.size.width,
+                                   accessibilitySize: dynamicTypeSize.isAccessibilitySize, auden: usesAudenLayout)
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 26) {
-                    collection(grid: grid)
-                    categories
-                    onDeviceShelf
-                    ReplayHeroSection { page in appModel.openReplay(at: page) }
+                    libraryContent(grid: grid)
                 }
                 .frame(width: grid.width)
                 .padding(.vertical, 16)
                 .frame(maxWidth: .infinity)
             }
+            #if os(iOS)
+            .modifier(AudenScrollTracking())
+            #endif
             #if os(iOS) && targetEnvironment(simulator)
             // The regression test must make the lazy Replay row visible.
             .defaultScrollAnchor(UserDefaults.standard.bool(forKey: "musicsk_capture_library") ? .bottom : nil, for: .initialOffset)
@@ -71,6 +76,69 @@ struct LibraryLandingView: View {
             }
         }
     }
+
+    private var usesAudenLayout: Bool {
+        #if os(iOS)
+        appearance == .auden
+        #else
+        false
+        #endif
+    }
+
+    @ViewBuilder
+    private func libraryContent(grid: ArtworkGrid) -> some View {
+        #if os(iOS)
+        if usesAudenLayout {
+            ReplayHeroSection { page in appModel.openReplay(at: page) }
+            audenPins(grid: grid)
+            AudenLibrarySectionList(available: AudenLibrarySection.allCases.filter { section in
+                switch section {
+                case .recent, .subscriptions, .podcasts: auth.signedIn
+                default: true
+                }
+            }, onPickFolder: onPickFolder)
+            onDeviceShelf
+            collection(grid: grid)
+        } else {
+            originalContent(grid: grid)
+        }
+        #else
+        originalContent(grid: grid)
+        #endif
+    }
+
+    @ViewBuilder
+    private func originalContent(grid: ArtworkGrid) -> some View {
+        collection(grid: grid)
+        categories
+        onDeviceShelf
+        ReplayHeroSection { page in appModel.openReplay(at: page) }
+    }
+
+    #if os(iOS)
+    @ViewBuilder
+    private func audenPins(grid: ArtworkGrid) -> some View {
+        let cards = shelves.flatMap(\.items) + downloadStore.collections.compactMap { owner -> ShelfCard? in
+            guard let id = owner.browseId else { return nil }
+            return ShelfCard(title: owner.title, browseId: id)
+        }
+        let ids = pinnedPlaylists.split(separator: ",").map(String.init)
+        let ordered = ids.compactMap { id in cards.first { $0.browseId == id } }.audenUnique()
+        if !ordered.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                heading("Pinned Playlists")
+                ForEach(Array(stride(from: 0, to: ordered.count, by: grid.count)), id: \.self) { start in
+                    HStack(alignment: .top, spacing: 14) {
+                        ForEach(ordered.dropFirst(start).prefix(grid.count)) { card in
+                            ShelfCardView(card: card, artworkSide: grid.side)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            }
+        }
+    }
+    #endif
 
     @ViewBuilder
     private func collection(grid: ArtworkGrid) -> some View {

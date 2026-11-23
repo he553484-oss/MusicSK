@@ -15,6 +15,9 @@ struct HomeView: View {
     @Environment(PlaybackController.self) private var controller
     @Environment(AuthController.self) private var auth
     @Environment(ToastCenter.self) private var toast
+    #if os(iOS)
+    @Environment(\.musicAppearance) private var appearance
+    #endif
     /// An externally owned scroll position, when the caller survives the view:
     /// the Mac sidebar recreates this view on every row switch, and the feed
     /// is a singleton while the reader's place in it was not (upstream hoists
@@ -24,7 +27,7 @@ struct HomeView: View {
     var body: some View {
         PageStack {
             content
-                .navigationTitle("Listen Now")
+                .navigationTitle(isAuden ? "Home" : "Listen Now")
                 .toolbar {
                     #if os(iOS)
                     // Upstream FrostedTopBar's root-page leading BitChord logo.
@@ -66,6 +69,23 @@ struct HomeView: View {
 
     @ViewBuilder
     private var content: some View {
+        #if os(iOS)
+        if isAuden { audenContent } else { originalContent }
+        #else
+        originalContent
+        #endif
+    }
+
+    private var isAuden: Bool {
+        #if os(iOS)
+        appearance == .auden
+        #else
+        false
+        #endif
+    }
+
+    @ViewBuilder
+    private var originalContent: some View {
         switch feed.phase {
         case .loading:
             ScrollView { HomeFeedSkeleton() }
@@ -103,6 +123,45 @@ struct HomeView: View {
             .modifier(ExternalScrollPosition(position: scrollPosition))
         }
     }
+
+    #if os(iOS)
+    private var audenContent: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 24) {
+                AudenLocalHome()
+                if !auth.signedIn {
+                    SignInBanner { auth.loginPresented = true }
+                }
+                switch feed.phase {
+                case .loading:
+                    HomeFeedSkeleton()
+                case .failed(let message):
+                    EmptyStateView(
+                        icon: Image(.bchMusicNote), title: "Your feed couldn't load",
+                        subtitle: message, buttonTitle: "Retry"
+                    ) { Task { await loadFeed(force: true) } }
+                case .loaded(let shelves):
+                    ForEach(Array(shelves.audenUnique().enumerated()), id: \.element.id) { index, shelf in
+                        Group {
+                            if index == 0, isRecentsShelf(shelf) {
+                                RecentShelf(shelf: shelf)
+                            } else {
+                                ShelfCarousel(shelf: shelf, items: shelf.items.audenUnique(),
+                                              preferTrack: true, inset: AudenDesign.gutter)
+                            }
+                        }
+                        .onAppear {
+                            if shelf.id == shelves.last?.id { Task { await feed.loadMore() } }
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, AudenDesign.gutter)
+            .padding(.vertical, 18)
+        }
+        .modifier(AudenScrollTracking())
+    }
+    #endif
 
     /// Upstream's `RECENTS_TITLE` — the first shelf is a recents rail when the
     /// service titles it so, matched case-insensitively like upstream.
