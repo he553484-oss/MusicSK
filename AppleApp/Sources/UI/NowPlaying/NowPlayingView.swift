@@ -28,6 +28,7 @@ struct NowPlayingView: View {
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.musicAppearance) var appearance
+    @GestureState var audenQueuePreview: CGFloat = 0
     #endif
     @Environment(AuthController.self) var auth
     @Environment(ToastCenter.self) private var toast

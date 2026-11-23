@@ -9,7 +9,7 @@ struct AudenLyricSkeleton: View {
 
     var body: some View {
         GeometryReader { viewport in
-            let width = max(0, viewport.size.width - 60)
+            let width = max(0, viewport.size.width)
             if reduceMotion {
                 rows(width: width, alpha: 0.22)
             } else {

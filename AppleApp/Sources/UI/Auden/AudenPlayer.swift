@@ -112,6 +112,7 @@ extension NowPlayingView {
         }
         .buttonStyle(.plain)
         .foregroundStyle(.white.opacity(0.88))
+        .modifier(AudenPanel())
         .accessibilityLabel("Audio output")
         .accessibilityHint("More actions are available in the context menu")
         .contextMenu {

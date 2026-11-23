@@ -24,6 +24,18 @@ enum AudenPlayerMetrics {
     static let miniArtRadius: CGFloat = 5.7
     static let inlineGap: CGFloat = 14
     static let miniGap: CGFloat = 8
+    static let queueTravel: CGFloat = 26
+
+    static func queueProgress(pull: CGFloat, travel: CGFloat) -> CGFloat {
+        guard pull.isFinite, travel.isFinite, travel >= 1 else { return 0 }
+        return min(1, max(0, pull / travel))
+    }
+
+    static func opensQueue(progress: CGFloat, upwardVelocity: CGFloat) -> Bool {
+        if upwardVelocity >= 450 { return true }
+        if upwardVelocity <= -450 { return false }
+        return progress >= 0.3
+    }
 
     static func transport(compact: Bool) -> (glyph: CGFloat, touch: CGFloat, skip: CGFloat, spinner: CGFloat) {
         compact ? (58, 76, 44, 30) : (74, 84, 53, 38)

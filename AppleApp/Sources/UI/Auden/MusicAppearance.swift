@@ -67,15 +67,23 @@ final class AudenDockState: Equatable {
 
     private func setFolded(_ value: Bool, reduceMotion: Bool) {
         guard value != folded else { return }
-        withAnimation(reduceMotion ? nil : .spring(response: 0.34, dampingFraction: 0.85)) { folded = value }
+        withAnimation(reduceMotion ? nil : AudenDesign.dockMotion(stiffness: value ? 900 : 260,
+                                                                      delay: value ? 0 : 0.03)) {
+            folded = value
+        }
     }
 }
 
 enum AudenDesign {
     static let gutter: CGFloat = 20
     static let spacing: CGFloat = 14
-    static let dockHeight: CGFloat = 52
-    static let miniHeight: CGFloat = 48
+    static let miniHeight = AudenPlayerMetrics.inlineNavSide
+
+    // Compose spring(stiffness:, dampingRatio: .74), mass one.
+    static func dockMotion(stiffness: Double, delay: Double = 0) -> Animation {
+        .interpolatingSpring(mass: 1, stiffness: stiffness, damping: 2 * 0.74 * sqrt(stiffness))
+            .delay(delay)
+    }
 
     static func canvas(_ scheme: ColorScheme) -> Color {
         scheme == .dark ? .black : .white
@@ -104,19 +112,37 @@ struct AudenScrollTracking: ViewModifier {
 }
 
 struct AudenPanel: ViewModifier {
+    var nativeGlass = true
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceTransparency) private var opaque
 
+    @ViewBuilder
     func body(content: Content) -> some View {
-        content
-            .background {
-                if opaque { RoundedRectangle(cornerRadius: 24).fill(AudenDesign.panel(scheme)) }
-                else { RoundedRectangle(cornerRadius: 24).fill(.thickMaterial) }
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: 24).strokeBorder(.primary.opacity(0.13), lineWidth: 0.5)
-                    .allowsHitTesting(false)
-            }
+        if opaque {
+            content.background(AudenDesign.panel(scheme), in: Capsule())
+        } else if nativeGlass, #available(iOS 26.0, *) {
+            content.glassEffect(.regular.interactive(), in: Capsule())
+        } else {
+            content
+                .background(.thickMaterial, in: Capsule())
+                .overlay {
+                    Capsule().strokeBorder(.primary.opacity(0.13), lineWidth: 0.5)
+                        .allowsHitTesting(false)
+                }
+        }
+    }
+}
+
+struct AudenGlassGroup: ViewModifier {
+    @Environment(\.accessibilityReduceTransparency) private var opaque
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *), !opaque {
+            GlassEffectContainer(spacing: AudenPlayerMetrics.inlineGap) { content }
+        } else {
+            content
+        }
     }
 }
 #endif

@@ -165,7 +165,14 @@ extension NowPlayingView {
                     compactCoverSlot(fullBleed: fullBleed)
                         .allowsHitTesting(pane == .main)
                         .accessibilityHidden(pane != .main)
-                    if pane == .queue {
+                    if appearance == .auden && (pane == .queue || audenQueuePreview > 0.001) {
+                        let progress = pane == .queue ? CGFloat(1) : audenQueuePreview
+                        UpNextPane(showsCurrentTrackHeader: true, onOpenLyrics: { pane = .lyrics })
+                            .offset(y: reduceMotion ? 0 : AudenPlayerMetrics.queueTravel * (1 - progress))
+                            .opacity(Double(max(0, (progress - 0.45) / 0.55)))
+                            .allowsHitTesting(pane == .queue)
+                            .accessibilityHidden(pane != .queue)
+                    } else if pane == .queue {
                         stage.transition(.opacity)
                     }
                 }
@@ -199,7 +206,7 @@ extension NowPlayingView {
                 let frame = frames[target].map { geometry[$0] } ?? .zero
                 compactMovingArtwork(frame: frame, sourceSide: width, fullBleed: fullBleed && !showsLyrics,
                                      topInset: topInset)
-                    .opacity(pane == .queue || frame.isEmpty ? 0 : 1)
+                    .opacity(pane == .queue || frame.isEmpty ? 0 : Double(1 - audenQueuePreview))
                     .animation(reduceMotion ? nil : (appearance == .auden
                         ? .timingCurve(0.215, 0.61, 0.355, 1, duration: 0.42)
                         : .smooth(duration: 0.34)), value: target)
@@ -218,19 +225,52 @@ extension NowPlayingView {
                 .anchorPreference(key: PlayerArtworkFrames.self, value: .bounds) { [.cover: $0] }
                 .contentShape(Rectangle())
                 .position(x: art.midX, y: art.midY)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .contentShape(Rectangle())
+                .gesture(coverGesture(travel: geometry.size.height))
         }
-        .contentShape(Rectangle())
-        .gesture(
-            DragGesture(minimumDistance: 30).onEnded { value in
-                let drag = value.translation
-                guard pane == .main, drag.height < -60, abs(drag.height) > abs(drag.width) else { return }
-                Haptics.play(.expand)
-                pane = .queue
-            }
-        )
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(controller.current?.title ?? String(localized: "Nothing playing")))
         .accessibilityHint("Swipe up for Up Next")
+    }
+
+    private func coverGesture(travel: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: appearance == .auden ? 10 : 30, coordinateSpace: .local)
+            .updating($audenQueuePreview) { value, progress, transaction in
+                guard appearance == .auden, pane == .main, !reduceMotion,
+                      PlayerPanAxis(translation: value.translation) == .vertical else { return }
+                transaction.animation = nil
+                progress = AudenPlayerMetrics.queueProgress(pull: -value.translation.height, travel: travel)
+            }
+            .onEnded { value in
+                let drag = value.translation
+                guard pane == .main else { return }
+                if appearance == .auden {
+                    switch PlayerPanAxis(translation: drag) {
+                    case .horizontal:
+                        guard !party.state.controlsLocked else { return }
+                        if (drag.width <= -72 || value.velocity.width <= -500), controller.canPlayNext {
+                            Haptics.play(.skipNext)
+                            controller.next()
+                        } else if (drag.width >= 72 || value.velocity.width >= 500), controller.canPlayPrevious {
+                            Haptics.play(.skipPrevious)
+                            controller.previous()
+                        }
+                    case .vertical:
+                        guard drag.height < 0,
+                              AudenPlayerMetrics.opensQueue(
+                                  progress: AudenPlayerMetrics.queueProgress(pull: -drag.height, travel: travel),
+                                  upwardVelocity: -value.velocity.height
+                              ) else { return }
+                        Haptics.play(.expand)
+                        pane = .queue
+                    case nil: break
+                    }
+                } else if drag.height < -60, abs(drag.height) > abs(drag.width) {
+                    Haptics.play(.expand)
+                    pane = .queue
+                }
+            }
     }
 
     private func compactMovingArtwork(frame: CGRect, sourceSide: CGFloat, fullBleed: Bool, topInset: CGFloat) -> some View {
@@ -240,7 +280,7 @@ extension NowPlayingView {
         // The player swaps art and video inside the same measured frame.
         // Only the buttons are inset from the status bar.
         return VideoSurface(
-            cornerRadius: fullBleed ? 0 : 12,
+            cornerRadius: fullBleed ? 0 : (appearance == .auden ? 8 : 12),
             fillSlot: false,
             announcesLoading: true,
             presentation: fullBleed ? .fill : .card,

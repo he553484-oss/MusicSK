@@ -63,10 +63,10 @@ struct AudenShell: View {
     private var dock: some View {
         let compact = dockState.folded && !textSize.isAccessibilitySize
         return ZStack(alignment: .bottom) {
-            HStack(spacing: 8) {
+            HStack(spacing: compact ? AudenPlayerMetrics.inlineGap : 8) {
                 if compact {
                     tabButton(rememberedTab, compact: true) { dockState.expand(reduceMotion: reduceMotion) }
-                        .frame(width: AudenDesign.dockHeight)
+                        .frame(width: AudenPlayerMetrics.inlineNavSide)
                         .modifier(AudenPanel())
                     Spacer(minLength: 0)
                 } else {
@@ -79,19 +79,24 @@ struct AudenShell: View {
                     .modifier(AudenPanel())
                 }
                 tabButton(.search, compact: compact)
-                    .frame(width: compact ? AudenDesign.dockHeight : 70)
+                    .frame(width: compact ? AudenPlayerMetrics.inlineNavSide : 70)
                     .modifier(AudenPanel())
             }
             if controller.current != nil {
                 // Retain the same drag state and zoom source during the fold.
                 AudenMiniPlayer(compact: compact)
-                    .padding(.horizontal, compact ? AudenDesign.dockHeight + 8 : 0)
-                    .padding(.bottom, compact ? 2 : AudenDesign.dockHeight + 8)
+                    .padding(.horizontal, compact ? AudenPlayerMetrics.inlineNavSide + AudenPlayerMetrics.inlineGap : 0)
+                    .animation(reduceMotion ? nil : AudenDesign.dockMotion(
+                        stiffness: compact ? 600 : 300, delay: compact ? 0 : 0.06), value: compact)
+                    .padding(.bottom, compact ? 0 : AudenPlayerMetrics.expandedNavHeight + AudenPlayerMetrics.miniGap)
+                    .animation(reduceMotion ? nil : AudenDesign.dockMotion(
+                        stiffness: compact ? 340 : 520, delay: compact ? 0.08 : 0), value: compact)
                     .transition(.opacity)
             }
         }
-        .padding(.horizontal, AudenDesign.gutter)
-        .padding(.bottom, 4)
+        .modifier(AudenGlassGroup())
+        .padding(.horizontal, compact ? 28 : AudenDesign.gutter)
+        .padding(.bottom, compact ? 7 : 4)
         .frame(maxWidth: 750)
         .frame(maxWidth: .infinity)
         .accessibilityIdentifier("auden.dock")
@@ -110,7 +115,7 @@ struct AudenShell: View {
                 if !compact { Text(info.label).font(.caption2.weight(selected ? .semibold : .regular)).lineLimit(1) }
             }
             .foregroundStyle(selected ? .primary : .secondary)
-            .frame(maxWidth: .infinity, minHeight: AudenDesign.dockHeight)
+            .frame(maxWidth: .infinity, minHeight: compact ? AudenPlayerMetrics.inlineNavSide : AudenPlayerMetrics.expandedNavHeight)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -186,13 +191,15 @@ private struct AudenMiniPlayer: View {
                 appModel.nowPlayingPresented = true
             } label: {
                 HStack(spacing: compact ? 7 : 10) {
-                    ArtworkView(entry: controller.current, side: 32, reusesPlayerThumbnail: true)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    ArtworkView(entry: controller.current, side: AudenPlayerMetrics.miniArt, reusesPlayerThumbnail: true)
+                        .clipShape(RoundedRectangle(cornerRadius: AudenPlayerMetrics.miniArtRadius))
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 1) {
-                        Text(controller.current?.title ?? "").font(.subheadline.weight(.semibold)).lineLimit(1)
+                        Text(controller.current?.title ?? "")
+                            .scaledFont(size: 13, weight: .semibold).tracking(0.15).lineLimit(1)
                         if let artist = controller.current?.artist, !artist.isEmpty {
-                            Text(artist).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                            Text(artist).scaledFont(size: 12, weight: .regular).tracking(0.35)
+                                .foregroundStyle(.secondary).lineLimit(1)
                         }
                     }
                     Spacer(minLength: 0)
@@ -206,7 +213,10 @@ private struct AudenMiniPlayer: View {
             } label: {
                 Group {
                     if controller.isBuffering { ProgressView().controlSize(.small) }
-                    else { Image(systemName: controller.isPlaying ? "pause.fill" : "play.fill") }
+                    else {
+                        Image(controller.isPlaying ? .bchTransportPause : .bchTransportPlay)
+                            .resizable().scaledToFit().frame(width: 29, height: 29)
+                    }
                 }.frame(width: 44, height: 44)
             }
             .accessibilityLabel(controller.isPlaying ? "Pause" : "Play")
