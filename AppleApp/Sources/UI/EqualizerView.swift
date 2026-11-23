@@ -29,6 +29,11 @@ enum EqualizerTuning {
         return Array(repeating: 0, count: 7)
     }
 
+    nonisolated static func loadBalance() -> Double {
+        let value = Double(PlatformSettings.shared.getFloat(key: "equalizer_balance", default: 0))
+        return value.isFinite ? min(max(value, -1), 1) : 0
+    }
+
     static func manualCurve(_ bands: [Double]) -> (gains: [Double], qs: [Double]) {
         var gains = Array(repeating: 0.0, count: slots)
         var qs = Array(repeating: 0.707, count: slots)
@@ -74,34 +79,36 @@ struct EqualizerView: View {
     @State private var enabled = PlatformSettings.shared.getBoolean(key: "equalizer_enabled", default: false)
     @State private var mode = Mode(rawValue: PlatformSettings.shared.getString(key: "equalizer_mode", default: "Dynamic")) ?? .dynamic
     @State private var bands: [Double] = EqualizerTuning.loadBands()
-    @State private var toneX = Int(PlatformSettings.shared.getInt(key: "equalizer_tone_x", default: 0))
-    @State private var toneY = Int(PlatformSettings.shared.getInt(key: "equalizer_tone_y", default: 0))
+    @State private var toneX = min(max(Int(PlatformSettings.shared.getInt(key: "equalizer_tone_x", default: 0)), -5), 5)
+    @State private var toneY = min(max(Int(PlatformSettings.shared.getInt(key: "equalizer_tone_y", default: 0)), -5), 5)
     @State private var focused = PlatformSettings.shared.getBoolean(key: "equalizer_focused", default: false)
-    @State private var balance = Double(PlatformSettings.shared.getFloat(key: "equalizer_balance", default: 0))
+    @State private var balance = EqualizerTuning.loadBalance()
     @State private var presetName = PlatformSettings.shared.getString(key: "equalizer_preset", default: "Flat")
     private static let labels = ["60", "150", "400", "1k", "2.5k", "6k", "14k"]
 
     var body: some View {
-        VStack(spacing: 0) {
-            Toggle("Equalizer", isOn: $enabled)
-                .font(.headline)
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-            if let reason = controller.settingsAudioReadout.processingBypass {
-                Text(reason).font(.footnote).foregroundStyle(.secondary).padding(.horizontal).padding(.bottom, 8)
-            } else if controller.soundMode == "TRANSPARENT" {
-                Text("Your EQ settings are saved. Choose Enhanced in Sound Processing to hear them; Transparent bypasses EQ.")
-                    .font(.footnote).foregroundStyle(.secondary).padding(.horizontal).padding(.bottom, 8)
-            }
-            Picker("Mode", selection: $mode) {
-                ForEach(Mode.allCases, id: \.self) { Text(LocalizedStringKey($0.rawValue)).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .padding(.horizontal)
-            .padding(.bottom, 8)
-            Divider()
-            ScrollView {
-                VStack(spacing: 16) {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                VStack(alignment: .leading, spacing: 10) {
+                    Toggle("Equalizer", isOn: $enabled)
+                        .font(.headline)
+                    if let reason = controller.settingsAudioReadout.processingBypass {
+                        Text(reason).font(.footnote).foregroundStyle(.secondary)
+                    } else if controller.soundMode == "TRANSPARENT" {
+                        Text("Your EQ settings are saved. Choose Enhanced in Sound Processing to hear them; Transparent bypasses EQ.")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 16))
+
+                Picker("Mode", selection: $mode) {
+                    ForEach(Mode.allCases, id: \.self) { Text(LocalizedStringKey($0.rawValue)).tag($0) }
+                }
+                .pickerStyle(.segmented)
+
+                VStack(spacing: 18) {
                     switch mode {
                     case .dynamic:
                         DynamicEQPad(
@@ -112,13 +119,17 @@ struct EqualizerView: View {
                         presetRow
                         manualBands
                     }
+                    Divider()
                     balanceControl
                 }
-                .padding(.top, 12)
-                .opacity(enabled ? 1 : 0.4)
+                .padding(.vertical, 16)
+                .frame(maxWidth: .infinity)
+                .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 16))
+                .opacity(enabled ? 1 : 0.5)
                 .disabled(!enabled)
             }
-            Spacer(minLength: 0)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 16)
         }
         .navigationTitle("Equalizer")
         .onChange(of: enabled) { _, value in
@@ -170,7 +181,7 @@ struct EqualizerView: View {
 
     private var manualBands: some View {
         VStack(spacing: 12) {
-            HStack(alignment: .bottom, spacing: 8) {
+            HStack(alignment: .bottom, spacing: 0) {
                 ForEach(0..<7, id: \.self) { i in
                     VStack {
                         Text(Self.formatGain(bands[i]))
@@ -194,6 +205,7 @@ struct EqualizerView: View {
                 bands = Array(repeating: 0, count: 7)
                 persistManual(presetName: "Flat")
             }
+            .frame(minHeight: 44)
         }
         .onChange(of: bands) { _, _ in persistManual(presetName: EQPresets.matching(bands)) }
     }
