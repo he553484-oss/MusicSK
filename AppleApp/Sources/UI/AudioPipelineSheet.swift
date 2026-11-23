@@ -39,7 +39,7 @@ struct AudioPipelineSheet: View {
                 VStack(alignment: .leading, spacing: 0) {
                     Text("Live signal path, decoder to output")
                         .font(.caption)
-                        .foregroundStyle(.white.opacity(0.45))
+                        .foregroundStyle(Color.primary.opacity(0.45))
                         .padding(.bottom, 14)
                     stage(0, "doc.text", "Track Info") {
                         row("Requested Source Quality", claimedQuality)
@@ -185,12 +185,12 @@ struct AudioPipelineSheet: View {
             HStack(spacing: 10) {
                 Image(systemName: icon)
                     .scaledFont(size: 15, weight: .semibold)
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(Color.primary.opacity(0.7))
                     .frame(width: 28, height: 28)
-                    .background(.white.opacity(0.10), in: Circle())
-                Text(title)
+                    .background(Color.primary.opacity(0.10), in: Circle())
+                Text(LocalizedStringKey(title))
                     .font(.headline)
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.primary)
             }
             .padding(.top, index == 0 ? 0 : 14)
 
@@ -203,29 +203,38 @@ struct AudioPipelineSheet: View {
 
     private var rule: some View {
         Rectangle()
-            .fill(.white.opacity(0.14))
+            .fill(Color.primary.opacity(0.14))
             .frame(width: 1, height: 18)
             .padding(.leading, 14)
     }
 
     private func row(_ label: String, _ value: String) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(label)
-                .font(.callout)
-                .foregroundStyle(.white.opacity(0.55))
-            Spacer(minLength: 12)
-            Text(value)
-                .font(.callout.monospacedDigit())
-                .foregroundStyle(.white.opacity(0.9))
-                .multilineTextAlignment(.trailing)
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(LocalizedStringKey(label))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: true, vertical: false)
+                Spacer(minLength: 0)
+                Text(value)
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+            VStack(alignment: .leading, spacing: 3) {
+                Text(LocalizedStringKey(label)).foregroundStyle(.secondary)
+                Text(value).foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
-        .padding(.vertical, 3)
+        .font(.callout.monospacedDigit())
+        .textSelection(.enabled)
+        .padding(.vertical, 4)
     }
 
     private func note(_ text: String) -> some View {
         Text(text)
             .font(.caption)
-            .foregroundStyle(.white.opacity(0.45))
+            .foregroundStyle(Color.primary.opacity(0.45))
             .padding(.top, 18)
     }
 
@@ -388,23 +397,23 @@ struct AudioOutputRow: View {
             HStack(spacing: 13) {
                 Image(systemName: "slider.horizontal.3")
                     .scaledFont(size: 16, weight: .medium)
-                    .foregroundStyle(.white.opacity(0.7))
+                    .foregroundStyle(Color.primary.opacity(0.7))
                     .frame(width: 40, height: 40)
-                    .background(.white.opacity(0.08), in: Circle())
+                    .background(Color.primary.opacity(0.08), in: Circle())
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Audio Pipeline")
                         .font(.body)
-                        .foregroundStyle(.white.opacity(0.85))
+                        .foregroundStyle(Color.primary.opacity(0.85))
                         .lineLimit(1)
                     Text(summary)
                         .font(.caption)
-                        .foregroundStyle(.white.opacity(0.55))
+                        .foregroundStyle(Color.primary.opacity(0.55))
                         .lineLimit(1)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
                     .scaledFont(size: 13, weight: .semibold)
-                    .foregroundStyle(.white.opacity(0.35))
+                    .foregroundStyle(Color.primary.opacity(0.35))
             }
             .contentShape(Rectangle())
         }

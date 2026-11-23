@@ -2028,6 +2028,12 @@
             "state": "translated",
             "value": "Kanallar"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Canales"
+          }
         }
       }
     },
@@ -17579,6 +17585,426 @@
           "stringUnit": {
             "state": "translated",
             "value": "Los ajustes del ecualizador están guardados. Selecciona Mejorado en Procesamiento de sonido para escucharlos; Transparente omite el ecualizador."
+          }
+        }
+      }
+    },
+    "Track Info": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Información de la pista"
+          }
+        }
+      }
+    },
+    "Decoder": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Decodificador"
+          }
+        }
+      }
+    },
+    "Resampler": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remuestreador"
+          }
+        }
+      }
+    },
+    "DSP": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Procesamiento DSP"
+          }
+        }
+      }
+    },
+    "Output Device": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dispositivo de salida"
+          }
+        }
+      }
+    },
+    "Automix": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automix"
+          }
+        }
+      }
+    },
+    "Requested Source Quality": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calidad solicitada"
+          }
+        }
+      }
+    },
+    "Stream format (reported)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formato del flujo (informado)"
+          }
+        }
+      }
+    },
+    "Source decision": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selección de fuente"
+          }
+        }
+      }
+    },
+    "Format": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formato"
+          }
+        }
+      }
+    },
+    "Bit Depth": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Profundidad de bits"
+          }
+        }
+      }
+    },
+    "Sample Rate": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frecuencia de muestreo"
+          }
+        }
+      }
+    },
+    "Bitrate (reported or estimated)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tasa de bits (informada o estimada)"
+          }
+        }
+      }
+    },
+    "Decoder Name": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Decodificador"
+          }
+        }
+      }
+    },
+    "I/O Rate": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Frecuencia de entrada/salida"
+          }
+        }
+      }
+    },
+    "Type": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tipo"
+          }
+        }
+      }
+    },
+    "Quality": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calidad"
+          }
+        }
+      }
+    },
+    "PCM Format": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Formato PCM"
+          }
+        }
+      }
+    },
+    "Bit-perfect": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bit-perfect"
+          }
+        }
+      }
+    },
+    "EQ Preset": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preajuste de ecualización"
+          }
+        }
+      }
+    },
+    "Musicsk spatial effect": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Efecto espacial de MusicSK"
+          }
+        }
+      }
+    },
+    "Apple spatial playback": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio espacial de Apple"
+          }
+        }
+      }
+    },
+    "Output API": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "API de salida"
+          }
+        }
+      }
+    },
+    "Sample Path": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ruta de muestras"
+          }
+        }
+      }
+    },
+    "Device Name": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dispositivo"
+          }
+        }
+      }
+    },
+    "Next Transition": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Siguiente transición"
+          }
+        }
+      }
+    },
+    "Why": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Motivo"
+          }
+        }
+      }
+    },
+    "Analysis": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Análisis"
+          }
+        }
+      }
+    },
+    "Buffered": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En búfer"
+          }
+        }
+      }
+    },
+    "Silent callbacks": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Callbacks silenciosos"
+          }
+        }
+      }
+    },
+    "Output rebuilds": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reconstrucciones de salida"
+          }
+        }
+      }
+    },
+    "Device xruns": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Errores de dispositivo"
+          }
+        }
+      }
+    },
+    "Output peak": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pico de salida"
+          }
+        }
+      }
+    },
+    "Upgrade correlation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Correlación de mejora"
+          }
+        }
+      }
+    },
+    "Active Processing": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Procesamiento activo"
+          }
+        }
+      }
+    },
+    "Converter Delay": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retardo del conversor"
+          }
+        }
+      }
+    },
+    "Protection Reduction": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reducción de protección"
+          }
+        }
+      }
+    },
+    "Protection counter (mixed units)": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Contador de protección (unidades mixtas)"
+          }
+        }
+      }
+    },
+    "Decoded Layout": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Distribución decodificada"
+          }
+        }
+      }
+    },
+    "Loudness Source": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuente de sonoridad"
+          }
+        }
+      }
+    },
+    "Queue Target": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Objetivo de cola"
+          }
+        }
+      }
+    },
+    "Engine Build": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Compilación del motor"
           }
         }
       }
