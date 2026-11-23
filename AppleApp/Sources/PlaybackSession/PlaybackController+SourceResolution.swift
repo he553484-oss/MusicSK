@@ -143,7 +143,7 @@ extension PlaybackController {
                 key: key, title: entry.title, artist: entry.artist,
                 // Unknown is not zero: a 0 s runtime would be read as a real
                 // length and reject every match.
-                durationSec: entry.durationSeconds > 0 ? Int(entry.durationSeconds.rounded()) : nil,
+                durationSec: PlaybackDuration.roundedSeconds(entry.durationSeconds),
                 diagnostic: report.record
             ) {
                 await latencyResolved?(ProcessInfo.processInfo.systemUptime, "cold", "source substitute")
@@ -226,7 +226,7 @@ extension PlaybackController {
             if preparationBudget != nil && prefs.canSubstitute && !entry.isVideo {
                 let stream = await SourceSubstitution.prefetch(
                     title: entry.title, artist: entry.artist,
-                    durationSec: entry.durationSeconds > 0 ? Int(entry.durationSeconds.rounded()) : nil,
+                    durationSec: PlaybackDuration.roundedSeconds(entry.durationSeconds),
                     album: entry.albumName,
                     isExplicit: entry.isExplicit.map { KotlinBoolean(value: $0) },
                     diagnostic: report.record
@@ -552,7 +552,7 @@ extension PlaybackController {
         let stream = await SourceSubstitution.substitute(
             title: entry.title,
             artist: entry.artist,
-            durationSec: playingDurationSec ?? (entry.durationSeconds > 0 ? Int(entry.durationSeconds.rounded()) : nil),
+            durationSec: playingDurationSec ?? (PlaybackDuration.roundedSeconds(entry.durationSeconds)),
             album: entry.albumName,
             isExplicit: entry.isExplicit.map { KotlinBoolean(value: $0) },
             isVideo: entry.isVideo,

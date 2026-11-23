@@ -150,10 +150,10 @@ extension PlaybackController {
             try? engine.setSleepGain(gain: 1)
             return
         }
-        if let current, !scrobbleSent {
+        if let current, !scrobbleSent, let durationSec = PlaybackDuration.wholeSeconds(duration) {
             ScrobbleBridge.shared.scrobble(
                 artist: scrobbleArtist(for: current), title: current.title, album: current.albumName,
-                durationSec: Swift.Int32(duration)
+                durationSec: durationSec
             )
             scrobbleSent = true
         }
@@ -224,7 +224,7 @@ extension PlaybackController {
               !FileManager.default.fileExists(atPath: source + ".playback-cancelled") else { return nil }
         return ResolvedSource(source: source, headers: loadedSourceHeaders,
             kbps: Int(nerd?.kbps ?? 0), lossless: QualityUpgrade.Format.isLosslessCodec(nerd?.codec), codec: nerd?.codec,
-            durationSec: duration > 0 ? Int(duration.rounded()) : nil,
+            durationSec: PlaybackDuration.roundedSeconds(duration),
             loudnessDb: currentLoudnessDb, origin: resolvedOrigin[current?.id ?? ""] ?? .cache,
             youtubeVideoId: historyVideoID)
     }

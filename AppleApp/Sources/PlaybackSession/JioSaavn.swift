@@ -122,7 +122,7 @@ enum JioSaavn {
         let target = TrackMatch.Target(
             title: entry.title,
             artist: entry.artist,
-            durationSec: playingDurationSec ?? JioSaavnResponse.durationSeconds(entry.durationSeconds)
+            durationSec: playingDurationSec ?? PlaybackDuration.roundedSeconds(entry.durationSeconds)
         )
         if target.title.trimmingCharacters(in: .whitespaces).isEmpty { return nil }
         let query = [target.title, target.artist].filter { !$0.isEmpty }.joined(separator: " ")

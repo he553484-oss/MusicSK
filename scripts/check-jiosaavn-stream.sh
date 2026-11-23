@@ -14,5 +14,6 @@ else
 fi
 "$swiftc_bin" -parse-as-library -swift-version 5 -I "$scratch" -o "$scratch/check" \
   "$scratch/JioSaavn.swift" "$repo/AppleApp/Sources/PlaybackSession/JioSaavnResponse.swift" \
+  "$repo/AppleApp/Sources/PlaybackSession/PlaybackDuration.swift" \
   "$repo/scripts/jiosaavn-stream-verify/Stubs.swift" "$repo/scripts/jiosaavn-stream-verify/main.swift"
 "$scratch/check"

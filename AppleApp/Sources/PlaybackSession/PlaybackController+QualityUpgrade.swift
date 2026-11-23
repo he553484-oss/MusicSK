@@ -56,10 +56,7 @@ extension PlaybackController {
                 target: QualityUpgrade.Target(
                     title: entry.title,
                     artist: entry.artist,
-                    durationSec: {
-                        let s = Int(entry.durationSeconds.rounded())
-                        return s > 0 ? s : nil
-                    }()
+                    durationSec: PlaybackDuration.roundedSeconds(entry.durationSeconds)
                 ),
                 inFlight: leftover,
                 playing: outcome.source.format,
@@ -113,7 +110,7 @@ extension PlaybackController {
                     mediaId: mediaId,
                     target: QualityUpgrade.Target(
                         title: entry.title, artist: entry.artist,
-                        durationSec: duration > 0 ? Int(duration.rounded()) : nil
+                        durationSec: PlaybackDuration.roundedSeconds(duration)
                     ),
                     playingCodec: codec,
                     playing: playing,
@@ -166,8 +163,8 @@ extension PlaybackController {
                 better = await QualityUpgrade.lookAgain(
                     mediaId: mediaId,
                     playingDurationSec: await MainActor.run { [weak self] () -> Int? in
-                        guard let self, self.duration > 0 else { return nil }
-                        return Int(self.duration.rounded())
+                        guard let self else { return nil }
+                        return PlaybackDuration.roundedSeconds(self.duration)
                     },
                     search: {
                         let playing = await MainActor.run { [weak self] () -> QualityUpgrade.Format? in
@@ -178,8 +175,8 @@ extension PlaybackController {
                                 lossless: QualityUpgrade.Format.isLosslessCodec(codec))
                         }
                         let dur = await MainActor.run { [weak self] () -> Int? in
-                            guard let self, self.duration > 0 else { return nil }
-                            return Int(self.duration.rounded())
+                            guard let self else { return nil }
+                            return PlaybackDuration.roundedSeconds(self.duration)
                         }
                         guard let hit = await Self.resolveSubstitute(
                             entry, prefs: prefs, waitForAll: true, playingDurationSec: dur, playing: playing

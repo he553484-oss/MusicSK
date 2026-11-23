@@ -1,11 +1,14 @@
 import Foundation
 
 func data(_ text: String) -> Data { Data(text.utf8) }
-precondition(JioSaavnResponse.durationSeconds(123.6) == 124)
-precondition(JioSaavnResponse.durationSeconds(.infinity) == nil)
-precondition(JioSaavnResponse.durationSeconds(.nan) == nil)
-precondition(JioSaavnResponse.durationSeconds(Double(Int32.max) + 1) == nil)
-precondition(JioSaavnResponse.durationSeconds(-1) == nil)
+precondition(PlaybackDuration.roundedSeconds(123.6) == 124)
+precondition(PlaybackDuration.roundedSeconds(.infinity) == nil)
+precondition(PlaybackDuration.roundedSeconds(.nan) == nil)
+precondition(PlaybackDuration.roundedSeconds(Double(Int32.max) + 1) == nil)
+precondition(PlaybackDuration.roundedSeconds(-1) == nil)
+precondition(PlaybackDuration.wholeSeconds(123.6) == 123)
+precondition(PlaybackDuration.wholeSeconds(.infinity) == nil)
+precondition(PlaybackDuration.wholeSeconds(Double(Int32.max) + 1) == nil)
 let valid = data("""
 {"auth_url":"https://cdn.example.test/audio.mp4?token=abc"}
 """)

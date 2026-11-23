@@ -5,5 +5,6 @@ scratch="$(mktemp -d)"
 trap 'rm -rf "$scratch"' EXIT
 "${SWIFTC:-swiftc}" -swift-version 5 -o "$scratch/check" \
   "$repo/AppleApp/Sources/PlaybackSession/JioSaavnResponse.swift" \
+  "$repo/AppleApp/Sources/PlaybackSession/PlaybackDuration.swift" \
   "$repo/scripts/jiosaavn-verify/main.swift"
 "$scratch/check"

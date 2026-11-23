@@ -33,7 +33,7 @@ extension PlaybackController {
     }
 
     func tickScrobble() {
-        guard let current, duration > 0 else { return }
+        guard let current, let durationSec = PlaybackDuration.wholeSeconds(duration) else { return }
         let minDur = Double(PlatformSettings.shared.getInt(key: "scrobble_min_duration", default: 30))
         let pct = Double(PlatformSettings.shared.getFloat(key: "scrobble_delay_percent", default: 0.5))
         let maxDelay = Double(PlatformSettings.shared.getInt(key: "scrobble_delay_seconds", default: 180))
@@ -44,7 +44,7 @@ extension PlaybackController {
         if scrobbleArmed, !scrobbleSent, position >= threshold {
             ScrobbleBridge.shared.scrobble(
                 artist: scrobbleArtist(for: current), title: current.title, album: current.albumName,
-                durationSec: Swift.Int32(duration)
+                durationSec: durationSec
             )
             scrobbleSent = true
         }

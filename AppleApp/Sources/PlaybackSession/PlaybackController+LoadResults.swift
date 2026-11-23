@@ -75,10 +75,12 @@ extension PlaybackController {
                 PlaybackTrackerBridge.shared.onPlaying(videoId: id)
             }
             publishPresence()
-            ScrobbleBridge.shared.nowPlaying(
-                artist: scrobbleArtist(for: entry), title: entry.title, album: entry.albumName,
-                durationSec: Swift.Int32(info.durationSeconds), positionMs: Swift.Int64(0)
-            )
+            if let durationSec = PlaybackDuration.wholeSeconds(info.durationSeconds) {
+                ScrobbleBridge.shared.nowPlaying(
+                    artist: scrobbleArtist(for: entry), title: entry.title, album: entry.albumName,
+                    durationSec: durationSec, positionMs: Swift.Int64(0)
+                )
+            }
         }
         nowPlaying.update(
             id: entry.id, title: entry.title, artist: entry.artist, album: entry.albumName,

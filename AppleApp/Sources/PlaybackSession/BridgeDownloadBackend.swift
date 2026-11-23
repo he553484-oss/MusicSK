@@ -7,7 +7,7 @@ struct BridgeDownloadBackend: DownloadBackend {
         try await resolve(entry, quality: quality, youtubeFallback: false)
     }
     func resolve(_ entry: QueueEntry, quality: String, youtubeFallback: Bool) async throws -> String {
-        let duration = entry.durationSeconds > 0 ? Int(entry.durationSeconds.rounded()) : nil
+        let duration = PlaybackDuration.roundedSeconds(entry.durationSeconds)
         if !youtubeFallback, let selected = await SourceSubstitution.forDownload(title: entry.title, artist: entry.artist,
             durationSec: duration, album: entry.albumName,
             isExplicit: entry.isExplicit.map { KotlinBoolean(value: $0) }, quality: quality) {
