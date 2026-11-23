@@ -53,6 +53,10 @@ struct LibraryLandingView: View {
                 .padding(.vertical, 16)
                 .frame(maxWidth: .infinity)
             }
+            #if os(iOS) && targetEnvironment(simulator)
+            // The regression test must make the lazy Replay row visible.
+            .defaultScrollAnchor(UserDefaults.standard.bool(forKey: "musicsk_capture_library") ? .bottom : nil, for: .initialOffset)
+            #endif
         }
         .refreshable {
             downloadStore.refresh()
