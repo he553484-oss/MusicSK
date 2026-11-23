@@ -77,12 +77,7 @@ enum JioSaavn {
         guard let (data, response) = try? await URLSession.shared.data(for: req),
               let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
               let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
-        let song: [String: Any]?
-        if let songs = root["songs"] as? [[String: Any]] {
-            song = songs.first
-        } else {
-            song = root.values.first { $0 is [String: Any] } as? [String: Any]
-        }
+        let song = JioSaavnResponse.song(in: root, id: id)
         guard let song,
               let info = song["more_info"] as? [String: Any],
               let encrypted = info["encrypted_media_url"] as? String,
