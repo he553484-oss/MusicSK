@@ -200,7 +200,9 @@ extension NowPlayingView {
                 compactMovingArtwork(frame: frame, sourceSide: width, fullBleed: fullBleed && !showsLyrics,
                                      topInset: topInset)
                     .opacity(pane == .queue || frame.isEmpty ? 0 : 1)
-                    .animation(reduceMotion ? nil : .smooth(duration: 0.34), value: target)
+                    .animation(reduceMotion ? nil : (appearance == .auden
+                        ? .timingCurve(0.215, 0.61, 0.355, 1, duration: 0.42)
+                        : .smooth(duration: 0.34)), value: target)
             }
         }
         .animation(Motion.playerPane(reduceMotion), value: pane)
