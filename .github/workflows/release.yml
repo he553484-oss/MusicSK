@@ -152,6 +152,10 @@ jobs:
           run_check transport bash scripts/check-transport.sh
           run_check local-library bash scripts/check-local-library.sh
           run_check listening bash scripts/check-listening.sh
+          run_check jiosaavn-response bash scripts/check-jiosaavn-response.sh
+          run_check jiosaavn-stream bash scripts/check-jiosaavn-stream.sh
+          run_check cached-bitrate bash scripts/check-cached-bitrate.sh
+          run_check lossless-note bash scripts/check-lossless-note.sh
           run_check pages bash scripts/check-pages.sh
           run_check settings-parity bash scripts/check-settings-parity.sh
           run_check menus bash scripts/check-menus.sh
