@@ -140,8 +140,8 @@ extension PlaybackController {
         // that do not report one.
         if !source.isEmpty, let loaded = loadedSourcePath, loaded != source { return }
         if resumeAfterFailedDownload(source: source.isEmpty ? loadedSourcePath : source) { return }
-        if historyVideoID != nil {
-            PlaybackTrackerBridge.shared.onPlaybackFinished(positionSeconds: Int64(position))
+        if historyVideoID != nil, let seconds = PlaybackDuration.positionSeconds(position) {
+            PlaybackTrackerBridge.shared.onPlaybackFinished(positionSeconds: seconds)
         }
         if sleepAfterTrack {
             sleepAfterTrack = false

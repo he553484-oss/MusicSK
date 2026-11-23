@@ -324,7 +324,9 @@ extension PlaybackController {
             return true
         }
         let headers = sourceHeadersByPath.removeValue(forKey: info.source) ?? [:]
-        PlaybackTrackerBridge.shared.onTrackChanged(positionSeconds: Int64(position))
+        if let seconds = PlaybackDuration.positionSeconds(position) {
+            PlaybackTrackerBridge.shared.onTrackChanged(positionSeconds: seconds)
+        }
         loadDidSucceed(entry: entry, index: target, info: info, startAt: 0, headers: headers)
         VideoPlayback.shared.transportClockChanged()
         return true
@@ -402,8 +404,8 @@ extension PlaybackController {
         // for it here would stall whatever thread asked — usually the main one.
         guard engineLoadedId == current?.id, engineLoadedId != nil else { return }
         if seconds <= 0.1, position > Self.backRestartsAfter, isPlaying,
-           let id = historyVideoID {
-            PlaybackTrackerBridge.shared.onTrackChanged(positionSeconds: Int64(position))
+           let id = historyVideoID, let previousSeconds = PlaybackDuration.positionSeconds(position) {
+            PlaybackTrackerBridge.shared.onTrackChanged(positionSeconds: previousSeconds)
             PlaybackTrackerBridge.shared.onPlaying(videoId: id)
         }
         if let dolbyRenderer { dolbyRenderer.seek(seconds) } else { engine.seek(seconds: seconds) }

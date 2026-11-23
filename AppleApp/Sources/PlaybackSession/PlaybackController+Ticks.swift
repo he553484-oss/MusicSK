@@ -25,10 +25,10 @@ extension PlaybackController {
     }
 
     func tickHistory() {
-        guard let id = historyVideoID else { return }
+        guard let id = historyVideoID, let seconds = PlaybackDuration.positionSeconds(position) else { return }
         PlaybackTrackerBridge.shared.onProgress(
             videoId: id,
-            positionSeconds: Int64(position)
+            positionSeconds: seconds
         )
     }
 

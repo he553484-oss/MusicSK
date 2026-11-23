@@ -14,4 +14,9 @@ enum PlaybackDuration {
         let seconds = Int32(value)
         return seconds > 0 ? seconds : nil
     }
+
+    static func positionSeconds(_ value: Double) -> Int64? {
+        guard value.isFinite, value >= 0, value < Double(Int64.max) else { return nil }
+        return Int64(value)
+    }
 }
