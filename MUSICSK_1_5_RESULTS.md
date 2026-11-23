@@ -25,3 +25,4 @@ Para investigar el crash real: reproducirlo en iPhone anotando versión y pasos;
 - Bitrate y diagnóstico: **PENDIENTE**. La verificación del archivo decodifica un cuarto de segundo y estima la tasa por bytes de paquetes y muestras decodificadas; no se ha explicado ni reproducido el valor 1 kbps.
 
 El contenedor Swift sigue descargándose; no se ha compilado la app ni comprobado la IPA. No hay validación en iPhone. Los commits anteriores son locales y no se han publicado.
+- `376c1da`: la pantalla identifica los valores de flujo como informados o estimados y no presenta ceros de protección cuando faltan datos. El cálculo y la procedencia exacta del bitrate en cada ruta siguen **PENDIENTES**; cambio visual sin verificar en iOS.
