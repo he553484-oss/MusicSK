@@ -135,6 +135,7 @@ let firstHealth = engine.outputHealth()
 let second = readPosition(after: engine, 0.6)
 let secondHealth = engine.outputHealth()
 print("  playback counters: queued=\(firstHealth.bufferedFrames)→\(secondHealth.bufferedFrames), underruns=\(firstHealth.callbackUnderruns)→\(secondHealth.callbackUnderruns), rebuilds=\(secondHealth.outputRebuilds), peak=\(secondHealth.outputPeak)")
+check("the output callback writes nonzero audio samples", max(firstHealth.outputPeak, secondHealth.outputPeak) > 0.0001)
 check("playhead advances", second > first && first > 0,
       "\(String(format: "%.3f", first)) -> \(String(format: "%.3f", second))")
 check("playhead advances at roughly real time",

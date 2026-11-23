@@ -73,10 +73,12 @@ xcrun simctl install "$device_id" "$app"
 
 bundle_id=app.musicsk.player
 start_app() {
+    local screen="$1"
+    shift
     xcrun simctl launch --terminate-running-process --console "$device_id" "$bundle_id" \
         -onboarding_done YES -automix_models_prompt_dismissed_v2 YES \
         -AppleLanguages '(es)' -AppleLocale es_ES \
-        -last_player_screen "$1" >"$scratch/app.log" 2>&1 &
+        -last_player_screen "$screen" "$@" >"$scratch/app.log" 2>&1 &
     app_pid=$!
     # Wait for the scene to render and its first-run tasks to run.
     sleep 4
@@ -115,6 +117,32 @@ sleep 2
 capture 04-ajustes-letras-es.png
 stop_app
 
+# Seed the persisted Replay month read by the real Library tab.
+app_data="$(xcrun simctl get_app_container "$device_id" "$bundle_id" data)"
+support="$app_data/Library/Application Support/BitChord"
+python3 - "$support/listening" <<'PY'
+import datetime
+import json
+import sys
+from pathlib import Path
+
+folder = Path(sys.argv[1])
+folder.mkdir(parents=True, exist_ok=True)
+month = datetime.datetime.now().strftime("%Y-%m")
+song = dict(id="duplicate", title="Replay fixture", artist="Fixture", ms=20000, plays=1)
+record = dict(version=1, month=month, tracks=[song, dict(song, ms=40000)],
+              artists=[], albums=[], days={}, hours=[0] * 24)
+(folder / f"{month}.json").write_text(json.dumps(record))
+PY
+start_app MAIN -musicsk_capture_library YES
+capture 05-biblioteca-historial-duplicado-es.png
+diagnostics=("$support"/Diagnostics/*.log)
+{
+    grep -hF 'library landing load finished shelves=0 failed=false' "${diagnostics[@]}"
+    grep -hF 'library replay ready songs=1' "${diagnostics[@]}"
+} > "$output/biblioteca-validacion.txt"
+stop_app
+
 version="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app/Info.plist")"
 build="$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$app/Info.plist")"
 toolchain="$(xcodebuild -version | paste -sd ' ' -)"
@@ -132,8 +160,10 @@ Barra de estado del simulador: $status_bar
 
 Las tres primeras capturas mantienen las pantallas y nombres de 1.2.1 para
 comparar el marco del reproductor y el estado vacío de Letras. La cuarta abre
-Configuración → Letras con el enlace de la aplicación. El simulador se lanzó
-sin sesión iniciada y sin pista. Las capturas documentan la interfaz en ese
-estado. La reproducción, el vídeo, el volumen físico, Control Center y la
-pantalla bloqueada requieren comprobaciones adicionales.
+Configuración → Letras con el enlace de la aplicación. La quinta abre
+Biblioteca sin sesión y con un mes sintético que repite un identificador.
+El archivo biblioteca-validacion.txt acredita que la vista terminó su carga
+y que Replay agrupó los registros en una sola pista. El simulador se lanzó
+sin pista en reproducción. La reproducción, el vídeo, el volumen físico,
+Control Center y la pantalla bloqueada requieren comprobaciones adicionales.
 EOF

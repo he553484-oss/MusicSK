@@ -608,7 +608,9 @@ struct ReplayHeroSection: View {
 
     private func reload() {
         let name = auth.accountName ?? ""
-        model = ReplayModel.load(period: .thisYear, holder: name.isEmpty ? "You" : name)
+        let loaded = ReplayModel.load(period: .thisYear, holder: name.isEmpty ? "You" : name)
+        model = loaded
+        PlaybackDebugLog.shared.record("library replay ready songs=\(loaded.summary.distinctSongs)")
     }
 }
 

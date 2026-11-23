@@ -151,6 +151,7 @@ jobs:
           run_check stream-recovery bash scripts/check-stream-recovery.sh
           run_check transport bash scripts/check-transport.sh
           run_check local-library bash scripts/check-local-library.sh
+          run_check listening bash scripts/check-listening.sh
           run_check pages bash scripts/check-pages.sh
           run_check settings-parity bash scripts/check-settings-parity.sh
           run_check menus bash scripts/check-menus.sh
@@ -172,6 +173,29 @@ jobs:
             shasum -a 256 -c SHA256.txt
           )
 
+      - name: Exercise the native audio engine on macOS
+        if: env.MODE == 'build-ios'
+        continue-on-error: true
+        timeout-minutes: 6
+        run: |
+          set -o pipefail
+          failed=0
+          {
+            if bash scripts/check-engine.sh; then
+              printf '%s\n' 'PASS native output, mixer and playback contracts'
+            else
+              printf '%s\n' 'FAIL native output, mixer or playback contracts'
+              failed=1
+            fi
+            if bash scripts/check-audio-quality.sh; then
+              printf '%s\n' 'PASS 24-bit/96 kHz WAV and ALAC decoding'
+            else
+              printf '%s\n' 'FAIL 24-bit/96 kHz WAV or ALAC decoding'
+              failed=1
+            fi
+            exit "$failed"
+          } 2>&1 | tee build/release/native-audio-macos.txt
+
       - name: Capture Musicsk on an iOS simulator
         if: env.MODE == 'capture-ios'
         run: |
@@ -185,7 +209,7 @@ jobs:
         timeout-minutes: 5
         continue-on-error: true
         env:
-          VIDEO_STARTUP_BASELINE_REF: 2c3c6aedf0756b777c7293b402737754a7933db3
+          VIDEO_STARTUP_BASELINE_REF: 0ef9b680868a02461f4e26a1223b666649f516b6
         run: |
           log=build/simulator-captures/video-startup-macos.txt
           {
