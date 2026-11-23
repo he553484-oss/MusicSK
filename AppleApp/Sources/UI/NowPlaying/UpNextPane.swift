@@ -17,6 +17,8 @@ import AppKit
 struct UpNextPane: View {
     @Environment(PlaybackController.self) private var controller
     @Environment(AuthController.self) private var auth
+    @Environment(\.musicAppearance) private var appearance
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var showsCurrentTrackHeader = true
     var onOpenLyrics: () -> Void = {}
@@ -34,8 +36,18 @@ struct UpNextPane: View {
         queueList
     }
 
+    private var isAuden: Bool {
+        #if os(iOS)
+        appearance == .auden
+        #else
+        false
+        #endif
+    }
+
+    private var gutter: CGFloat { isAuden ? AudenPlayerMetrics.gutter : 24 }
+
     private var queueList: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: isAuden ? 4 : 12) {
             // The big current-track header (artwork, like, menu) only where
             // the artwork column is absent. iPad landscape and mac show all
             // of that on the left already; repeating it here doubles the
@@ -44,26 +56,33 @@ struct UpNextPane: View {
                 queueHeader
             }
             HStack(alignment: .firstTextBaseline) {
-                Text("Queue")
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(.white)
+                if !isAuden {
+                    Text("Queue").font(.title2.weight(.bold)).foregroundStyle(.white)
+                }
                 Spacer()
                 if !manualUpcoming.isEmpty || !autoplayUpcoming.isEmpty {
                     Button("Clear") { controller.clearUpcoming() }
                         .buttonStyle(.plain)
-                        .font(.callout.weight(.semibold))
-                        .foregroundStyle(Color.accentColor)
+                        .font(isAuden ? .system(size: 16, weight: .semibold) : .callout.weight(.semibold))
+                        .foregroundStyle(isAuden ? Color.white.opacity(0.75) : Color.accentColor)
                 }
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, gutter)
             .id("queueTop")
+            #if os(iOS)
+            if isAuden {
+                AudenQueueModes()
+                    .padding(.top, 6)
+                    .padding(.horizontal, gutter)
+            }
+            #endif
 
             if controller.current == nil && manualUpcoming.isEmpty && autoplayUpcoming.isEmpty {
                 Text("Nothing playing.")
                     .font(.callout)
                     .foregroundStyle(.white.opacity(0.55))
                     .padding(.top, 8)
-                    .padding(.horizontal, 24)
+                    .padding(.horizontal, gutter)
                 Spacer()
             } else {
                 ScrollViewReader { proxy in
@@ -72,10 +91,10 @@ struct UpNextPane: View {
                             Text("Previously Played")
                                 .font(.headline.weight(.medium))
                                 .foregroundStyle(.white.opacity(0.75))
-                                .padding(.top, 12)
+                                .padding(.top, isAuden ? 0 : 12)
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
-                                .listRowInsets(EdgeInsets(top: 12, leading: 24, bottom: 6, trailing: 24))
+                                .listRowInsets(EdgeInsets(top: 12, leading: gutter, bottom: 6, trailing: gutter))
                             ForEach(historyRows) { item in
                                 historyQueueRow(item)
                             }
@@ -84,20 +103,20 @@ struct UpNextPane: View {
                             Text("Now playing")
                                 .font(.headline.weight(.medium))
                                 .foregroundStyle(.white.opacity(0.75))
-                                .padding(.top, 12)
+                                .padding(.top, isAuden ? 0 : 12)
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
-                                .listRowInsets(EdgeInsets(top: 12, leading: 24, bottom: 6, trailing: 24))
+                                .listRowInsets(EdgeInsets(top: 12, leading: gutter, bottom: 6, trailing: gutter))
                             currentQueueRow
                         }
                         if !manualUpcoming.isEmpty {
                             Text("Up next")
                                 .font(.headline.weight(.medium))
                                 .foregroundStyle(.white.opacity(0.75))
-                                .padding(.top, 16)
+                                .padding(.top, isAuden ? 0 : 16)
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
-                                .listRowInsets(EdgeInsets(top: 16, leading: 24, bottom: 6, trailing: 24))
+                                .listRowInsets(EdgeInsets(top: 16, leading: gutter, bottom: 6, trailing: gutter))
                             ForEach(Array(manualUpcoming.enumerated()), id: \.element.id) { localIndex, item in
                                 queueListRow(item, section: 0, index: localIndex, rows: manualUpcoming)
                             }
@@ -122,10 +141,10 @@ struct UpNextPane: View {
                                         .foregroundStyle(.white.opacity(0.55))
                                 }
                             }
-                            .padding(.vertical, 14)
+                            .padding(.vertical, isAuden ? 0 : 14)
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
-                            .listRowInsets(EdgeInsets(top: 14, leading: 24, bottom: 14, trailing: 24))
+                            .listRowInsets(EdgeInsets(top: 14, leading: gutter, bottom: 14, trailing: gutter))
                             if !autoplayUpcoming.isEmpty {
                                 ForEach(Array(autoplayUpcoming.enumerated()), id: \.element.id) { localIndex, item in
                                     queueListRow(item, section: 1, index: localIndex, rows: autoplayUpcoming)
@@ -153,7 +172,7 @@ struct UpNextPane: View {
                         .buttonStyle(.plain)
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets(top: 10, leading: 24, bottom: 10, trailing: 24))
+                        .listRowInsets(EdgeInsets(top: 10, leading: gutter, bottom: 10, trailing: gutter))
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
@@ -168,7 +187,9 @@ struct UpNextPane: View {
                             startPoint: .top, endPoint: .bottom
                         )
                     )
-                    .animation(.easeOut(duration: 0.2), value: queueSignature)
+                    .animation(isAuden
+                        ? (reduceMotion ? nil : .timingCurve(0.4, 0, 0.2, 1, duration: 0.2))
+                        : .easeOut(duration: 0.2), value: queueSignature)
                     .onChange(of: controller.playingIndex) { _, _ in
                         if hasScrolledOnce {
                             withAnimation {
@@ -205,18 +226,18 @@ struct UpNextPane: View {
             }
         } label: {
             HStack(spacing: 12) {
-                ArtworkView(entry: controller.current, side: 40)
+                ArtworkView(entry: controller.current, side: isAuden ? 44 : 40)
                     .clipShape(.rect(cornerRadius: 6, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(controller.current?.title ?? "")
-                        .font(.body.weight(.medium))
+                        .font(isAuden ? .system(size: 16, weight: .semibold) : .body.weight(.medium))
                         .foregroundStyle(.white)
                         .lineLimit(1)
                     ArtistCreditText(
                         credit: controller.current?.artist ?? "",
                         artistId: controller.current?.artistId,
-                        font: .caption,
-                        color: .white.opacity(0.65)
+                        font: isAuden ? .system(size: 14) : .caption,
+                        color: .white.opacity(isAuden ? 0.55 : 0.65)
                     )
                 }
                 Spacer(minLength: 0)
@@ -230,6 +251,7 @@ struct UpNextPane: View {
         .buttonStyle(.plain)
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
+        .listRowInsets(isAuden ? EdgeInsets(top: 6, leading: gutter, bottom: 6, trailing: gutter) : nil)
         .id("nowPlaying")
     }
 
@@ -249,12 +271,12 @@ struct UpNextPane: View {
                     .clipShape(.rect(cornerRadius: 6, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(item.entry.title)
-                        .font(.body.weight(.medium))
+                        .font(isAuden ? .system(size: 16, weight: .semibold) : .body.weight(.medium))
                         .foregroundStyle(.white)
                         .lineLimit(1)
                     Text(item.entry.artist)
-                        .font(.caption)
-                        .foregroundStyle(.white.opacity(0.65))
+                        .font(isAuden ? .system(size: 14) : .caption)
+                        .foregroundStyle(.white.opacity(isAuden ? 0.55 : 0.65))
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
@@ -269,11 +291,11 @@ struct UpNextPane: View {
         .accessibilityLabel("Play \(item.entry.title), previously played")
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
-        .listRowInsets(EdgeInsets(top: 6, leading: 24, bottom: 6, trailing: 20))
+        .listRowInsets(EdgeInsets(top: 6, leading: gutter, bottom: 6, trailing: isAuden ? gutter : 20))
     }
 
     private func queueListRow(_ item: QueueRow, section: Int, index: Int, rows: [QueueRow]) -> some View {
-        HStack(spacing: 10) {
+        HStack(spacing: isAuden ? 4 : 10) {
             Image(systemName: "line.3.horizontal")
                 .font(.body.weight(.medium))
                 .foregroundStyle(.white.opacity(0.4))
@@ -288,12 +310,12 @@ struct UpNextPane: View {
                         .clipShape(.rect(cornerRadius: 6, style: .continuous))
                     VStack(alignment: .leading, spacing: 2) {
                         Text(item.entry.title)
-                            .font(.body.weight(.medium))
-                            .foregroundStyle(.white)
+                            .font(isAuden ? .system(size: 16, weight: .semibold) : .body.weight(.medium))
+                            .foregroundStyle(.white.opacity(isAuden ? 0.92 : 1))
                             .lineLimit(1)
                         Text(item.entry.artist)
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.65))
+                            .font(isAuden ? .system(size: 14) : .caption)
+                            .foregroundStyle(.white.opacity(isAuden ? 0.55 : 0.65))
                             .lineLimit(1)
                     }
                     Spacer(minLength: 0)
@@ -305,7 +327,7 @@ struct UpNextPane: View {
                 controller.removeFromQueue(at: item.index)
             } label: {
                 Image(systemName: "xmark")
-                    .font(.body.weight(.medium))
+                    .font(isAuden ? .system(size: 18, weight: .medium) : .body.weight(.medium))
                     .foregroundStyle(.white.opacity(0.55))
                     .frame(width: 32, height: 44)
                     .contentShape(.rect)
@@ -315,7 +337,7 @@ struct UpNextPane: View {
         }
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
-        .listRowInsets(EdgeInsets(top: 6, leading: 24, bottom: 6, trailing: 20))
+        .listRowInsets(EdgeInsets(top: 6, leading: gutter, bottom: 6, trailing: isAuden ? gutter : 20))
         .onDrop(of: [.text], delegate: QueueReorderDelegate(section: section, rows: rows, destIndex: index) { from, dest in
             move(IndexSet(integer: from), dest, rows: rows)
         })
@@ -342,7 +364,7 @@ struct UpNextPane: View {
 
     private var queueHeader: some View {
         HStack(spacing: 12) {
-            ArtworkView(entry: controller.current, side: 56)
+            ArtworkView(entry: controller.current, side: isAuden ? AudenPlayerMetrics.headerArt : 56)
                 .clipShape(.rect(cornerRadius: 8, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {
                 Text(controller.current?.title ?? "Nothing playing")
@@ -376,7 +398,7 @@ struct UpNextPane: View {
             .help("More")
             .accessibilityLabel("More")
         }
-        .padding(.horizontal, 24)
+        .padding(.horizontal, gutter)
     }
 
     /// What the row-motion animation tracks: every move changes it, nothing

@@ -74,19 +74,13 @@ extension NowPlayingView {
         VStack(spacing: 10) {
             GeometryReader { geo in
                 ZStack {
-                    if pane == .queue {
-                        queueModesPill
-                    } else {
-                        audenOutputButton
-                    }
+                    audenOutputButton
                     HStack {
                         audenPaneButton(.lyrics, label: "Lyrics", image: .bchLyrics)
                         Spacer(minLength: 0)
                         audenPaneButton(.queue, label: "Up Next", image: .bchQueue)
                     }
-                    .padding(.horizontal, pane == .queue
-                             ? max(0, (geo.size.width - 300) / 4)
-                             : AudenPlayerMetrics.actionInset(width: geo.size.width))
+                    .padding(.horizontal, AudenPlayerMetrics.actionInset(width: geo.size.width))
                 }
             }
             .frame(height: AudenPlayerMetrics.centerTouch)
