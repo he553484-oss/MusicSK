@@ -18008,6 +18008,36 @@
           }
         }
       }
+    },
+    "Lossless quality could not be verified while offline. Playback continues with the available source.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo verificar una fuente sin pérdida sin conexión. La reproducción continúa con la fuente disponible."
+          }
+        }
+      }
+    },
+    "This source is not verified lossless, and no automatic alternative is available for this track. Playback continues.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta fuente no está verificada sin pérdida y no hay una alternativa automática disponible para esta pista. La reproducción continúa."
+          }
+        }
+      }
+    },
+    "This source is not verified lossless. MusicSK can look for an available alternative.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Esta fuente no está verificada sin pérdida. MusicSK puede buscar una alternativa disponible."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

@@ -25,6 +25,21 @@ extension PlaybackController {
     func noteResolved(_ entry: QueueEntry, outcome: ResolveOutcome, prefs: ResolvePrefs) {
         resolvedOrigin[entry.id] = outcome.source.origin
         sourceDecisionNotes[entry.id] = outcome.decisionNote
+        if outcome.decisionNote == nil, let reason = LosslessFallbackNote.reason(
+            requested: prefs.wantLossless, sourceVerifiedLossless: outcome.source.lossless,
+            connected: NetworkQuality.shared.connected,
+            canSearchAlternative: prefs.canSubstitute && entry.source.hasPrefix("yt:") &&
+                !entry.isLocal && !entry.isVideo && !OriginalVersion.shared.isPinned(videoId: entry.id)
+        ) {
+            switch reason {
+            case .offline:
+                sourceDecisionNotes[entry.id] = String(localized: "Lossless quality could not be verified while offline. Playback continues with the available source.")
+            case .noEnabledAlternative:
+                sourceDecisionNotes[entry.id] = String(localized: "This source is not verified lossless, and no automatic alternative is available for this track. Playback continues.")
+            case .sourceNotVerified:
+                sourceDecisionNotes[entry.id] = String(localized: "This source is not verified lossless. MusicSK can look for an available alternative.")
+            }
+        }
         if let videoId = outcome.source.youtubeVideoId { resolvedVideoIds[outcome.source.source] = videoId }
         prepareRegions(source: outcome.source.source, videoId: outcome.source.youtubeVideoId)
 
