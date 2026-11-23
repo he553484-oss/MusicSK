@@ -1725,6 +1725,12 @@
             "state": "translated",
             "value": "Denge"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Balance"
+          }
         }
       }
     },
@@ -1858,6 +1864,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "Geniş"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amplio"
           }
         }
       }
@@ -3529,7 +3541,16 @@
         }
       }
     },
-    "Drag the puck: sideways tilts warm ↔ bright, up and down shapes the mids.": {},
+    "Drag the puck: sideways tilts warm ↔ bright, up and down shapes the mids.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrastra el control: hacia los lados ajusta la calidez y el brillo; arriba y abajo modifica los medios."
+          }
+        }
+      }
+    },
     "Edit": {},
     "Edit %@": {},
     "Edit source": {
@@ -7019,7 +7040,16 @@
         }
       }
     },
-    "Mode": {},
+    "Mode": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modo"
+          }
+        }
+      }
+    },
     "Models": {},
     "Models are downloaded once and verified via SHA-256. Manage anytime in Settings.": {},
     "Models download once · Runs 100% on-device · Private": {},
@@ -7134,7 +7164,16 @@
     "Move Down": {},
     "Move Up": {},
     "Name (optional)": {},
-    "Narrower shapes around 250 Hz, 1 kHz and 4 kHz.": {},
+    "Narrower shapes around 250 Hz, 1 kHz and 4 kHz.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtros más estrechos en torno a 250 Hz, 1 kHz y 4 kHz."
+          }
+        }
+      }
+    },
     "Needed for the PaxSeniX sources. Stored in the Keychain, not in preferences.": {},
     "New Playlist": {},
     "New YouTube Music Playlist": {},
@@ -10127,6 +10166,12 @@
             "state": "translated",
             "value": "Ön ayar"
           }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Preajuste"
+          }
         }
       }
     },
@@ -10888,7 +10933,16 @@
         }
       }
     },
-    "Reset": {},
+    "Reset": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restablecer"
+          }
+        }
+      }
+    },
     "Reset to Default": {},
     "Retry": {
       "localizations": {
@@ -11831,7 +11885,16 @@
         }
       }
     },
-    "Seven-band parametric EQ with shelves at both ends. Flat is sample-identical passthrough.": {},
+    "Seven-band parametric EQ with shelves at both ends. Flat is sample-identical passthrough.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ecualizador paramétrico de siete bandas, con filtros de estantería en los extremos. Plano deja pasar las muestras sin cambios."
+          }
+        }
+      }
+    },
     "Share": {
       "localizations": {
         "de": {
@@ -15488,7 +15551,16 @@
     "When on, a merely line-synced answer waits for a word-synced one further down the list.": {},
     "Wi-Fi or Ethernet": {},
     "Wi-Fi recommended": {},
-    "Wider shapes with a richer sound.": {},
+    "Wider shapes with a richer sound.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Filtros más amplios para un sonido más rico."
+          }
+        }
+      }
+    },
     "Width": {},
     "Working…": {},
     "You got through **%lld songs** by **%lld artists**.": {
@@ -17317,6 +17389,196 @@
           "stringUnit": {
             "state": "translated",
             "value": "Tus canciones, artistas, álbumes y géneros más escuchados"
+          }
+        }
+      }
+    },
+    "Dynamic": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dinámico"
+          }
+        }
+      }
+    },
+    "Manual": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manual"
+          }
+        }
+      }
+    },
+    "Flat": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plano"
+          }
+        }
+      }
+    },
+    "Acoustic": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Acústico"
+          }
+        }
+      }
+    },
+    "Bass Boost": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Realce de graves"
+          }
+        }
+      }
+    },
+    "Bass Cut": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reducción de graves"
+          }
+        }
+      }
+    },
+    "Vocal": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz"
+          }
+        }
+      }
+    },
+    "Treble Boost": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Realce de agudos"
+          }
+        }
+      }
+    },
+    "Treble Cut": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reducción de agudos"
+          }
+        }
+      }
+    },
+    "Loudness": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonoridad"
+          }
+        }
+      }
+    },
+    "Spoken Word": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voz hablada"
+          }
+        }
+      }
+    },
+    "Electronic": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Electrónica"
+          }
+        }
+      }
+    },
+    "Rock": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rock"
+          }
+        }
+      }
+    },
+    "Hip Hop": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hip hop"
+          }
+        }
+      }
+    },
+    "Jazz": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jazz"
+          }
+        }
+      }
+    },
+    "Classical": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clásica"
+          }
+        }
+      }
+    },
+    "Small Speakers": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Altavoces pequeños"
+          }
+        }
+      }
+    },
+    "Late Night": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Noche"
+          }
+        }
+      }
+    },
+    "Your EQ settings are saved. Choose Enhanced in Sound Processing to hear them; Transparent bypasses EQ.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los ajustes del ecualizador están guardados. Selecciona Mejorado en Procesamiento de sonido para escucharlos; Transparente omite el ecualizador."
           }
         }
       }

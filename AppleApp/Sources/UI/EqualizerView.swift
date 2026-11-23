@@ -94,7 +94,7 @@ struct EqualizerView: View {
                     .font(.footnote).foregroundStyle(.secondary).padding(.horizontal).padding(.bottom, 8)
             }
             Picker("Mode", selection: $mode) {
-                ForEach(Mode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                ForEach(Mode.allCases, id: \.self) { Text(LocalizedStringKey($0.rawValue)).tag($0) }
             }
             .pickerStyle(.segmented)
             .padding(.horizontal)
@@ -149,7 +149,7 @@ struct EqualizerView: View {
                             bands = preset.gains
                             persistManual(presetName: preset.name)
                         } label: {
-                            Text(preset.name)
+                            Text(LocalizedStringKey(preset.name))
                                 .font(.subheadline)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 7)
@@ -346,7 +346,7 @@ struct DynamicEQPad: View {
             .pickerStyle(.segmented)
             .padding(.horizontal)
             .onChange(of: focused) { _, _ in onChange() }
-            Text(focused ? "Narrower shapes around 250 Hz, 1 kHz and 4 kHz." : "Wider shapes with a richer sound.")
+            Text(LocalizedStringKey(focused ? "Narrower shapes around 250 Hz, 1 kHz and 4 kHz." : "Wider shapes with a richer sound."))
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal)
