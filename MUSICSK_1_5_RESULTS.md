@@ -26,3 +26,4 @@ Para investigar el crash real: reproducirlo en iPhone anotando versión y pasos;
 
 El contenedor Swift sigue descargándose; no se ha compilado la app ni comprobado la IPA. No hay validación en iPhone. Los commits anteriores son locales y no se han publicado.
 - `376c1da`: la pantalla identifica los valores de flujo como informados o estimados y no presenta ceros de protección cuando faltan datos. El cálculo y la procedencia exacta del bitrate en cada ruta siguen **PENDIENTES**; cambio visual sin verificar en iOS.
+- `9d1877f`: exige coincidencia de identificador en detalles de JioSaavn para evitar asociar la primera respuesta disponible a una canción distinta; sus casos de regresión Swift aún no se han ejecutado.
