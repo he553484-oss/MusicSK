@@ -19,6 +19,7 @@ struct DetailView: View {
     @Environment(\.dismiss) private var dismiss
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.musicAppearance) private var appearance
     #endif
     @State private var page: DetailPageModel?
     @State private var error: String?
@@ -563,7 +564,10 @@ struct DetailView: View {
 
     private func usesImmersiveHeader(_ kind: Kind) -> Bool {
         #if os(iOS)
-        kind == .album || kind == .artist
+        if appearance == .auden {
+            return kind == .album && PlatformSettings.shared.getBoolean(key: "full_bleed_artwork", default: true)
+        }
+        return kind == .album || kind == .artist
         #else
         false
         #endif
@@ -1111,7 +1115,10 @@ struct DetailView: View {
 
     /// The sleeve size a release header uses at this window width.
     private func releaseSleeve(_ width: CGFloat) -> CGFloat {
-        isWide ? 240 : min(210, max(140, width * 0.5))
+        #if os(iOS)
+        if appearance == .auden { return max(0, min(340, width * 0.76)) }
+        #endif
+        return isWide ? 240 : min(210, max(140, width * 0.5))
     }
 
     /// "2023 · 12 songs · 48 minutes" — the line under a release's credit.

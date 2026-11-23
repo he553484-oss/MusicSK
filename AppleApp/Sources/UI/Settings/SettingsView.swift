@@ -10,6 +10,9 @@ import AppKit
 /// Apple Settings-style grouped form. Structure and copy follow upstream;
 /// settings appear directly in one grouped form, with drill-downs for dedicated screens.
 struct SettingsView: View {
+    #if os(iOS)
+    @Environment(\.musicAppearance) private var appearance
+    #endif
     var embedded: Bool = false
     @Environment(\.dismiss) private var dismiss
     @Environment(PlaybackController.self) var controller
@@ -585,17 +588,7 @@ struct SettingsView: View {
         return ScrollViewReader { proxy in
             Form {
                 if search.isEmpty {
-                    Section {
-                        ForEach(SettingsSection.allCases) { section in
-                            PushLink { settingsSectionPage(section) } label: {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Label(section.localizedTitle, systemImage: section.systemImage)
-                                    Text(verbatim: NSLocalizedString(sectionSummary(section), comment: "Settings section summary")).font(.caption).foregroundStyle(.secondary)
-                                }.padding(.vertical, 3)
-                            }
-                            .id(section.id)
-                        }
-                    } header: { Text("Settings") }
+                    settingsHomeRows
                 } else {
                 ForEach(sections) { built in
                     Section {
@@ -627,6 +620,54 @@ struct SettingsView: View {
             .onAppear { consumeSettingsDeepLinkIfNeeded(using: proxy) }
             .onChange(of: requestedSettingsPage) { _, _ in consumeSettingsDeepLinkIfNeeded(using: proxy) }
         }
+    }
+
+    @ViewBuilder
+    private var settingsHomeRows: some View {
+        #if os(iOS)
+        if appearance == .auden {
+            let sections: [SettingsSection] = [
+                .playback, .audioQuality, .appearance, .lyrics, .downloads,
+                .sources, .account, .yourData, .advanced, .about
+            ]
+            Section {
+                ForEach(sections) { section in
+                    PushLink { settingsSectionPage(section) } label: {
+                        HStack(spacing: 14) {
+                            Image(systemName: section.systemImage)
+                                .font(.system(size: 21))
+                                .frame(width: 30)
+                                .accessibilityHidden(true)
+                            Text(section.localizedTitle)
+                        }
+                        .frame(minHeight: 44)
+                    }
+                    .id(section.id)
+                }
+            } header: { Text("Settings") }
+        } else {
+            originalSettingsHomeRows
+        }
+        #else
+        originalSettingsHomeRows
+        #endif
+    }
+
+    private var originalSettingsHomeRows: some View {
+        Section {
+            ForEach(SettingsSection.allCases) { section in
+                PushLink { settingsSectionPage(section) } label: {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Label(section.localizedTitle, systemImage: section.systemImage)
+                        Text(verbatim: NSLocalizedString(sectionSummary(section), comment: "Settings section summary"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 3)
+                }
+                .id(section.id)
+            }
+        } header: { Text("Settings") }
     }
 
     private func consumeSettingsDeepLinkIfNeeded(using proxy: ScrollViewProxy) {

@@ -56,6 +56,12 @@ extension NowPlayingView {
             Group {
                 if compactPortrait {
                     compactPortraitPlayer(width: geo.size.width, fullBleed: fullBleed, topInset: topInset)
+                } else if appearance == .auden {
+                    if columns {
+                        audenColumnPlayer(size: geo.size)
+                    } else {
+                        compactPortraitPlayer(width: geo.size.width, fullBleed: false, topInset: topInset)
+                    }
                 } else {
                     ZStack {
                         if columns {
@@ -81,6 +87,7 @@ extension NowPlayingView {
         }
         .toolbar(.hidden, for: .navigationBar)
         .toolbarTitleDisplayMode(.inline)
+        .accessibilityIdentifier(appearance == .auden ? "auden.player" : "original.player")
     }
 
     private func playerBackdrop(width: CGFloat, continuation: Bool, compact: Bool, blurred: Bool) -> some View {
@@ -162,7 +169,10 @@ extension NowPlayingView {
                         stage.transition(.opacity)
                     }
                 }
-                deck
+                Group {
+                    if appearance == .auden { audenDeck }
+                    else { deck }
+                }
                     .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { lyricsDeckHeight = $0 }
                     .modifier(LyricPlaybackChrome(visible: showsDeck, reduceMotion: reduceMotion))
             }
@@ -198,7 +208,9 @@ extension NowPlayingView {
 
     private func compactCoverSlot(fullBleed: Bool) -> some View {
         GeometryReader { geometry in
-            let art = PlayerLayout.compactPortraitArtworkFrame(stage: geometry.size, fullBleed: fullBleed)
+            let art = appearance == .auden && !fullBleed
+                ? AudenPlayerGeometry.sleeveFrame(in: geometry.size)
+                : PlayerLayout.compactPortraitArtworkFrame(stage: geometry.size, fullBleed: fullBleed)
             Color.clear
                 .frame(width: art.width, height: art.height)
                 .anchorPreference(key: PlayerArtworkFrames.self, value: .bounds) { [.cover: $0] }

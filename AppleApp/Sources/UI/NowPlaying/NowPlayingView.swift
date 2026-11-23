@@ -27,6 +27,7 @@ struct NowPlayingView: View {
     @Environment(\.dismiss) var dismiss
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.musicAppearance) var appearance
     #endif
     @Environment(AuthController.self) var auth
     @Environment(ToastCenter.self) private var toast

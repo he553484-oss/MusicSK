@@ -107,3 +107,13 @@ struct AudenEditionPicker: View {
     }
 }
 #endif
+
+enum AudenPlayerGeometry {
+    static func sleeveFrame(in stage: CGSize) -> CGRect {
+        guard stage.width.isFinite, stage.height.isFinite else { return .zero }
+        let width = max(0, stage.width)
+        let top = min(8, max(0, stage.height))
+        let side = max(0, min(560, width - 60, stage.height - top - 4))
+        return CGRect(x: (width - side) / 2, y: top, width: side, height: side)
+    }
+}
