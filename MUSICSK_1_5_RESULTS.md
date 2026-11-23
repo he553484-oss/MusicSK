@@ -31,3 +31,4 @@ El contenedor Swift sigue descargándose; no se ha compilado la app ni comprobad
 - `4945967`: para caché completa con duración disponible, estima kbps a partir del tamaño total y duración; incluye la sobrecarga del contenedor y no es bitrate nominal. Con datos insuficientes conserva la selección previa. Prueba añadida, **PENDIENTE** de ejecutar con Swift. No se reprodujo el caso reportado de 1 kbps.
 
 La descarga de la imagen completa de Swift falló al registrar una capa por falta de espacio; la imagen `swift:6.2-slim` descargada solo contiene el runtime y no incluye `swiftc`. La comprobación `git diff --check` pasó. `rustfmt --check` no se ejecutó porque el componente no está instalado.
+- `cabe5c0`: localiza al español los nombres dinámicos de modos y presets y textos del ecualizador sin cambiar sus identificadores persistidos. Catálogo JSON validado; presentación y accesibilidad **PENDIENTES** de verificar en iOS.
