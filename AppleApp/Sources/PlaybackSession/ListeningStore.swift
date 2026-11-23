@@ -238,7 +238,13 @@ final class ListeningStore {
                 hours: hours,
                 days: stored.days,
                 dayTracks: stored.dayTracks ?? [:],
-                dayHours: stored.dayHours ?? [:]
+                dayHours: (stored.dayHours ?? [:]).mapValues { values in
+                    var normalized = Array(repeating: 0.0, count: 24)
+                    for (index, value) in values.prefix(24).enumerated() {
+                        normalized[index] = value
+                    }
+                    return normalized
+                }
             )
         }
     }

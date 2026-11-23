@@ -76,6 +76,22 @@ func withStore(_ body: (ListeningStore) -> Void) {
 print("listening store")
 
 withStore { _ in
+    let now = Date()
+    let month = ListeningStore.monthKey(now)
+    let cal = Calendar.current
+    let dayKey = String(format: "%04d-%02d-%02d", cal.component(.year, from: now),
+                        cal.component(.month, from: now), cal.component(.day, from: now))
+    let folder = ListeningStore.folderOverride!
+    var stored = ListeningStore.StoredBucket(month: month)
+    stored.dayHours = [dayKey: []]
+    try! JSONEncoder().encode(stored).write(to: folder.appendingPathComponent("\(month).json"))
+    let store = ListeningStore()
+    play(store, on: now)
+    let summary = store.summary(period: .thisMonth, includeGenres: false, now: now)
+    check("short restored daily histogram allows playback to continue", summary.totalPlays == 1)
+}
+
+withStore { _ in
     let month = ListeningStore.monthKey()
     let folder = ListeningStore.folderOverride!
     let original = ListeningStore.Track(id: "repeat", title: "Song", artist: "Artist", album: nil,
