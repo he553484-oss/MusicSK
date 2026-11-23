@@ -981,6 +981,13 @@ struct ReplaySummary {
     var distinctArtists: Int = 0
     var distinctAlbums: Int = 0
     var since: String?
-    var minutes: Int { Int(totalMs / 60_000) }
+    static func safeMinutes(_ milliseconds: Double) -> Int {
+        let value = milliseconds / 60_000
+        guard !value.isNaN else { return 0 }
+        if value >= Double(Int.max) { return Int.max }
+        if value <= Double(Int.min) { return Int.min }
+        return Int(value)
+    }
+    var minutes: Int { Self.safeMinutes(totalMs) }
     var isEmpty: Bool { songs.isEmpty }
 }

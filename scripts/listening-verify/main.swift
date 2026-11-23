@@ -77,6 +77,17 @@ print("listening store")
 
 withStore { _ in
     let month = ListeningStore.monthKey()
+    let row = ListeningStore.Track(id: "huge-duration", title: "Song", artist: "Artist", album: nil,
+        albumId: nil, artistId: nil, art: nil, ms: 1e300, plays: 1, last: nil)
+    let stored = ListeningStore.StoredBucket(month: month, tracks: [row])
+    let file = ListeningStore.folderOverride!.appendingPathComponent("\(month).json")
+    try! JSONEncoder().encode(stored).write(to: file)
+    let summary = ListeningStore().summary(period: .thisMonth, includeGenres: false)
+    check("corrupt huge durations cannot crash Replay", summary.minutes == Int.max)
+}
+
+withStore { _ in
+    let month = ListeningStore.monthKey()
     let row = ListeningStore.Track(id: "overflow", title: "Song", artist: "Artist", album: nil,
         albumId: nil, artistId: nil, art: nil, ms: 1000, plays: Int.max, last: nil)
     let stored = ListeningStore.StoredBucket(month: month, tracks: [row, row])

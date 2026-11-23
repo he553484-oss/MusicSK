@@ -82,7 +82,7 @@ struct ReplayModel {
     }
 
     static func formatListening(_ ms: Double) -> String {
-        let minutes = Int(ms / 60_000)
+        let minutes = ReplaySummary.safeMinutes(ms)
         if minutes < 60 { return "\(minutes) min" }
         if minutes < 1_440 { return "\(minutes / 60) hr \(minutes % 60) min" }
         return "\(grouped(minutes)) min"
@@ -422,7 +422,7 @@ struct ReplayView: View {
                             }
                         }
                         Spacer()
-                        Text("\(Int(row.ms / 60_000))m")
+                        Text("\(ReplaySummary.safeMinutes(row.ms))m")
                             .font(.caption.monospacedDigit())
                             .foregroundStyle(.white.opacity(0.55))
                     }
