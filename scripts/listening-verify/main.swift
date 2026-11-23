@@ -70,10 +70,76 @@ func withStore(_ body: (ListeningStore) -> Void) {
     try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
     ListeningStore.folderOverride = folder
     defer { try? FileManager.default.removeItem(at: folder) }
-    body(ListeningStore())
+    let store = ListeningStore()
+    body(store)
+    store.waitForPendingWritesForTesting()
 }
 
 print("listening store")
+
+withStore { store in
+    let folder = ListeningStore.folderOverride!
+    let cal = Calendar.current
+    let date = cal.date(bySetting: .day, value: 15, of: Date())!
+    let first = cal.date(bySettingHour: 12, minute: 0, second: 0, of: date)!
+    play(store, on: first)
+    try! FileManager.default.setAttributes([.posixPermissions: 0o500], ofItemAtPath: folder.path)
+    defer { try? FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: folder.path) }
+    play(store, on: cal.date(byAdding: .month, value: 1, to: first)!)
+    store.waitForPendingWritesForTesting()
+    let summary = store.summary(period: .allTime, includeGenres: false)
+    check("a failed rollover write keeps the closed month available in memory", near(summary.totalMs, 72_000))
+    play(store, on: first.addingTimeInterval(60))
+    let reopened = store.summary(period: .allTime, includeGenres: false)
+    check("reopening an unsaved month retains its in-memory listening", near(reopened.totalMs, 108_000))
+    try! FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: folder.path)
+    RunLoop.current.run(until: Date().addingTimeInterval(5.5))
+    store.waitForPendingWritesForTesting()
+    let nextMonth = ListeningStore.monthKey(cal.date(byAdding: .month, value: 1, to: first)!)
+    let bytes = try? Data(contentsOf: folder.appendingPathComponent("\(nextMonth).json"))
+    let recovered = bytes.flatMap { try? JSONDecoder().decode(ListeningStore.StoredBucket.self, from: $0) }
+    check("a failed rollover is retried after the folder becomes writable", near(recovered?.tracks.first?.ms ?? 0, 36_000))
+}
+
+withStore { store in
+    ListeningStore.persistenceDisabled = false
+    defer { ListeningStore.persistenceDisabled = true }
+    let cal = Calendar.current
+    let date = cal.date(bySetting: .day, value: 15, of: Date())!
+    let first = cal.date(bySettingHour: 12, minute: 0, second: 0, of: date)!
+    let month = ListeningStore.monthKey(first)
+    let file = ListeningStore.folderOverride!.appendingPathComponent("\(month).json")
+    play(store, on: first)
+    RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+    play(store, on: first.addingTimeInterval(60))
+    let imported = ListeningStore.Track(id: "imported", title: "Imported", artist: "Artist", album: nil,
+        albumId: nil, artistId: nil, art: nil, ms: 10_000, plays: 1, last: nil)
+    store.importJSON(try! JSONEncoder().encode([ListeningStore.StoredBucket(month: month, tracks: [imported])]))
+    RunLoop.current.run(until: Date().addingTimeInterval(2.4))
+    let data = try? Data(contentsOf: file)
+    let saved = data.flatMap { try? JSONDecoder().decode(ListeningStore.StoredBucket.self, from: $0) }
+    check("a delayed save cannot overwrite imported history", saved?.tracks.map(\.id) == ["imported"])
+}
+
+withStore { _ in
+    ListeningStore.persistenceDisabled = false
+    defer { ListeningStore.persistenceDisabled = true }
+    let cal = Calendar.current
+    let date = cal.date(bySetting: .day, value: 15, of: Date())!
+    let first = cal.date(bySettingHour: 12, minute: 0, second: 0, of: date)!
+    let month = ListeningStore.monthKey(first)
+    let file = ListeningStore.folderOverride!.appendingPathComponent("\(month).json")
+    let store = ListeningStore()
+    play(store, on: first)
+    RunLoop.current.run(until: Date().addingTimeInterval(0.5))
+    play(store, on: first.addingTimeInterval(60))
+    play(store, on: cal.date(byAdding: .month, value: 1, to: first)!)
+    RunLoop.current.run(until: Date().addingTimeInterval(4.5))
+    let data = try? Data(contentsOf: file)
+    let saved = data.flatMap { try? JSONDecoder().decode(ListeningStore.StoredBucket.self, from: $0) }
+    check("a delayed save cannot replace the final snapshot of a closed month",
+          near(saved?.tracks.first?.ms ?? 0, 72_000))
+}
 
 withStore { _ in
     let now = Date()
@@ -85,6 +151,7 @@ withStore { _ in
     play(store, on: now)
     let nextMonth = Calendar.current.date(byAdding: .month, value: 1, to: now)!
     play(store, on: nextMonth)
+    store.waitForPendingWritesForTesting()
     let backups = (try! FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil))
         .filter { $0.lastPathComponent.hasPrefix("\(month).corrupt-") }
     check("corrupt saved history is backed up before replacement",

@@ -108,6 +108,17 @@ final class ListeningStore {
     private var pendingPersist: (month: StoredBucket, bucket: Bucket)?
     private var persistRunning = false
     private var lastPersistAt = Date.distantPast
+    /// Closed months remain readable while their final snapshots wait for disk.
+    private var closingMonths: [String: (id: UUID, snapshot: StoredBucket)] = [:]
+    /// Imports replace history; obsolete queued writes must not restore it.
+    private let fileWriteLock = NSRecursiveLock()
+    private let writeEpochLock = NSLock()
+    private var writeEpoch: UInt64 = 0
+
+    private func currentWriteEpoch() -> UInt64 {
+        writeEpochLock.lock(); defer { writeEpochLock.unlock() }
+        return writeEpoch
+    }
     /// Filled by Replay after `ArtistFacts.warmup` so genre ranking is MainActor-cheap.
     var knownGenres: [String: [String]] = [:]
 
@@ -334,12 +345,21 @@ final class ListeningStore {
         pendingPersist = nil
         persistRunning = true
         let wait = max(0, persistInterval - Date().timeIntervalSince(lastPersistAt))
-        persistQueue.asyncAfter(deadline: .now() + wait) { [weak self] in
+        let directory = Self.folder
+        let epoch = currentWriteEpoch()
+        // Enqueue immediately, then wait on the worker. An asyncAfter block is
+        // not yet in the serial queue, so a month rollover could overtake it.
+        persistQueue.async { [weak self] in
+            if wait > 0 { Thread.sleep(forTimeInterval: wait) }
             guard let self else { return }
-            self.writeMonth(snapshot.month)
-            if let data = try? JSONEncoder().encode(snapshot.bucket) {
-                UserDefaults.standard.set(data, forKey: self.v1Key)
+            self.fileWriteLock.lock()
+            if self.currentWriteEpoch() == epoch {
+                self.writeMonth(snapshot.month, directory: directory)
+                if let data = try? JSONEncoder().encode(snapshot.bucket) {
+                    UserDefaults.standard.set(data, forKey: self.v1Key)
+                }
             }
+            self.fileWriteLock.unlock()
             DispatchQueue.main.async {
                 self.lastPersistAt = Date()
                 self.persistRunning = false
@@ -747,9 +767,43 @@ final class ListeningStore {
     private func rolloverIfNeeded(_ at: Date) {
         let key = Self.monthKey(at)
         guard open.key != key else { return }
-        writeMonth(open.snapshot())
-        open = Self.readMonth(key).map(OpenBucket.from) ?? OpenBucket(key: key)
+        let closed = open.snapshot()
+        let id = UUID()
+        let directory = Self.folder
+        let epoch = currentWriteEpoch()
+        closingMonths[closed.month] = (id, closed)
+        // The final closed-month snapshot supersedes any coalesced snapshot
+        // still waiting on the main thread; queued writes finish before it.
+        if pendingPersist?.month.month == closed.month { pendingPersist = nil }
+        enqueueClosingMonth(closed, id: id, directory: directory, epoch: epoch)
+        if let closing = closingMonths.removeValue(forKey: key) {
+            open = OpenBucket.from(closing.snapshot)
+        } else {
+            open = Self.readMonth(key).map(OpenBucket.from) ?? OpenBucket(key: key)
+        }
         pruneFolder()
+    }
+
+    private func enqueueClosingMonth(_ closed: StoredBucket, id: UUID, directory: URL, epoch: UInt64) {
+        guard closingMonths[closed.month]?.id == id, currentWriteEpoch() == epoch else { return }
+        persistQueue.async { [self] in
+            fileWriteLock.lock()
+            let saved = currentWriteEpoch() == epoch && writeMonth(closed, directory: directory)
+            fileWriteLock.unlock()
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.closingMonths[closed.month]?.id == id,
+                      self.currentWriteEpoch() == epoch else { return }
+                if saved {
+                    self.closingMonths.removeValue(forKey: closed.month)
+                } else {
+                    // A temporary disk failure must not discard the only new
+                    // snapshot. Retry without blocking playback or the UI.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
+                        self?.enqueueClosingMonth(closed, id: id, directory: directory, epoch: epoch)
+                    }
+                }
+            }
+        }
     }
 
     /// How many days of per-day tracks a month bucket keeps. The week needs a
@@ -784,10 +838,12 @@ final class ListeningStore {
     private func collected(period: ListeningPeriod, now: Date = Date()) -> [StoredBucket] {
         var keys = Set(Self.monthFiles())
         keys.insert(open.key)
+        keys.formUnion(closingMonths.keys)
         return keys.sorted()
             .filter { period.covers(month: $0, now: now) }
             .compactMap { key in
                 if key == open.key { return open.snapshot() }
+                if let closing = closingMonths[key] { return closing.snapshot }
                 return Self.readMonth(key)
             }
     }
@@ -799,6 +855,13 @@ final class ListeningStore {
             $0.month.range(of: #"^\d{4}-(0[1-9]|1[0-2])$"#, options: .regularExpression) != nil
         }
         guard !validMonths.isEmpty else { return }
+        fileWriteLock.lock()
+        defer { fileWriteLock.unlock() }
+        writeEpochLock.lock()
+        writeEpoch &+= 1
+        writeEpochLock.unlock()
+        pendingPersist = nil
+        closingMonths.removeAll()
         Self.ensureFolder()
         if let existing = try? FileManager.default.contentsOfDirectory(at: Self.folder, includingPropertiesForKeys: nil) {
             for url in existing where url.pathExtension == "json" {
@@ -849,9 +912,11 @@ final class ListeningStore {
         return Array(byMonth.values)
     }
 
-    private func writeMonth(_ stored: StoredBucket) {
-        Self.ensureFolder()
-        let dest = Self.folder.appendingPathComponent("\(stored.month).json")
+    @discardableResult
+    private func writeMonth(_ stored: StoredBucket, directory: URL? = nil) -> Bool {
+        let folder = directory ?? Self.folder
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let dest = folder.appendingPathComponent("\(stored.month).json")
         do {
             let data = try JSONEncoder().encode(stored)
             if FileManager.default.fileExists(atPath: dest.path) {
@@ -859,15 +924,17 @@ final class ListeningStore {
                 if (try? JSONDecoder().decode(StoredBucket.self, from: previous)) == nil {
                     // Keep the original bytes for recovery. If this copy fails,
                     // do not replace the only surviving version.
-                    let backup = Self.folder.appendingPathComponent("\(stored.month).corrupt-\(UUID().uuidString)")
+                    let backup = folder.appendingPathComponent("\(stored.month).corrupt-\(UUID().uuidString)")
                     try FileManager.default.copyItem(at: dest, to: backup)
                 }
             }
             // Foundation writes a temporary file and atomically replaces the
             // destination; a failed write leaves the prior file in place.
             try data.write(to: dest, options: .atomic)
+            return true
         } catch {
             NSLog("Listening history could not be saved for %@: %@", stored.month, error.localizedDescription)
+            return false
         }
     }
 
@@ -907,6 +974,8 @@ final class ListeningStore {
     /// Whether a sample reaches the disk and UserDefaults. The check turns this
     /// off: it is measuring the model, not the writer.
     nonisolated(unsafe) static var persistenceDisabled = false
+    /// The isolated verifier waits before removing its temporary folder.
+    func waitForPendingWritesForTesting() { persistQueue.sync {} }
     #endif
 
     private static var folder: URL {
