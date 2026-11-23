@@ -32,3 +32,9 @@ El contenedor Swift sigue descargándose; no se ha compilado la app ni comprobad
 
 La descarga de la imagen completa de Swift falló al registrar una capa por falta de espacio; la imagen `swift:6.2-slim` descargada solo contiene el runtime y no incluye `swiftc`. La comprobación `git diff --check` pasó. `rustfmt --check` no se ejecutó porque el componente no está instalado.
 - `cabe5c0`: localiza al español los nombres dinámicos de modos y presets y textos del ecualizador sin cambiar sus identificadores persistidos. Catálogo JSON validado; presentación y accesibilidad **PENDIENTES** de verificar en iOS.
+
+## Verificación Swift en Linux
+
+Se obtuvo Swift 6.2.4 mediante extracción selectiva y se ejecutaron `scripts/check-listening.sh`, `scripts/check-jiosaavn-response.sh` y `scripts/check-cached-bitrate.sh`: todas las comprobaciones pasaron. La regresión del histograma se reprodujo con el código anterior `d5754f7`: terminó con `Fatal error: Index out of range`; con el código actual pasó. El crash al abrir Biblioteca comunicado por el usuario sigue **NO REPRODUCIBLE** sin su biblioteca y registro del dispositivo.
+
+El frontend Swift analizó sintácticamente los archivos Swift modificados; `JioSaavn.swift` pasó además una comprobación de tipos en Linux con stubs de los tipos Apple/compartidos. Esto no sustituye una compilación de la aplicación ni verifica la API remota. Las pruebas de historia, respuestas y cálculo se consideran verificadas en Linux; su integración en dispositivo sigue **CORREGIDO SIN VERIFICACIÓN EN DISPOSITIVO**. No se ha generado IPA ni validado reproducción de proveedor real.
