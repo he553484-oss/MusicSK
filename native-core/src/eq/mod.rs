@@ -696,6 +696,31 @@ mod tests {
     }
 
     #[test]
+    fn every_manual_band_changes_its_frequency_region() {
+        let rate = 48_000;
+        for (band, &hz) in EqLayout::MANUAL_BANDS_HZ.iter().enumerate() {
+            let mut gains = [0.0; 7];
+            gains[band] = 6.0;
+            let curve = manual_curve(&gains);
+            // Measure shelves inside their pass bands; at the corner the
+            // half-boost headroom can cancel their 3 dB response.
+            let hz = match band { 0 => 20.0, 6 => 20_000.0, _ => hz };
+            let input: Vec<f32> = (0..rate * 2)
+                .map(|i| (2.0 * core::f32::consts::PI * hz * (i / 2) as f32 / rate as f32).sin() * 0.1)
+                .collect();
+            let mut output = input.clone();
+            let mut eq = EqualizerProcessor::new(rate as u32, 2);
+            eq.set_tuning(true, &curve, 0.0);
+            eq.process(&mut output);
+            let offset = rate as usize; // last half-second, after the glide
+            let measured = 20.0 * (rms_channel(&output[offset..], 0)
+                / rms_channel(&input[offset..], 0)).log10();
+            assert!(measured > 1.0,
+                "band {band} at {hz} Hz: expected audible boost, measured {measured} dB");
+        }
+    }
+
+    #[test]
     fn manual_curve_fills_only_manual_slots() {
         let curve = manual_curve(&[6.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]);
         assert!((curve.gains_db[0] - 6.0).abs() < 1e-6);
