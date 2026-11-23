@@ -39,7 +39,12 @@ El candidato build 8 se archivó con el flujo Release en modo `build-ios`. El mo
 | Regresiones antes del archivado | PASS. 21 suites en Xcode 27.2. |
 | IPA de dispositivo | PASS. Build 8 de `c5f665b`, arm64, iOS 18.0 mínimo, app `app.musicsk.player` y WidgetKit. |
 | Motor nativo en macOS | PASS. 47 comprobaciones y archivos WAV y ALAC de 24 bits / 96 kHz. |
-| Primer ensayo de audio en simulador | FAIL antes del primer cambio de edición en build 7. Original superó la prueba de Biblioteca con historial duplicado. El ensayo del WAV no observó avance de la salida. La primera repetición tampoco produjo el marcador de finalización. En la siguiente ejecución las capturas y la persistencia se verifican antes de iniciar el motor. |
+| Ensayos iniciales de audio en simulador | FAIL antes del primer cambio de edición en build 7. Original superó la prueba de Biblioteca con historial duplicado. El ensayo del WAV no observó avance de la salida. En build 8, el primer intento tampoco produjo el marcador de finalización. El nuevo ensayo se lanzó aparte tras capturar la interfaz. |
+| Apertura y persistencia de Auden | PASS. El simulador montó el shell Auden, capturó Biblioteca, reproductor, Letras y Apariencia, y volvió a leer `auden` tras relanzar. La prueba acciona el binding del selector y usa enlaces de la app. |
+| Continuidad local entre ediciones | PASS. El WAV se reprodujo en iOS simulado al cambiar Original → Auden → Original → Auden. El playhead Rust avanzó de 0,512 a 2,112 s con la misma pista, cola y generación de reproducción. |
 | Paridad visual con Android, bloqueo, vídeo activo y rutas físicas en build 8 | Pendiente de validación en dispositivos. |
+| Medición del primer fotograma de vídeo | BLOCKED. El runner carecía de FFmpeg. |
 
 El ZIP de GitHub Actions incluye `Musicsk-1.4.0-build8-ios-unsigned.ipa` y `SHA256.txt`. SHA-256 de la IPA `3a6888f5d462e726de988469f07fe25867a871ce3342734c1c9a70280812dbec`. Extrae la IPA y ábrela en AltStore o SideStore desde **My Apps → +**. Conserva la misma firma al actualizar de build 6 para mantener sus datos y vínculos con el widget. [Artefacto de build 8](https://github.com/he553484-oss/MusicSK/actions/runs/45138041693/artifacts/14801229961) · [Log de compilación](https://github.com/he553484-oss/MusicSK/actions/runs/45138041693)
+
+Las capturas y el diagnóstico se generaron desde `4e461f7`. Las diferencias respecto al archivado de la IPA se limitan a documentación, el script de capturas y rutas de prueba compiladas exclusivamente en simulador. [Capturas y diagnóstico](https://github.com/he553484-oss/MusicSK/actions/runs/45142933680/artifacts/14804169918) · [Log de simulador](https://github.com/he553484-oss/MusicSK/actions/runs/45142933680)
