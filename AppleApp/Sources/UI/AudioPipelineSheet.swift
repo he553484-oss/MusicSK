@@ -76,7 +76,7 @@ struct AudioPipelineSheet: View {
                         row("EQ Preset", eqPreset)
                         row("Musicsk spatial effect", spatial && AudioRouteState.shared.permitsCustomSpatial ? "On" : "Off")
                         row("Apple spatial playback", AudioRouteState.shared.spatialDescription)
-                        row("Output API", "CoreAudio")
+                        row("Output API", usesAppleRenderer ? "AVFoundation" : "CoreAudio")
                         // Reports engine-side sample changes; a clean engine path
                         // still does not prove CoreAudio's final hardware output.
                         row("Sample Path", samplePathVerdict)
@@ -97,11 +97,14 @@ struct AudioPipelineSheet: View {
                     rule
                     TimelineView(.periodic(from: .now, by: 1)) { _ in
                         stage(6, "waveform.path.ecg", "Playback Diagnostics") {
-                            row("Buffered", "\(controller.outputHealth.bufferedFrames) frames")
-                            row("Silent callbacks", "\(controller.outputHealth.callbackUnderruns)")
-                            row("Output rebuilds", "\(controller.outputHealth.outputRebuilds)")
-                            row("Device xruns", "\(controller.outputHealth.outputXruns)")
-                            row("Output peak", String(format: "%.4f", controller.outputHealth.outputPeak))
+                            if !usesAppleRenderer {
+                                let health = controller.outputHealth
+                                row("Buffered", "\(health.bufferedFrames) frames")
+                                row("Silent callbacks", "\(health.callbackUnderruns)")
+                                row("Output rebuilds", "\(health.outputRebuilds)")
+                                row("Device xruns", "\(health.outputXruns)")
+                                row("Output peak", String(format: "%.4f", health.outputPeak))
+                            }
                             // A quality upgrade fades one recording into another
                             // copy of itself, and how alike the two encodings are
                             // is what decides whether that fade is level-flat.
@@ -118,7 +121,7 @@ struct AudioPipelineSheet: View {
                             Button(captureRunning ? "Capturing 30 seconds…" : "Capture 30 seconds") {
                                 capturePlayback()
                             }
-                            .disabled(captureRunning || controller.current == nil)
+                            .disabled(captureRunning || controller.current == nil || usesAppleRenderer)
                             .padding(.top, 10)
                             if let captureMessage { Text(captureMessage).font(.caption).textSelection(.enabled) }
 
@@ -228,7 +231,11 @@ struct AudioPipelineSheet: View {
 
     // ---- The figures --------------------------------------------------------
 
-    private var nerd: NerdStatsRec? { controller.settingsAudioReadout.loaded && controller.dolbyRenderer == nil ? controller.nerd : nil }
+    private var usesAppleRenderer: Bool { controller.dolbyRenderer != nil }
+    private var nerd: NerdStatsRec? {
+        if let renderer = controller.dolbyRenderer { return renderer.nerd }
+        return controller.settingsAudioReadout.loaded ? controller.nerd : nil
+    }
     private var device: OutputDeviceRec { controller.outputDevice }
 
     private var sourceName: String {
@@ -276,7 +283,8 @@ struct AudioPipelineSheet: View {
         nativeOutputReady && device.channels > 0 ? "\(device.channels)" : "—"
     }
     private var deviceName: String {
-        nativeOutputReady && !device.name.isEmpty ? device.name : "Not open yet"
+        if usesAppleRenderer { return "AVFoundation" }
+        return nativeOutputReady && !device.name.isEmpty ? device.name : "Not open yet"
     }
 
     /// "44100 → 48000" when the two differ, and the single rate when they do not
@@ -285,19 +293,19 @@ struct AudioPipelineSheet: View {
     private var ioRate: String {
         let src = nerd?.sampleRate ?? 0
         let out = device.sampleRate
-        guard src > 0, out > 0 else { return "—" }
+        guard nativeOutputReady, src > 0, out > 0 else { return "—" }
         return src == out ? "\(out) Hz (no conversion)" : "\(src) → \(out) Hz"
     }
 
     private var resamplerType: String {
         let src = nerd?.sampleRate ?? 0
-        guard src > 0, device.sampleRate > 0 else { return "—" }
+        guard nativeOutputReady, src > 0, device.sampleRate > 0 else { return "—" }
         return src == device.sampleRate ? "Bypassed" : "libsoxr HQ"
     }
 
     private var resamplerQuality: String {
         let src = nerd?.sampleRate ?? 0
-        guard src > 0, device.sampleRate > 0 else { return "—" }
+        guard nativeOutputReady, src > 0, device.sampleRate > 0 else { return "—" }
         return src == device.sampleRate ? "Not applicable" : "Band-limited"
     }
 

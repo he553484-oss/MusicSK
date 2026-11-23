@@ -3,9 +3,7 @@ import BitChordShared
 import os
 #if os(iOS)
 import UIKit
-#if DEBUG
 import AVFoundation
-#endif
 #else
 import AppKit
 #endif
@@ -93,7 +91,13 @@ extension PlaybackController {
                                 canNext: playingIndex + 1 < queue.count,
                                 canPrevious: index > 0)
         if dolbyRenderer == nil { lookForBetterCopy(entry, codec: info.codec, kbps: info.kbps) }
-        let output = engine.outputDevice()
+        let renderer = dolbyRenderer == nil ? "rust" : "apple_avfoundation"
+        let output = dolbyRenderer == nil ? engine.outputDevice() : nil
+        #if os(iOS)
+        let sessionRate = AVAudioSession.sharedInstance().sampleRate
+        #else
+        let sessionRate: Double = 0
+        #endif
         let sourceKind: String
         switch resolvedOrigin[entry.id] {
         case .local: sourceKind = "local"
@@ -112,7 +116,7 @@ extension PlaybackController {
             loudnessOrigin = "none"
         }
         PlaybackDebugLog.shared.record(
-            "quality-start source=\(sourceKind) route_kind=\(AudioRouteState.shared.kind) claimed_quality=\(AppSettings.shared.effectiveAudioQuality(metered: NetworkQuality.shared.metered).name) claimed_max_kbps=\(NetworkQuality.shared.maxKbps) measured_codec=\(info.codec) measured_rate=\(info.sampleRate) measured_depth=\(info.bitDepth) measured_kbps=\(info.kbps) output_rate=\(output.sampleRate) output_format=\(output.sampleFormat) loudness_origin=\(loudnessOrigin) loudness_detail=\(nerd?.loudnessOrigin ?? "No measurement") loudness_db=\(currentLoudnessDb.map { String($0) } ?? "unknown") loudness_mode=\(loudnessMode) bit_perfect=\(output.bitPerfectActive)",
+            "quality-start renderer=\(renderer) source=\(sourceKind) route_kind=\(AudioRouteState.shared.kind) claimed_quality=\(AppSettings.shared.effectiveAudioQuality(metered: NetworkQuality.shared.metered).name) claimed_max_kbps=\(NetworkQuality.shared.maxKbps) measured_codec=\(info.codec) measured_rate=\(info.sampleRate) measured_depth=\(info.bitDepth) measured_kbps=\(info.kbps) session_rate=\(sessionRate > 0 ? String(sessionRate) : "unknown") output_rate=\(output.map { String($0.sampleRate) } ?? "unknown") output_format=\(output?.sampleFormat ?? "system_managed") loudness_origin=\(loudnessOrigin) loudness_detail=\(nerd?.loudnessOrigin ?? "No measurement") loudness_db=\(currentLoudnessDb.map { String($0) } ?? "unknown") loudness_mode=\(loudnessMode) bit_perfect=\(output.map { String($0.bitPerfectActive) } ?? "unknown")",
             about: entry.id
         )
         // The incoming source must be ready before the outgoing tail begins.
