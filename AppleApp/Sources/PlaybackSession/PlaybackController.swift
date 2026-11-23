@@ -708,7 +708,6 @@ final class PlaybackController {
         let speed = PlatformSettings.shared.getFloat(key: "playback_speed", default: 1)
         let startBitPerfect = effectiveBitPerfectOutput
         playbackRate = Double(speed).isFinite ? min(max(Double(speed), 0.5), 2.0) : 1.0
-        let eq = Self.currentEqTuning()
         engineStartupTask = Task.detached(priority: .utility) { [weak self] in
             do {
                 // The session has to be up before the output stream exists, and
@@ -740,12 +739,16 @@ final class PlaybackController {
                 try eng.setSpatialEnabled(enabled: spatial)
                 try eng.setSkipSilence(enabled: skip)
                 try eng.setPlaybackSpeed(speed: speed)
-                try eng.setEqTuning(
-                    enabled: eq.enabled,
-                    gainsDb: eq.gains,
-                    qs: eq.qs,
-                    balance: eq.balance
-                )
+                // Apply the latest settings on the same actor that handles EQ
+                // edits. A snapshot taken before startup could overwrite a
+                // slider change made while the audio session was activating.
+                try await MainActor.run {
+                    let eq = Self.currentEqTuning()
+                    try eng.setEqTuning(
+                        enabled: eq.enabled, gainsDb: eq.gains,
+                        qs: eq.qs, balance: eq.balance
+                    )
+                }
 
                 if spatial && PlatformSettings.shared.getString(key: "sound_mode", default: "TRANSPARENT") == "ENHANCED" {
                     await MainActor.run { [weak self] in self?.headTracker.start(engine: eng) }

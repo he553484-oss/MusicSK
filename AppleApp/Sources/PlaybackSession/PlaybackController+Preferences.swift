@@ -300,12 +300,16 @@ extension PlaybackController {
     /// preamp is computed inside the engine, never here.
     func applyEqualizer() {
         let tuning = Self.currentEqTuning()
-        try? engine.setEqTuning(
-            enabled: tuning.enabled,
-            gainsDb: tuning.gains,
-            qs: tuning.qs,
-            balance: tuning.balance
-        )
+        do {
+            try engine.setEqTuning(
+                enabled: tuning.enabled,
+                gainsDb: tuning.gains,
+                qs: tuning.qs,
+                balance: tuning.balance
+            )
+        } catch {
+            lastError = "Could not apply equalizer settings: \(error.localizedDescription)"
+        }
     }
 
     /// The equaliser settings as the engine's ten-slot tuning. Reads only
