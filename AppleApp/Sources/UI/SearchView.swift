@@ -579,12 +579,12 @@ struct SearchView: View {
                         resetToHistory()
                     }
                 }
-                .onChange(of: appModel.focusSearch) { _, focus in
+                .onChange(of: appModel.focusSearch, initial: usesAudenSearch) { _, focus in
                     guard focus else { return }
                     focusTheField()
                     appModel.focusSearch = false
                 }
-                .onChange(of: appModel.pendingSearchQuery) { _, pending in
+                .onChange(of: appModel.pendingSearchQuery, initial: usesAudenSearch) { _, pending in
                     guard let pending, !pending.isEmpty else { return }
                     query = pending
                     appModel.pendingSearchQuery = nil
@@ -596,6 +596,14 @@ struct SearchView: View {
                     setIPadSearchExpanded(false, animated: false)
                 }
         }
+    }
+
+    private var usesAudenSearch: Bool {
+        #if os(iOS)
+        appearance == .auden
+        #else
+        false
+        #endif
     }
 
     /// Back to the idle screen: no results, no error, no skeletons, and the

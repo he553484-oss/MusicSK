@@ -27,7 +27,7 @@ struct HomeView: View {
     var body: some View {
         PageStack {
             content
-                .navigationTitle(isAuden ? "Home" : "Listen Now")
+                .navigationTitle(LocalizedStringKey(isAuden ? "Home" : "Listen Now"))
                 .toolbar {
                     #if os(iOS)
                     // Upstream FrostedTopBar's root-page leading BitChord logo.

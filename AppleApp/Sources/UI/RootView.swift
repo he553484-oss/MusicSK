@@ -77,6 +77,9 @@ struct RootView: View {
         .environment(\.musicAppearance, musicAppearance)
         #endif
         .environment(\.rowSelection, rowSelection)
+        #if os(iOS) && targetEnvironment(simulator)
+        .modifier(AudenSimulatorCheck(edition: $musicAppearance, audenTab: $audenSelection))
+        #endif
         .task {
             #if os(iOS) && targetEnvironment(simulator)
             if UserDefaults.standard.bool(forKey: "musicsk_capture_library") {

@@ -136,6 +136,7 @@ jobs:
             fi
             printf '::endgroup::\n'
           }
+          run_check auden bash scripts/check-auden.sh
           run_check player-layout bash scripts/check-player-layout.sh
           run_check detail-header bash scripts/check-detail-header.sh
           run_check video-gating bash scripts/check-video-gating.sh
