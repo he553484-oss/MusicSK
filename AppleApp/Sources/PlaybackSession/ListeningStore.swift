@@ -786,6 +786,12 @@ final class ListeningStore {
     }
 
     private func importMonths(_ months: [StoredBucket]) {
+        // Validate before replacing existing history: an otherwise decodable
+        // import with no usable month keys must not erase the user's files.
+        let validMonths = months.filter {
+            $0.month.range(of: #"^\d{4}-(0[1-9]|1[0-2])$"#, options: .regularExpression) != nil
+        }
+        guard !validMonths.isEmpty else { return }
         Self.ensureFolder()
         if let existing = try? FileManager.default.contentsOfDirectory(at: Self.folder, includingPropertiesForKeys: nil) {
             for url in existing where url.pathExtension == "json" {
@@ -793,8 +799,7 @@ final class ListeningStore {
             }
         }
         var rebuilt = Bucket()
-        for month in months {
-            guard month.month.range(of: #"^\d{4}-\d{2}$"#, options: .regularExpression) != nil else { continue }
+        for month in validMonths {
             writeMonth(month)
             for track in month.tracks {
                 if var existing = rebuilt.tracks[track.id] {

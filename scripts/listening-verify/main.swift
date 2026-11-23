@@ -76,6 +76,18 @@ func withStore(_ body: (ListeningStore) -> Void) {
 print("listening store")
 
 withStore { _ in
+    let month = ListeningStore.monthKey()
+    let file = ListeningStore.folderOverride!.appendingPathComponent("\(month).json")
+    let original = ListeningStore.StoredBucket(month: month)
+    let bytes = try! JSONEncoder().encode(original)
+    try! bytes.write(to: file)
+    let store = ListeningStore()
+    let invalid = ListeningStore.StoredBucket(month: "2026-99")
+    store.importJSON(try! JSONEncoder().encode([invalid]))
+    check("invalid imported month does not erase existing history", (try? Data(contentsOf: file)) == bytes)
+}
+
+withStore { _ in
     let now = Date()
     let month = ListeningStore.monthKey(now)
     let cal = Calendar.current
