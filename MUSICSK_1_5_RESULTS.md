@@ -57,3 +57,5 @@ Verificación adicional en Linux: `check-lyrics-presentation.sh` pasó; se compi
 `0d3497f`: añade razones explícitas cuando se solicita lossless y la fuente no está verificada, sin prometer que exista una alternativa; `check-lossless-note.sh` pasó en Linux. La visibilidad y traducción dentro de la app siguen pendientes de verificación en iOS.
 
 También pasaron 13 pruebas Rust aisladas de `sound.rs` y del remuestreador, incluidas protección de picos reales, señal elevada, continuidad por bloques y bypass a frecuencia idéntica. Para esta ejecución Linux se compiló una copia del remuestreador que cambia únicamente el enlace estático por la biblioteca dinámica `libsoxr` del sistema; no es una prueba de CoreAudio, Bluetooth ni del binario iOS.
+
+`97a1ad5`: el historial mensual ilegible se conserva en un archivo de respaldo antes de reemplazarlo y la escritura usa reemplazo atómico. La nueva regresión falló con el código anterior y pasó con el actual en Swift/Linux, junto al resto de `check-listening.sh`. Los errores de escritura se registran; la recuperación automática del contenido dañado y la validación en iPhone siguen pendientes.
