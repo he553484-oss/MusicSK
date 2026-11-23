@@ -136,11 +136,13 @@ record = dict(version=1, month=month, tracks=[song, dict(song, ms=40000)],
 PY
 start_app MAIN -musicsk_capture_library YES
 capture 05-biblioteca-historial-duplicado-es.png
-diagnostics=("$support"/Diagnostics/*.log)
-{
-    grep -hF 'library landing load finished shelves=0 failed=false' "${diagnostics[@]}"
-    grep -hF 'library replay ready songs=1' "${diagnostics[@]}"
-} > "$output/biblioteca-validacion.txt"
+for _ in {1..12}; do
+    if grep -hsF 'library replay ready songs=1' "$support"/Diagnostics/*.log >/dev/null; then break; fi
+    sleep 1
+done
+grep -hsF 'library ' "$support"/Diagnostics/*.log | tee "$output/biblioteca-validacion.txt"
+grep -qF 'library landing load finished shelves=0 failed=false' "$output/biblioteca-validacion.txt"
+grep -qF 'library replay ready songs=1' "$output/biblioteca-validacion.txt"
 stop_app
 
 version="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app/Info.plist")"

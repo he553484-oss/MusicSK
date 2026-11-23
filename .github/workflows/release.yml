@@ -225,13 +225,13 @@ jobs:
           } 2>&1 | tee "$log"
 
       - name: Keep the simulator capture files
-        if: env.MODE == 'capture-ios'
+        if: ${{ always() && env.MODE == 'capture-ios' }}
         uses: actions/upload-artifact@v4
         with:
           name: Musicsk-${{ env.VERSION }}-simulator
           path: build/simulator-captures/
           retention-days: 14
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - name: Build the paired release files
         if: env.MODE != 'build-ios' && env.MODE != 'capture-ios'
