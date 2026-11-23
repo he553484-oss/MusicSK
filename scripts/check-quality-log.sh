@@ -12,7 +12,7 @@ log = (root / "AppleApp/Sources/PlaybackSession/PlaybackDebugLog.swift").read_te
 sheet = (root / "AppleApp/Sources/UI/AudioPipelineSheet.swift").read_text()
 fields = [
     "renderer=", "source=", "route_kind=", "claimed_quality=", "claimed_max_kbps=", "measured_codec=", "measured_rate=",
-    "measured_depth=", "measured_kbps=", "output_rate=", "output_format=",
+    "measured_depth=", "reported_or_estimated_kbps=", "output_rate=", "output_format=",
     "loudness_origin=", "bit_perfect=",
 ]
 checks = {
@@ -20,7 +20,7 @@ checks = {
     "source field reports the resolved playback origin": "switch resolvedOrigin[entry.id]" in load and all(origin in load for origin in ["case .local:", "case .cache:", "case .youtube:", "case .substitute:"]),
     "quality record includes claimed and measured stream/output fields": all(field in load for field in fields),
     "system-rendered Dolby does not publish inactive Rust output counters": 'dolbyRenderer == nil ? engine.outputDevice() : nil' in load and 'if !usesAppleRenderer' in sheet and 'return renderer.nerd' in sheet,
-    "pipeline sheet separates the configured source request from measured stream metadata": 'row("Requested Source Quality", claimedQuality)' in sheet and 'row("Measured Stream", measuredStream)' in sheet and 'effectiveAudioQuality(metered: metered)' in sheet and '[codec, bitrate, sourceRate, bitDepth]' in sheet,
+    "pipeline sheet separates the requested quality from reported or estimated stream metadata": 'row("Requested Source Quality", claimedQuality)' in sheet and 'row("Stream format (reported)", measuredStream)' in sheet and 'effectiveAudioQuality(metered: metered)' in sheet and '[codec, bitrate, sourceRate, bitDepth]' in sheet,
     "loudness origin maps the engine's actual metadata": 'loudnessOrigin = "player_response"' in load and 'loudnessOrigin = "analyzed"' in load and 'loudnessOrigin = "none"' in load,
     "diagnostic persistence sanitizes and bounds each event": "Self.sanitize(" in log and "capacity" in log and "limit = 2 * 1024 * 1024" in log,
 }

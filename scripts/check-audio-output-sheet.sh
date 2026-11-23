@@ -13,7 +13,7 @@ sheet = source[start:end]
 
 headings = [
     'Text("Audio Output")',
-    'Text("Volume")',
+    'Text(appVolumeLabel)',
     'Text("Audio Pipeline")',
     'Text("Playback Diagnostics")',
 ]
