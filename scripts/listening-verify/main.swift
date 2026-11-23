@@ -76,6 +76,22 @@ func withStore(_ body: (ListeningStore) -> Void) {
 print("listening store")
 
 withStore { _ in
+    let now = Date()
+    let month = ListeningStore.monthKey(now)
+    let folder = ListeningStore.folderOverride!
+    let original = Data("{broken history".utf8)
+    try! original.write(to: folder.appendingPathComponent("\(month).json"))
+    let store = ListeningStore()
+    play(store, on: now)
+    let nextMonth = Calendar.current.date(byAdding: .month, value: 1, to: now)!
+    play(store, on: nextMonth)
+    let backups = (try! FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil))
+        .filter { $0.lastPathComponent.hasPrefix("\(month).corrupt-") }
+    check("corrupt saved history is backed up before replacement",
+          backups.count == 1 && (try? Data(contentsOf: backups[0])) == original)
+}
+
+withStore { _ in
     let month = ListeningStore.monthKey()
     let row = ListeningStore.Track(id: "huge-duration", title: "Song", artist: "Artist", album: nil,
         albumId: nil, artistId: nil, art: nil, ms: 1e300, plays: 1, last: nil)

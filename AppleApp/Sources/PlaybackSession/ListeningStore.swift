@@ -852,11 +852,23 @@ final class ListeningStore {
     private func writeMonth(_ stored: StoredBucket) {
         Self.ensureFolder()
         let dest = Self.folder.appendingPathComponent("\(stored.month).json")
-        let tmp = Self.folder.appendingPathComponent("\(stored.month).json.tmp")
-        guard let data = try? JSONEncoder().encode(stored) else { return }
-        try? data.write(to: tmp, options: .atomic)
-        try? FileManager.default.removeItem(at: dest)
-        try? FileManager.default.moveItem(at: tmp, to: dest)
+        do {
+            let data = try JSONEncoder().encode(stored)
+            if FileManager.default.fileExists(atPath: dest.path) {
+                let previous = try Data(contentsOf: dest)
+                if (try? JSONDecoder().decode(StoredBucket.self, from: previous)) == nil {
+                    // Keep the original bytes for recovery. If this copy fails,
+                    // do not replace the only surviving version.
+                    let backup = Self.folder.appendingPathComponent("\(stored.month).corrupt-\(UUID().uuidString)")
+                    try FileManager.default.copyItem(at: dest, to: backup)
+                }
+            }
+            // Foundation writes a temporary file and atomically replaces the
+            // destination; a failed write leaves the prior file in place.
+            try data.write(to: dest, options: .atomic)
+        } catch {
+            NSLog("Listening history could not be saved for %@: %@", stored.month, error.localizedDescription)
+        }
     }
 
     private static func readMonth(_ key: String) -> StoredBucket? {
