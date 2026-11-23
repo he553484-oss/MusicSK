@@ -39,16 +39,43 @@ import SwiftUI
 extension EnvironmentValues {
     @Entry var musicAppearance: MusicAppearance = .original
     @Entry var audenTabActive = true
-    @Entry var audenScrollChanged: ((Double, Double) -> Void)? = nil
 }
 
 #if os(iOS)
+import Observation
+
+extension EnvironmentValues {
+    @Entry var audenDockState: AudenDockState? = nil
+}
+
+@MainActor
+@Observable
+final class AudenDockState: Equatable {
+    private(set) var folded = false
+    @ObservationIgnored private var policy = AudenDockPolicy()
+
+    nonisolated static func == (lhs: AudenDockState, rhs: AudenDockState) -> Bool { lhs === rhs }
+
+    func observe(offset: Double, reduceMotion: Bool) {
+        setFolded(policy.update(offset: offset, folded: folded), reduceMotion: reduceMotion)
+    }
+
+    func expand(reduceMotion: Bool) {
+        policy = AudenDockPolicy()
+        setFolded(false, reduceMotion: reduceMotion)
+    }
+
+    private func setFolded(_ value: Bool, reduceMotion: Bool) {
+        guard value != folded else { return }
+        withAnimation(reduceMotion ? nil : .spring(response: 0.34, dampingFraction: 0.85)) { folded = value }
+    }
+}
+
 enum AudenDesign {
     static let gutter: CGFloat = 20
     static let spacing: CGFloat = 14
     static let dockHeight: CGFloat = 52
     static let miniHeight: CGFloat = 48
-    static let coverRadius: CGFloat = 8
 
     static func canvas(_ scheme: ColorScheme) -> Color {
         scheme == .dark ? .black : .white
@@ -61,14 +88,15 @@ enum AudenDesign {
 }
 
 struct AudenScrollTracking: ViewModifier {
-    @Environment(\.audenScrollChanged) private var changed
+    @Environment(\.audenDockState) private var dockState
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @ViewBuilder
     func body(content: Content) -> some View {
-        if let changed {
+        if let dockState {
             content.onScrollGeometryChange(for: Double.self) { geometry in
                 Double(geometry.contentOffset.y + geometry.contentInsets.top)
-            } action: { old, new in changed(old, new) }
+            } action: { _, new in dockState.observe(offset: new, reduceMotion: reduceMotion) }
         } else {
             content
         }

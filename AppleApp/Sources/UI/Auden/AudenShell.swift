@@ -12,8 +12,7 @@ struct AudenShell: View {
     @Environment(\.dynamicTypeSize) private var textSize
     @State private var visited: Set<AppModel.Tab> = []
     @State private var rememberedTab: AppModel.Tab = .home
-    @State private var folded = false
-    @State private var dockPolicy = AudenDockPolicy()
+    @State private var dockState = AudenDockState()
 
     private static let destinations: [AppModel.Tab] = [.home, .explore, .library, .search]
 
@@ -32,7 +31,7 @@ struct AudenShell: View {
                         .allowsHitTesting(current == tab)
                         .accessibilityHidden(current != tab)
                         .environment(\.audenTabActive, current == tab)
-                        .environment(\.audenScrollChanged, current == tab ? scrollChanged : nil)
+                        .environment(\.audenDockState, current == tab ? dockState : nil)
                 }
             }
         }
@@ -40,8 +39,7 @@ struct AudenShell: View {
         .onChange(of: current, initial: true) { _, value in
             visited.insert(value)
             if value != .search { rememberedTab = value }
-            dockPolicy = AudenDockPolicy()
-            setFolded(false)
+            dockState.expand(reduceMotion: reduceMotion)
         }
     }
 
@@ -56,11 +54,11 @@ struct AudenShell: View {
     }
 
     private var dock: some View {
-        let compact = folded && !textSize.isAccessibilitySize
+        let compact = dockState.folded && !textSize.isAccessibilitySize
         return ZStack(alignment: .bottom) {
             HStack(spacing: 8) {
                 if compact {
-                    tabButton(rememberedTab, compact: true) { setFolded(false) }
+                    tabButton(rememberedTab, compact: true) { dockState.expand(reduceMotion: reduceMotion) }
                         .frame(width: AudenDesign.dockHeight)
                         .modifier(AudenPanel())
                     Spacer(minLength: 0)
@@ -123,15 +121,7 @@ struct AudenShell: View {
         }
     }
 
-    private func scrollChanged(_: Double, offset: Double) {
-        let next = dockPolicy.update(offset: offset, folded: folded)
-        setFolded(next)
-    }
 
-    private func setFolded(_ value: Bool) {
-        guard value != folded else { return }
-        withAnimation(reduceMotion ? nil : .spring(response: 0.34, dampingFraction: 0.85)) { folded = value }
-    }
 }
 
 private struct AudenMiniPlayer: View {

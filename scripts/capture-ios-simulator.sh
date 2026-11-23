@@ -159,16 +159,17 @@ file.parent.mkdir(parents=True, exist_ok=True)
 rate = 44100
 samples = [int(3100 * math.sin(2 * math.pi * 440 * i / rate)) for i in range(rate)]
 with wave.open(str(file), "wb") as audio:
-    audio.setparams((1, 2, rate, 0, "NONE", "not compressed"))
-    frames = struct.pack(f"<{rate}h", *samples)
-    for _ in range(45):
+    audio.setparams((2, 2, rate, 0, "NONE", "not compressed"))
+    stereo = [value for sample in samples for value in (sample, sample)]
+    frames = struct.pack(f"<{len(stereo)}h", *stereo)
+    for _ in range(90):
         audio.writeframes(frames)
 WAV
 
 captureLog="$output/auden-validacion.txt"
 wait_for_auden_marker() {
     local marker="$1"
-    for _ in {1..24}; do
+    for _ in {1..55}; do
         if grep -hsF "$marker" "$support"/Diagnostics/*.log > /dev/null; then
             grep -hsF "$marker" "$support"/Diagnostics/*.log >> "$captureLog"
             return
@@ -182,7 +183,7 @@ wait_for_auden_marker() {
 }
 
 start_app MAIN -musicsk_capture_switch_edition YES
-wait_for_auden_marker 'auden fixture PASS shared playback'
+wait_for_auden_marker 'auden fixture switch complete edition=auden'
 capture 06-auden-biblioteca-es.png
 xcrun simctl openurl "$device_id" musicsk://open-player
 sleep 2
@@ -196,7 +197,7 @@ start_app MAIN -musicsk_capture_check_edition YES
 wait_for_auden_marker 'auden fixture restored edition=auden'
 capture 09-auden-reinicio-es.png
 stop_app
-cat "$captureLog"
+grep -hsF 'auden fixture ' "$support"/Diagnostics/*.log | tee "$captureLog"
 
 version="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app/Info.plist")"
 build="$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$app/Info.plist")"
@@ -225,3 +226,4 @@ sintética local y reabren la app para verificar persistencia. El vídeo activo,
 el volumen físico, Control Center y la pantalla bloqueada requieren
 comprobaciones adicionales.
 EOF
+grep -qF 'auden fixture PASS shared playback' "$captureLog"
