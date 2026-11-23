@@ -7,7 +7,9 @@ enum JioSaavn {
     private static let base = "https://www.jiosaavn.com/api.php"
     private static let ua = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36"
 
-    static func search(_ query: String) async -> [SearchHitDTO] {
+    static func search(_ query: String, session: URLSession = .shared) async -> [SearchHitDTO] {
+        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return [] }
         var comps = URLComponents(string: base)!
         comps.queryItems = [
             .init(name: "__call", value: "search.getResults"),
@@ -23,12 +25,13 @@ enum JioSaavn {
         var req = URLRequest(url: url, timeoutInterval: 12)
         req.setValue(ua, forHTTPHeaderField: "User-Agent")
         req.setValue("application/json", forHTTPHeaderField: "Accept")
-        guard let (data, response) = try? await URLSession.shared.data(for: req),
-              let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
-              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let results = obj["results"] as? [[String: Any]] else { return [] }
+        guard let (data, response) = try? await session.data(for: req),
+              let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else { return [] }
+        let results = JioSaavnResponse.searchRows(data: data)
         return results.compactMap { raw in
-            guard let id = raw["id"] as? String, let title = raw["title"] as? String else { return nil }
+            guard let rawID = raw["id"] as? String, let rawTitle = raw["title"] as? String else { return nil }
+            let id = rawID.trimmingCharacters(in: .whitespacesAndNewlines)
+            let title = rawTitle.trimmingCharacters(in: .whitespacesAndNewlines)
             let info = raw["more_info"] as? [String: Any]
             let artistNames = ((info?["artistMap"] as? [String: Any])?["primary_artists"] as? [[String: Any]]) ?? []
             let artists = artistNames.compactMap { $0["name"] as? String }.joined(separator: ", ")
@@ -61,7 +64,9 @@ enum JioSaavn {
     }
 
     static func streamURL(for trackId: String, session: URLSession = .shared) async -> (url: String, kbps: Int)? {
-        let id = trackId.hasPrefix("saavn:") ? String(trackId.dropFirst(6)) : trackId
+        let id = (trackId.hasPrefix("saavn:") ? String(trackId.dropFirst(6)) : trackId)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !id.isEmpty else { return nil }
         var comps = URLComponents(string: base)!
         comps.queryItems = [
             .init(name: "__call", value: "song.getDetails"),

@@ -16,7 +16,10 @@ final class MockProtocol: URLProtocol {
         Self.requests.append(call + ":" + (params["bitrate"] ?? ""))
         let status: Int
         let body: String
-        if call == "song.getDetails" {
+        if call == "search.getResults" {
+            status = 200
+            body = #"{"results":[null,{"id":"track","title":"Song","more_info":{}},{"id":"","title":"Bad"}]}"#
+        } else if call == "song.getDetails" {
             status = Self.rejectDetails ? 503 : 200
             body = #"{"songs":[{"id":"track","more_info":{"encrypted_media_url":"opaque"}}]}"#
         } else if call == "song.generateAuthToken", params["bitrate"] == "160" {
@@ -38,6 +41,14 @@ final class MockProtocol: URLProtocol {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [MockProtocol.self]
         let session = URLSession(configuration: configuration)
+        let hits = await JioSaavn.search(" Song ", session: session)
+        precondition(hits.count == 1 && hits[0].videoId == "saavn:track")
+        precondition(MockProtocol.requests == ["search.getResults:"])
+        MockProtocol.requests = []
+        let empty = await JioSaavn.search("  ", session: session)
+        precondition(empty.isEmpty && MockProtocol.requests.isEmpty)
+        let emptyId = await JioSaavn.streamURL(for: "saavn:", session: session)
+        precondition(emptyId == nil && MockProtocol.requests.isEmpty)
         let result = await JioSaavn.streamURL(for: "saavn:track", session: session)
         precondition(result?.url == "https://cdn.example.test/audio.mp4" && result?.kbps == 160)
         precondition(MockProtocol.requests == ["song.getDetails:", "song.generateAuthToken:320", "song.generateAuthToken:160"])
