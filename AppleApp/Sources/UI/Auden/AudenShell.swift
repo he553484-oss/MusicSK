@@ -57,22 +57,13 @@ struct AudenShell: View {
 
     private var dock: some View {
         let compact = folded && !textSize.isAccessibilitySize
-        return VStack(spacing: 8) {
-            if !compact, controller.current != nil {
-                AudenMiniPlayer()
-                    .transition(.opacity)
-            }
+        return ZStack(alignment: .bottom) {
             HStack(spacing: 8) {
                 if compact {
                     tabButton(rememberedTab, compact: true) { setFolded(false) }
                         .frame(width: AudenDesign.dockHeight)
                         .modifier(AudenPanel())
-                    if controller.current != nil {
-                        AudenMiniPlayer(compact: true)
-                            .transition(.opacity)
-                    } else {
-                        Spacer(minLength: 0)
-                    }
+                    Spacer(minLength: 0)
                 } else {
                     HStack(spacing: 2) {
                         tabButton(.home)
@@ -85,6 +76,13 @@ struct AudenShell: View {
                 tabButton(.search, compact: compact)
                     .frame(width: compact ? AudenDesign.dockHeight : 70)
                     .modifier(AudenPanel())
+            }
+            if controller.current != nil {
+                // Retain the same drag state and zoom source during the fold.
+                AudenMiniPlayer(compact: compact)
+                    .padding(.horizontal, compact ? AudenDesign.dockHeight + 8 : 0)
+                    .padding(.bottom, compact ? 2 : AudenDesign.dockHeight + 8)
+                    .transition(.opacity)
             }
         }
         .padding(.horizontal, AudenDesign.gutter)

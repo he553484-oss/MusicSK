@@ -106,13 +106,13 @@ struct NowPlayingView: View {
         .onReceive(NotificationCenter.default.publisher(for: .lyricsOffsetChanged)) { _ in
             lyricsOffsetMs = LyricsOffsetBridge.offsetMs()
         }
-        .onChange(of: appModel.queueRevealRequested) { _, requested in
+        .onChange(of: appModel.queueRevealRequested, initial: consumesAudenPaneRequest) { _, requested in
             if requested {
                 pane = .queue
                 appModel.queueRevealRequested = false
             }
         }
-        .onChange(of: appModel.lyricsRevealRequested) { _, requested in
+        .onChange(of: appModel.lyricsRevealRequested, initial: consumesAudenPaneRequest) { _, requested in
             if requested {
                 pane = .lyrics
                 appModel.lyricsRevealRequested = false
@@ -131,6 +131,14 @@ struct NowPlayingView: View {
             } catch { return }
             if lyricsControlTimer == timer { lyricsControlsOpen = false }
         }
+    }
+
+    private var consumesAudenPaneRequest: Bool {
+        #if os(iOS)
+        appearance == .auden
+        #else
+        false
+        #endif
     }
 
     private var lyricsControlTimer: Int? {
