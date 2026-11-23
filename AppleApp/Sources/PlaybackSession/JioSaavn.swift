@@ -60,7 +60,7 @@ enum JioSaavn {
         }
     }
 
-    static func streamURL(for trackId: String) async -> (url: String, kbps: Int)? {
+    static func streamURL(for trackId: String, session: URLSession = .shared) async -> (url: String, kbps: Int)? {
         let id = trackId.hasPrefix("saavn:") ? String(trackId.dropFirst(6)) : trackId
         var comps = URLComponents(string: base)!
         comps.queryItems = [
@@ -74,7 +74,7 @@ enum JioSaavn {
         guard let url = comps.url else { return nil }
         var req = URLRequest(url: url, timeoutInterval: 12)
         req.setValue(ua, forHTTPHeaderField: "User-Agent")
-        guard let (data, response) = try? await URLSession.shared.data(for: req),
+        guard let (data, response) = try? await session.data(for: req),
               let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
               let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
         let song = JioSaavnResponse.song(in: root, id: id)
@@ -101,7 +101,7 @@ enum JioSaavn {
             var tokenRequest = URLRequest(url: tokenURL, timeoutInterval: 12)
             tokenRequest.setValue(ua, forHTTPHeaderField: "User-Agent")
             tokenRequest.setValue("application/json", forHTTPHeaderField: "Accept")
-            guard let (data, response) = try? await URLSession.shared.data(for: tokenRequest),
+            guard let (data, response) = try? await session.data(for: tokenRequest),
                   let http = response as? HTTPURLResponse,
                   let url = JioSaavnResponse.streamURL(data: data, statusCode: http.statusCode) else { continue }
             return (url.absoluteString, bitrate)
