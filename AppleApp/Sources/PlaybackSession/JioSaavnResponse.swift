@@ -2,6 +2,12 @@ import Foundation
 
 /// Only accept a provider-issued HTTPS URL from a successful token response.
 enum JioSaavnResponse {
+    static func durationSeconds(_ value: Double) -> Int? {
+        guard value.isFinite, value > 0, value.rounded() <= Double(Int32.max) else { return nil }
+        let seconds = Int(value.rounded())
+        return seconds > 0 ? seconds : nil
+    }
+
     static func searchRows(data: Data) -> [[String: Any]] {
         guard let root = try? JSONSerialization.jsonObject(with: data) else { return [] }
         let values: [Any]

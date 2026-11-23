@@ -1,6 +1,11 @@
 import Foundation
 
 func data(_ text: String) -> Data { Data(text.utf8) }
+precondition(JioSaavnResponse.durationSeconds(123.6) == 124)
+precondition(JioSaavnResponse.durationSeconds(.infinity) == nil)
+precondition(JioSaavnResponse.durationSeconds(.nan) == nil)
+precondition(JioSaavnResponse.durationSeconds(Double(Int32.max) + 1) == nil)
+precondition(JioSaavnResponse.durationSeconds(-1) == nil)
 let valid = data("""
 {"auth_url":"https://cdn.example.test/audio.mp4?token=abc"}
 """)
