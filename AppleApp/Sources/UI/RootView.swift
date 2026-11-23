@@ -39,6 +39,8 @@ struct RootView: View {
     #endif
     @State private var homeFeed = FeedLoader(.home)
     #if os(iOS)
+    @AppStorage(MusicAppearance.storageKey) private var musicAppearance: MusicAppearance = .original
+    @SceneStorage("musicsk.auden.selectedTab") private var audenSelection = AppModel.Tab.home.rawValue
     @Namespace private var nowPlayingZoom
     /// Regular width is the iPad layout — on any device. A Max phone turned
     /// sideways is a regular-width window too, and it has the room.
@@ -71,11 +73,15 @@ struct RootView: View {
 
     var body: some View {
         shell
+        #if os(iOS)
+        .environment(\.musicAppearance, musicAppearance)
+        #endif
         .environment(\.rowSelection, rowSelection)
         .task {
             #if os(iOS) && targetEnvironment(simulator)
             if UserDefaults.standard.bool(forKey: "musicsk_capture_library") {
-                selection = AppModel.Tab.library.rawValue
+                if musicAppearance == .auden { audenSelection = AppModel.Tab.library.rawValue }
+                else { selection = AppModel.Tab.library.rawValue }
             }
             #endif
             // First run only. Someone upgrading — signed in, or with a queue
@@ -95,7 +101,12 @@ struct RootView: View {
         #endif
         .onChange(of: appModel.requestedTab) { _, requested in
             guard let requested else { return }
+            #if os(iOS)
+            if musicAppearance == .auden { audenSelection = requested.rawValue }
+            else { selection = resolvedTab(requested).rawValue }
+            #else
             selection = resolvedTab(requested).rawValue
+            #endif
             #if os(macOS)
             macSide = MacSide(tab: requested)
             #endif
@@ -290,9 +301,11 @@ struct RootView: View {
         macShell
         #else
         contentStack
-        .task(id: "\(auth.sessionEpoch)-\(sizeClass == .regular)") { await loadSidebarPlaylists() }
+        .task(id: "\(auth.sessionEpoch)-\(sizeClass == .regular)-\(musicAppearance.rawValue)") {
+            if musicAppearance == .original { await loadSidebarPlaylists() }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .libraryPlaylistsChanged)) { _ in
-            Task { await loadSidebarPlaylists() }
+            if musicAppearance == .original { Task { await loadSidebarPlaylists() } }
         }
         .onChange(of: selection) { _, raw in
             if let tab = AppModel.Tab(rawValue: raw), Self.isLibrarySection(tab) {
@@ -315,7 +328,7 @@ struct RootView: View {
         // Keep every tab and its navigation/scroll state mounted while Settings
         // covers it. Replacing tabShell recreates the feeds when returning.
         ZStack {
-            tabShell
+            experience
                 .opacity(appModel.settingsPresented ? 0 : 1)
                 .allowsHitTesting(!appModel.settingsPresented)
                 .accessibilityHidden(appModel.settingsPresented)
@@ -331,6 +344,15 @@ struct RootView: View {
                         }
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var experience: some View {
+        if musicAppearance == .auden {
+            AudenShell(selection: $audenSelection, feed: homeFeed)
+        } else {
+            tabShell
         }
     }
 

@@ -9,11 +9,19 @@ enum MusicAppearance: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-enum AudenDockPolicy {
-    static func nextState(from previous: Double, to offset: Double, folded: Bool) -> Bool {
-        if offset <= 8 { return false }
-        if offset >= 28, offset - previous >= 10 { return true }
-        if previous - offset >= 10 { return false }
+struct AudenDockPolicy {
+    private var anchor: Double = 0
+
+    mutating func update(offset: Double, folded: Bool) -> Bool {
+        guard offset.isFinite else { return folded }
+        if offset <= 8 { anchor = 0; return false }
+        if folded {
+            anchor = max(anchor, offset)
+            if anchor - offset >= 14 { anchor = offset; return false }
+        } else {
+            anchor = min(anchor, offset)
+            if offset >= 28, offset - anchor >= 20 { anchor = offset; return true }
+        }
         return folded
     }
 }
@@ -76,4 +84,18 @@ struct AudenPanel: ViewModifier {
     }
 }
 #endif
+#endif
+
+#if os(iOS)
+struct AudenEditionPicker: View {
+    @AppStorage(MusicAppearance.storageKey) private var edition: MusicAppearance = .original
+
+    var body: some View {
+        Picker("Interface Edition", selection: $edition) {
+            Text("MusicSK Original").tag(MusicAppearance.original)
+            Text("Auden Edition").tag(MusicAppearance.auden)
+        }
+        .accessibilityIdentifier("settings.appearance.edition")
+    }
+}
 #endif

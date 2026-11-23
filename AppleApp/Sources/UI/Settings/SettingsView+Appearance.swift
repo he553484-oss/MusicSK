@@ -10,6 +10,11 @@ import AppKit
 // Appearance and performance.
 extension SettingsView {
     func buildAppearanceRows(_ rows: inout SettingsRows) {
+        #if os(iOS)
+        rows.row("Interface Edition", "design", "Auden", "Original", "apariencia") {
+            AudenEditionPicker()
+        }
+        #endif
         rows.row("Appearance", "theme", "dark mode", "light mode", "colour", "color", "system", "accent", "tint") {
             VStack(alignment: .leading, spacing: 10) {
                 SettingsLine(glyph: .theme, title: "Appearance") { EmptyView() }
