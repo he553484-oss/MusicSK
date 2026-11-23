@@ -43,7 +43,7 @@ struct AudioPipelineSheet: View {
                         .padding(.bottom, 14)
                     stage(0, "doc.text", "Track Info") {
                         row("Requested Source Quality", claimedQuality)
-                        row("Measured Stream", measuredStream)
+                        row("Stream format (reported)", measuredStream)
                         row("Source", sourceName)
                         if let id = controller.current?.id, let note = controller.sourceDecisionNotes[id] {
                             row("Source decision", note)
@@ -51,7 +51,7 @@ struct AudioPipelineSheet: View {
                         row("Format", codec)
                         row("Bit Depth", bitDepth)
                         row("Sample Rate", sourceRate)
-                        row("Bitrate", bitrate)
+                        row("Bitrate (reported or estimated)", bitrate)
                         row("Channels", channels)
                     }
                     rule
@@ -112,8 +112,8 @@ struct AudioPipelineSheet: View {
                             row("Upgrade correlation", upgradeCorrelation)
                             row("Active Processing", nerd?.activeStages.joined(separator: " · ") ?? "—")
                             row("Converter Delay", String(format: "%.1f frames", nerd?.converterDelayFrames ?? 0))
-                            row("Protection Reduction", String(format: "%.2f dB", nerd?.protectionReductionDb ?? 0))
-                            row("Protection Interventions", "\(nerd?.protectionInterventions ?? 0)")
+                            row("Protection Reduction", nerd.map { String(format: "%.2f dB", $0.protectionReductionDb) } ?? "—")
+                            row("Protection counter (mixed units)", nerd.map { "\($0.protectionInterventions)" } ?? "—")
                             row("Decoded Layout", nerd?.decodedLayout ?? "—")
                             row("Loudness Source", nerd?.loudnessOrigin ?? "—")
                             row("Queue Target", "\(nerd?.queuedTargetMs ?? 0) ms")
