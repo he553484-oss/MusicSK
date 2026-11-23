@@ -67,6 +67,13 @@ enum ListeningPeriod: String, CaseIterable, Sendable, Identifiable {
 /// Not `@MainActor` so ReplayView's static `load` can call `summary(period:)`
 /// without a hop — samples still come from the playback MainActor.
 final class ListeningStore {
+    // Persisted history can contain damaged counters; Swift integer overflow
+    // traps during aggregation, including while opening Replay from Library.
+    private static func addPlays(_ lhs: Int, _ rhs: Int) -> Int {
+        let (sum, overflow) = lhs.addingReportingOverflow(rhs)
+        return overflow ? (rhs >= 0 ? Int.max : Int.min) : sum
+    }
+
     static let shared = ListeningStore()
 
     private let v1Key = "listening_stats_v1"
@@ -125,7 +132,7 @@ final class ListeningStore {
 
         mutating func accumulate(_ entry: Track) {
             ms += entry.ms
-            plays += entry.plays
+            plays = ListeningStore.addPlays(plays, entry.plays)
             album = album ?? entry.album
             albumId = albumId ?? entry.albumId
             artistId = artistId ?? entry.artistId
@@ -206,7 +213,7 @@ final class ListeningStore {
                 let key = lead.lowercased()
                 if var existing = artists[key] {
                     existing.ms += entry.ms
-                    existing.plays += entry.plays
+                    existing.plays = ListeningStore.addPlays(existing.plays, entry.plays)
                     if existing.art == nil { existing.art = entry.art }
                     if existing.id == nil { existing.id = entry.id }
                     artists[key] = existing
@@ -222,7 +229,7 @@ final class ListeningStore {
                 let key = ListeningStore.albumKey(entry.name, entry.sub ?? "")
                 if var existing = albums[key] {
                     existing.ms += entry.ms
-                    existing.plays += entry.plays
+                    existing.plays = ListeningStore.addPlays(existing.plays, entry.plays)
                     if existing.art == nil { existing.art = entry.art }
                     if existing.id == nil { existing.id = entry.id }
                     albums[key] = existing
@@ -377,7 +384,7 @@ final class ListeningStore {
                 let key = lead.lowercased()
                 if var existing = artists[key] {
                     existing.ms += entry.ms
-                    existing.plays += entry.plays
+                    existing.plays = ListeningStore.addPlays(existing.plays, entry.plays)
                     if existing.art == nil { existing.art = entry.art }
                     if existing.id == nil { existing.id = entry.id }
                     artists[key] = existing
@@ -392,7 +399,7 @@ final class ListeningStore {
                 let key = Self.albumKey(entry.name, entry.sub ?? "")
                 if var existing = albums[key] {
                     existing.ms += entry.ms
-                    existing.plays += entry.plays
+                    existing.plays = ListeningStore.addPlays(existing.plays, entry.plays)
                     if existing.art == nil { existing.art = entry.art }
                     if existing.id == nil { existing.id = entry.id }
                     albums[key] = existing
@@ -450,14 +457,14 @@ final class ListeningStore {
                     let key = lead.lowercased()
                     var row = artists[key] ?? NameEntry(name: lead, sub: nil, art: t.art, id: t.artistId, ms: 0, plays: 0)
                     row.ms += t.ms
-                    row.plays += t.plays
+                    row.plays = ListeningStore.addPlays(row.plays, t.plays)
                     artists[key] = row
                 }
                 if albums.isEmpty, let album = t.album, !album.isEmpty {
                     let key = Self.albumKey(album, t.artist)
                     var row = albums[key] ?? NameEntry(name: album, sub: t.artist, art: t.art, id: t.albumId, ms: 0, plays: 0)
                     row.ms += t.ms
-                    row.plays += t.plays
+                    row.plays = ListeningStore.addPlays(row.plays, t.plays)
                     albums[key] = row
                 }
             }
@@ -480,7 +487,7 @@ final class ListeningStore {
         let busiest = days.max { $0.value < $1.value }
         return ReplaySummary(
             totalMs: tracks.values.reduce(0) { $0 + $1.ms },
-            totalPlays: tracks.values.reduce(0) { $0 + $1.plays },
+            totalPlays: tracks.values.reduce(0) { ListeningStore.addPlays($0, $1.plays) },
             songs: Array(songs.prefix(10)),
             artists: artists.values.map {
                 Ranked(name: $0.name, ms: $0.ms, browseId: $0.id, plays: $0.plays,
@@ -544,7 +551,7 @@ final class ListeningStore {
                             ms: 0, plays: 0
                         )
                         row.ms += entry.ms
-                        row.plays += entry.plays
+                        row.plays = ListeningStore.addPlays(row.plays, entry.plays)
                         if row.id == nil { row.id = entry.artistId }
                         if row.art == nil { row.art = entry.art }
                         artists[key] = row
@@ -556,7 +563,7 @@ final class ListeningStore {
                             ms: 0, plays: 0
                         )
                         row.ms += entry.ms
-                        row.plays += entry.plays
+                        row.plays = ListeningStore.addPlays(row.plays, entry.plays)
                         if row.id == nil { row.id = entry.albumId }
                         if row.art == nil { row.art = entry.art }
                         albums[key] = row
@@ -665,7 +672,7 @@ final class ListeningStore {
         if track.artistId == nil { track.artistId = artistId }
         if track.art == nil { track.art = art }
         track.ms += playedMs
-        if countsAsPlay { track.plays += 1 }
+        if countsAsPlay { track.plays = ListeningStore.addPlays(track.plays, 1) }
         track.last = at.timeIntervalSince1970 * 1000
         open.tracks[id] = track
 
@@ -673,7 +680,7 @@ final class ListeningStore {
             let key = lead.lowercased()
             var row = open.artists[key] ?? NameEntry(name: lead, sub: nil, art: art, id: artistId, ms: 0, plays: 0)
             row.ms += playedMs
-            if countsAsPlay { row.plays += 1 }
+            if countsAsPlay { row.plays = ListeningStore.addPlays(row.plays, 1) }
             if row.id == nil { row.id = artistId }
             if row.art == nil { row.art = art }
             open.artists[key] = row
@@ -683,7 +690,7 @@ final class ListeningStore {
             let key = Self.albumKey(album, artist)
             var row = open.albums[key] ?? NameEntry(name: album, sub: artist, art: art, id: albumId, ms: 0, plays: 0)
             row.ms += playedMs
-            if countsAsPlay { row.plays += 1 }
+            if countsAsPlay { row.plays = ListeningStore.addPlays(row.plays, 1) }
             if row.id == nil { row.id = albumId }
             if row.art == nil { row.art = art }
             open.albums[key] = row
@@ -695,7 +702,7 @@ final class ListeningStore {
         var dayTracks = open.dayTracks[dayKey] ?? []
         if let index = dayTracks.firstIndex(where: { $0.id == id }) {
             dayTracks[index].ms += playedMs
-            if countsAsPlay { dayTracks[index].plays += 1 }
+            if countsAsPlay { dayTracks[index].plays = ListeningStore.addPlays(dayTracks[index].plays, 1) }
             dayTracks[index].last = track.last
             dayTracks[index].title = track.title
             dayTracks[index].artist = track.artist
@@ -731,7 +738,7 @@ final class ListeningStore {
         v1.artist = artist
         if let album { v1.album = album }
         v1.ms += playedMs
-        if countsAsPlay { v1.plays += 1 }
+        if countsAsPlay { v1.plays = ListeningStore.addPlays(v1.plays, 1) }
         bucket.tracks[id] = v1
         let iso = Self.isoDay(at)
         bucket.days[iso, default: 0] += playedMs

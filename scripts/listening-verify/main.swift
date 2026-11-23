@@ -77,6 +77,17 @@ print("listening store")
 
 withStore { _ in
     let month = ListeningStore.monthKey()
+    let row = ListeningStore.Track(id: "overflow", title: "Song", artist: "Artist", album: nil,
+        albumId: nil, artistId: nil, art: nil, ms: 1000, plays: Int.max, last: nil)
+    let stored = ListeningStore.StoredBucket(month: month, tracks: [row, row])
+    let file = ListeningStore.folderOverride!.appendingPathComponent("\(month).json")
+    try! JSONEncoder().encode(stored).write(to: file)
+    let summary = ListeningStore().summary(period: .thisMonth, includeGenres: false)
+    check("duplicate corrupt play counts cannot crash Replay", summary.totalPlays == Int.max)
+}
+
+withStore { _ in
+    let month = ListeningStore.monthKey()
     let file = ListeningStore.folderOverride!.appendingPathComponent("\(month).json")
     let original = ListeningStore.StoredBucket(month: month)
     let bytes = try! JSONEncoder().encode(original)
