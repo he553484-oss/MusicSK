@@ -20,14 +20,20 @@ extension NowPlayingView {
     }
 
     func lyricsHeader(usesSharedArtwork: Bool) -> some View {
-        HStack(spacing: 12) {
+        #if os(iOS)
+        let auden = appearance == .auden
+        #else
+        let auden = false
+        #endif
+        let side = auden ? AudenPlayerMetrics.headerArt : PlayerLayout.sleeveCollapsedSide
+        return HStack(spacing: 12) {
             Button {
                 Haptics.play(.tap)
                 pane = .main
             } label: {
                 if usesSharedArtwork {
                     Color.clear
-                        .frame(width: PlayerLayout.sleeveCollapsedSide, height: PlayerLayout.sleeveCollapsedSide)
+                        .frame(width: side, height: side)
                         .anchorPreference(key: PlayerArtworkFrames.self, value: .bounds) { [.lyrics: $0] }
                         .contentShape(Rectangle())
                 } else {
@@ -36,7 +42,7 @@ extension NowPlayingView {
                         canvasURL: controller.canvasURL,
                         fallbackURL: controller.canvasFallbackURL,
                         isPlaying: controller.isPlaying,
-                        side: PlayerLayout.sleeveCollapsedSide
+                        side: side
                     )
                     .id(controller.current?.id)
                 }
@@ -78,7 +84,8 @@ extension NowPlayingView {
                 .help(sharePicking ? "Stop picking lyrics" : "Share lyrics")
             }
         }
-        .padding(.horizontal, 24)
+        .frame(minHeight: auden ? AudenPlayerMetrics.headerHeight : nil)
+        .padding(.horizontal, auden ? AudenPlayerMetrics.gutter : 24)
         .padding(.top, LyricStyle.headerTopPadding)
         .padding(.bottom, LyricStyle.headerBottomPadding)
         .foregroundStyle(.white)

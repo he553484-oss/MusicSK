@@ -84,11 +84,14 @@ struct LyricPresentation: Equatable {
     let preset: LyricPreset
     private let custom: LyricCustomStyle
     let blurEnabled: Bool
+    let auden: Bool
 
-    init(preset: LyricPreset = .musicsk, custom: LyricCustomStyle = .init(), blurEnabled: Bool = true) {
+    init(preset: LyricPreset = .musicsk, custom: LyricCustomStyle = .init(), blurEnabled: Bool = true,
+         auden: Bool = false) {
         self.preset = preset
         self.custom = preset == .custom ? custom.bounded : LyricCustomStyle()
         self.blurEnabled = blurEnabled
+        self.auden = auden && preset == .musicsk
     }
 
     var original: Bool { preset == .bitChord }
@@ -98,11 +101,11 @@ struct LyricPresentation: Equatable {
     var background: LyricBackdrop { custom.background }
     var wordHighlight: Bool { custom.wordHighlight }
     var reduceEffects: Bool { custom.reduceEffects }
-    var inactiveScale: CGFloat { original ? 0.98 : 1 }
-    var phoneAnchor: CGFloat { original ? 0.32 : 0.27 }
+    var inactiveScale: CGFloat { original || auden ? 0.98 : 1 }
+    var phoneAnchor: CGFloat { auden ? 0 : (original ? 0.32 : 0.27) }
     var blurMultiplier: CGFloat { blurEnabled && !reduceEffects ? CGFloat(custom.blur) : 0 }
-    var glowAlpha: Double { reduceEffects ? 0 : (original ? 0.62 : 0.30 * custom.glow) }
-    var glowRadius: CGFloat { original ? 6 : CGFloat(3.5 * min(1.3, custom.glow)) }
+    var glowAlpha: Double { reduceEffects ? 0 : (original || auden ? 0.62 : 0.30 * custom.glow) }
+    var glowRadius: CGFloat { original || auden ? 6 : CGFloat(3.5 * min(1.3, custom.glow)) }
     var preservesDuetLanes: Bool { alignment == .automatic }
 
     var emphasisDuration: Double {
@@ -146,6 +149,12 @@ struct LyricRowLook: Equatable {
     ) -> Self {
         guard synced else { return Self(alpha: 0.95, blur: 0) }
         guard timed else { return Self(alpha: 0.9, blur: 0) }
+        if presentation.auden {
+            let alpha = AudenLyricMetrics.alpha(distance: distance, compact: compact)
+            let blur = browsing ? 0 : AudenLyricMetrics.blur(distance: distance) * presentation.blurMultiplier
+            return Self(alpha: browsing ? 0.8 : alpha, blur: active ? 0 : blur,
+                        scale: active ? 1 : presentation.inactiveScale)
+        }
         guard !active else { return Self(alpha: 1, blur: 0) }
         let index = max(distance, 1) - 1
         let alphaSteps = presentation.original
@@ -227,9 +236,9 @@ struct LyricRowGeometry: Equatable {
 
     init(viewportWidth: CGFloat, compact: Bool, duet: Bool, presentation: LyricPresentation = .init()) {
         let viewport = max(0, viewportWidth)
-        documentInset = min(compact && !presentation.original ? 12 : 2, viewport * 0.10)
+        documentInset = min(presentation.auden ? 20 : (compact && !presentation.original ? 12 : 2), viewport * 0.10)
         rowWidth = viewport - 2 * documentInset
-        effectInset = min(presentation.original ? 10 : 14, rowWidth * 0.10)
+        effectInset = min(presentation.original || presentation.auden ? 10 : 14, rowWidth * 0.10)
         let interior = rowWidth - 2 * effectInset
         duetInset = duet && presentation.preservesDuetLanes ? min(44, interior * 0.18) : 0
         textWidth = interior - duetInset
@@ -307,6 +316,8 @@ struct LyricFocusState: Equatable {
     var active: [Int] = []
     var lead = 0
     var gap: Int?
+    var audenScrollLead: Int? = nil
+    var audenScrollMilliseconds: Int64 = 400
 }
 
 struct LyricTimingLine {
@@ -403,10 +414,45 @@ struct LyricTimingIndex {
         return LyricFocusState(document: document, active: active, lead: max(0, lead), gap: currentGap)
     }
 
+    // Auden anticipates the next anchor. Keep the timing of the active voices,
+    // lyric gap and attributed text on the undisturbed provider clock.
+    func audenFocus(at position: Int64, document: ObjectIdentifier?) -> LyricFocusState {
+        var current = focus(at: position, document: document)
+        guard synced, !lines.isEmpty else { return current }
+        let milliseconds = scrollLead(after: lastStarted(by: position))
+        let (advanced, overflow) = position.addingReportingOverflow(milliseconds)
+        let ahead = focus(at: overflow ? .max : advanced, document: document)
+        current.audenScrollLead = ahead.active.first ?? ahead.gap ?? ahead.lead
+        current.audenScrollMilliseconds = milliseconds
+        return current
+    }
+
     private func scrollLead(after index: Int) -> Int64 {
         guard index >= 0, index + 1 < lines.count else { return 350 }
         let (gap, overflow) = lines[index + 1].start.subtractingReportingOverflow(lines[index].end)
         if overflow { return lines[index + 1].start > lines[index].end ? 500 : 350 }
         return min(max(gap, 350), 500)
+    }
+}
+
+
+enum AudenLyricMetrics {
+    private static let phone = [1.0, 0.74, 0.60, 0.48, 0.40, 0.34]
+    private static let wide = [1.0, 0.80, 0.70, 0.58, 0.46]
+    private static let radii: [CGFloat] = [0, 3.5, 5, 7.5, 10]
+
+    static func alpha(distance: Int, compact: Bool) -> Double {
+        let steps = compact ? phone : wide
+        return steps[min(max(0, distance), steps.count - 1)]
+    }
+
+    static func blur(distance: Int) -> CGFloat {
+        radii[min(max(0, distance), radii.count - 1)]
+    }
+
+    static func sectionTitle(_ text: String) -> String? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard (3...60).contains(trimmed.utf16.count), trimmed.first == "[", trimmed.last == "]" else { return nil }
+        return trimmed.dropFirst().dropLast().trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }

@@ -364,6 +364,7 @@ struct LyricsFocusTicker: View {
     let document: PreparedLyrics
     let clock: LyricsClock
     let offsetMs: Int32
+    var anticipatesScroll = false
     let onChange: (LyricFocusState) -> Void
 
     var body: some View {
@@ -382,10 +383,11 @@ struct LyricsFocusTicker: View {
     }
 
     private func sample(at date: Date) -> some View {
-        let focus = document.timeline.focus(
-            at: clock.lyricMs(at: date, offsetMs: offsetMs),
-            document: ObjectIdentifier(document)
-        )
+        let position = clock.lyricMs(at: date, offsetMs: offsetMs)
+        let id = ObjectIdentifier(document)
+        let focus = anticipatesScroll && clock.playing
+            ? document.timeline.audenFocus(at: position, document: id)
+            : document.timeline.focus(at: position, document: id)
         return Color.clear.onChange(of: focus, initial: true) { _, focus in onChange(focus) }
     }
 }
@@ -434,7 +436,7 @@ struct LyricRowView: View, Equatable {
         VStack(alignment: position.horizontal, spacing: 2) {
             line(row.leadText, swept: row.leadSwept, size: fontSize, glow: true)
             if let backing = row.backingText {
-                line(backing, swept: row.backingSwept, size: fontSize * LyricStyle.backingScale, glow: false)
+                line(backing, swept: row.backingSwept, size: presentation.auden ? 23 : fontSize * LyricStyle.backingScale, glow: false)
                     .opacity(LyricStyle.backingAlpha)
             }
         }
@@ -465,10 +467,10 @@ struct LyricRowView: View, Equatable {
     private func line(_ plain: String, swept: Text?, size: CGFloat, glow: Bool) -> some View {
         LyricGlyphs(plain: plain, swept: swept, active: active, glow: glow, offsetMs: offsetMs, clock: clock,
                     presentation: presentation)
-            .scaledFont(size: size, weight: presentation.weight.fontWeight, design: .default)
+            .scaledFont(size: size, weight: presentation.auden ? .bold : presentation.weight.fontWeight, design: .default)
             .foregroundStyle(.white)
             .multilineTextAlignment(position.text)
-            .lineSpacing(size * 0.06)
+            .lineSpacing(presentation.auden ? (size <= 23 ? 6 : (size == 30 ? 8 : 7)) : size * 0.06)
             .lineLimit(nil)
             .fixedSize(horizontal: false, vertical: true)
             .frame(width: geometry.textWidth, alignment: position.frame)
@@ -537,7 +539,7 @@ struct LyricGapRow: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: presentation.alignment.resolved(secondVoice: row.secondVoice).frame)
-        .frame(height: dot + LyricStyle.rowInset * 2)
+        .frame(height: presentation.auden ? 40 + 16 : dot + LyricStyle.rowInset * 2)
         .padding(.horizontal, LyricStyle.rowInset)
         .contentShape(Rectangle())
         .onTapGesture(perform: onTap)

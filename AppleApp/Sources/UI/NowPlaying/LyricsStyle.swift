@@ -15,8 +15,11 @@ struct LyricStyleStorage: DynamicProperty {
         }
     }
 
-    var presentation: LyricPresentation {
-        LyricPresentation(preset: preset, custom: preset == .custom ? custom : .init(), blurEnabled: blurEnabled)
+    var presentation: LyricPresentation { presentation(auden: false) }
+
+    func presentation(auden: Bool) -> LyricPresentation {
+        LyricPresentation(preset: preset, custom: preset == .custom ? custom : .init(),
+                          blurEnabled: blurEnabled, auden: auden)
     }
 }
 
@@ -94,7 +97,7 @@ extension LyricTextPosition {
 extension LyricPresentation {
     func emphasis(reduceMotion: Bool) -> Animation? {
         guard !reduceMotion, !reduceEffects else { return nil }
-        return original ? originalMotion : .easeInOut(duration: emphasisDuration)
+        return original || auden ? originalMotion : .easeInOut(duration: emphasisDuration)
     }
 
     func follow(rejoining: Bool, reduceMotion: Bool) -> Animation? {

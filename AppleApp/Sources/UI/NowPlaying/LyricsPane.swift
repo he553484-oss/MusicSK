@@ -76,6 +76,7 @@ struct LyricsPane: View {
     @State private var positionedReturn: UInt = 0
     @State private var sourceCreditHeight: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.musicAppearance) private var appearance
     @State private var focus = LyricFocusState()
     @State private var cache = LyricsDocumentCache()
     private var style = LyricStyleStorage()
@@ -147,7 +148,7 @@ struct LyricsPane: View {
             timed: row.timed,
             synced: document.synced,
             active: active,
-            distance: abs(row.id - focus.lead),
+            distance: abs(row.id - (presentation.auden ? focus.audenScrollLead ?? focus.lead : focus.lead)),
             compact: phoneColumn,
             browsing: follow.browsing,
             presentation: presentation,
@@ -187,7 +188,7 @@ struct LyricsPane: View {
                 document: ObjectIdentifier(document),
                 active: active,
                 look: look(for: row, document: document, focus: focus, active: active, presentation: presentation),
-                fontSize: fontSize * presentation.typeSize,
+                fontSize: presentation.auden ? (document.synced ? 34 : 30) : fontSize * presentation.typeSize,
                 geometry: geometry,
                 presentation: presentation,
                 picked: selection.contains(row.id),
@@ -220,7 +221,7 @@ struct LyricsPane: View {
     }
 
     var body: some View {
-        let presentation = style.presentation
+        let presentation = style.presentation(auden: appearance == .auden)
         let document = cache.document(for: lines)
         Group {
             if !hasTrack {
@@ -228,9 +229,11 @@ struct LyricsPane: View {
                     .font(.title3)
                     .foregroundStyle(.white.opacity(0.6))
             } else if loading {
-                ProgressView()
-                    .controlSize(.regular)
-                    .tint(.white)
+                if presentation.auden {
+                    AudenLyricSkeleton(reduceMotion: reduceMotion)
+                } else {
+                    ProgressView().controlSize(.regular).tint(.white)
+                }
             } else if lines.isEmpty {
                 VStack(spacing: 14) {
                     Text("No lyrics for this track.")
@@ -317,25 +320,57 @@ struct LyricsPane: View {
         }
     }
 
+    private func lyricDocumentRows(_ document: PreparedLyrics, focus: LyricFocusState,
+                                   geometry: LyricRowGeometry, presentation: LyricPresentation) -> some View {
+        ForEach(document.rows) { row in
+            Group {
+                if presentation.auden, !document.synced, !picking,
+                   let title = AudenLyricMetrics.sectionTitle(row.leadText) {
+                    Text(title.uppercased())
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .foregroundStyle(.white.opacity(0.74))
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 4)
+                        .background(.white.opacity(0.14), in: RoundedRectangle(cornerRadius: 6))
+                        .padding(.leading, geometry.effectInset)
+                        .padding(.top, row.id == 0 ? 6 : 24)
+                        .padding(.bottom, 8)
+                        .accessibilityAddTraits(.isHeader)
+                } else {
+                    rowView(row, document: document, focus: focus, geometry: geometry, presentation: presentation)
+                }
+            }
+            .id(row.id)
+        }
+    }
+
     private func lyricsScroll(document: PreparedLyrics, presentation: LyricPresentation) -> some View {
         GeometryReader { viewport in
             let focus = currentFocus(document)
-            let target = VerseTarget(track: trackId, document: ObjectIdentifier(document), line: focus.lead,
+            let target = VerseTarget(track: trackId, document: ObjectIdentifier(document),
+                                     line: presentation.auden ? focus.audenScrollLead ?? focus.lead : focus.lead,
                                      anchor: scrollAnchor(viewportHeight: viewport.size.height, presentation: presentation))
             let geometry = LyricRowGeometry(viewportWidth: viewport.size.width, compact: phoneColumn,
                                             duet: document.duet, presentation: presentation)
             ScrollView {
-                VStack(alignment: .leading, spacing: 6) {
-                    ForEach(document.rows) { row in
-                        rowView(row, document: document, focus: focus, geometry: geometry, presentation: presentation)
-                            .id(row.id)
+                Group {
+                    if presentation.auden {
+                        LazyVStack(alignment: .leading, spacing: 0) {
+                            lyricDocumentRows(document, focus: focus, geometry: geometry, presentation: presentation)
+                        }
+                    } else {
+                        VStack(alignment: .leading, spacing: 6) {
+                            lyricDocumentRows(document, focus: focus, geometry: geometry, presentation: presentation)
+                        }
                     }
                 }
                 .scrollTargetLayout()
                 .frame(width: geometry.rowWidth, alignment: .leading)
                 .padding(.horizontal, geometry.documentInset)
-                .padding(.top, 20 + (translator == nil ? topChromeInset : 0))
-                .padding(.bottom, 20 + (chromeInsets.map { $0.bottom + sourceCreditHeight } ?? 0))
+                .padding(.top, (presentation.auden ? (phoneColumn ? 30 : viewport.size.height * 0.5) : 20)
+                         + (translator == nil ? topChromeInset : 0))
+                .padding(.bottom, (presentation.auden ? viewport.size.height * 0.8 : 20)
+                         + (chromeInsets.map { $0.bottom + sourceCreditHeight } ?? 0))
             }
             .scrollPosition($scrollPosition)
             .scrollIndicators(.never)
@@ -348,7 +383,8 @@ struct LyricsPane: View {
             ))
             .background {
                 if document.synced {
-                    LyricsFocusTicker(document: document, clock: clock, offsetMs: offsetMs) { next in
+                    LyricsFocusTicker(document: document, clock: clock, offsetMs: offsetMs,
+                                      anticipatesScroll: presentation.auden) { next in
                         if next != self.focus { self.focus = next }
                     }
                 }
@@ -365,7 +401,15 @@ struct LyricsPane: View {
                 guard lastPositioned != target || rejoining else { return }
 
                 let sameDocument = lastPositioned?.document == target.document && lastPositioned?.track == target.track
-                let animation = sameDocument ? presentation.follow(rejoining: rejoining, reduceMotion: reduceMotion) : nil
+                let animation: Animation?
+                if !sameDocument || reduceMotion {
+                    animation = nil
+                } else if presentation.auden {
+                    let duration = rejoining ? 0.4 : Double(focus.audenScrollMilliseconds) / 1000
+                    animation = .timingCurve(0.41, 0, 0.12, 0.99, duration: duration)
+                } else {
+                    animation = presentation.follow(rejoining: rejoining, reduceMotion: false)
+                }
                 withAnimation(animation) {
                     scrollPosition.scrollTo(id: target.line, anchor: UnitPoint(x: 0.5, y: target.anchor))
                 }
