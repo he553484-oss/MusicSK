@@ -24,3 +24,13 @@ Base funcional de MusicSK 1.4.0 build 8 en `c5f665ba0b60268cb7a55149c3ba5db59fa8
 | Parcial | Android `screens/DetailScreen.kt` · `ReleaseHeader`, `ArtistHeader` | `DetailView.swift` | Presentación de catálogo nativa de MusicSK | Pendientes cabeceras y listas Auden completas para álbumes, artistas y playlists. Los datos y operaciones compartidos siguen disponibles. | `check-detail-header.sh` comprueba el contrato compartido, sin paridad |
 | Parcial | Android `screens/SettingsSheet.kt` · `SettingsCategoryList`, `SettingsPageCard`, `SettingsChoicePage` | `Settings/SettingsView.swift`, `Auden/MusicAppearance.swift` | Selector persistente y tarjetas de build 8 | Quedan la jerarquía visual de las páginas interiores y la transición de la hoja. | Ensayo del binding y persistencia de build 8 |
 | No iniciado | Compose `components/Common.kt` · acciones de fila; Android `screens/SettingsSheet.kt` · diálogos auxiliares | Menús, hojas y confirmaciones nativas existentes | Sin migración específica de compuestos, movimiento ni estados intermedios | El menú, descarga y confirmaciones utilizan las acciones y la presentación nativa de MusicSK. | Sin comparación Android–iOS |
+
+## Evidencia del candidato
+
+| Alcance | Resultado y condiciones |
+| --- | --- |
+| Compilación para el dispositivo | PASS en Xcode 27.2 para build 9 de `02c3183`. Las 21 comprobaciones previas pasaron. El IPA contiene arm64, el identificador `app.musicsk.player`, mínimo de iOS 18 y WidgetKit. El runner comprobó el SHA-256 de la IPA empaquetada. [Compilación y artefacto](https://github.com/he553484-oss/MusicSK/actions/runs/45169970925) |
+| Motor de audio | PASS en macOS. 47 comprobaciones del motor nativo y decodificación WAV y ALAC de 24 bits a 96 kHz. [Log de audio](https://github.com/he553484-oss/MusicSK/actions/runs/45169970925) |
+| Continuidad y persistencia de edición | Verificado en simulador con build 9. Al alternar Original → Auden → Original → Auden, el WAV sintético avanzó de 0,608 a 1,995 s con la misma pista, cola y generación. El valor Auden se restauró al relanzar. [Capturas y diagnóstico](https://github.com/he553484-oss/MusicSK/actions/runs/45169970916/artifacts/14818288241) |
+| Comparación de inicio del vídeo | BLOCKED en el runner por falta de FFmpeg. Las comprobaciones automatizadas de gating y sincronización pasaron. [Log del simulador](https://github.com/he553484-oss/MusicSK/actions/runs/45169970916) |
+| Hardware y paridad visual | NOT TESTED en iPhone físico. Pendientes lock screen, vídeo activo, iOS 18 en ejecución, modo claro con Reducir transparencia, interacción manual, rendimiento y comparación de fotogramas con Android. |

@@ -19,3 +19,7 @@ La referencia es el código de Auden en `d53ae77`. La comparación siguiente usa
 5. Repetir en iOS 18 y en una versión con Liquid Glass. Capturar un caso de álbum, artista, playlist y búsqueda con resultados. Para rendimiento y lock screen, validar en iPhone 15 Pro.
 
 Las capturas de simulador documentan la versión iOS. El ensayo de playback utiliza un WAV local sintético sin letras ni vídeo, de modo que solo verifica el estado de reproducción y el cambio de edición. Las capturas con la pestaña Letras vacía no acreditan karaoke activo ni paridad. La comparación Android–iOS y las mediciones de ProMotion permanecen pendientes.
+
+## Capturas obtenidas
+
+El flujo del simulador generó 11 capturas de build 9 (`02c3183`), incluida `11-auden-wav-en-reproduccion-es.png`. El mismo flujo comprobó el cambio de edición con ese WAV y la persistencia al reabrir. Las capturas de Letras se tomaron sin una pista con timestamps. El ajuste posterior de build 10 aplica una apariencia oscura únicamente a la superficie del botón de salida para corregir el contraste con Reducir transparencia. [Capturas de build 9](https://github.com/he553484-oss/MusicSK/actions/runs/45169970916/artifacts/14818288241)
