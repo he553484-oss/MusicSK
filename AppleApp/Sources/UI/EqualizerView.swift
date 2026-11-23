@@ -76,6 +76,7 @@ struct EqualizerView: View {
     }
 
     @Environment(PlaybackController.self) private var controller
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var enabled = PlatformSettings.shared.getBoolean(key: "equalizer_enabled", default: false)
     @State private var mode = Mode(rawValue: PlatformSettings.shared.getString(key: "equalizer_mode", default: "Dynamic")) ?? .dynamic
     @State private var bands: [Double] = EqualizerTuning.loadBands()
@@ -132,6 +133,8 @@ struct EqualizerView: View {
             .padding(.vertical, 16)
         }
         .navigationTitle("Equalizer")
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: mode)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: enabled)
         .onChange(of: enabled) { _, value in
             PlatformSettings.shared.putBoolean(key: "equalizer_enabled", value: value)
             applyCurrent()
