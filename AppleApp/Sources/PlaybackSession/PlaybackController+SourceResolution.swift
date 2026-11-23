@@ -111,7 +111,9 @@ extension PlaybackController {
                let verified = NativeStreamVerifier.verifyCachedFile(cached) {
             await latencyResolved?(ProcessInfo.processInfo.systemUptime, "cached", "stream cache")
             return ResolveOutcome(source: ResolvedSource(source: cached, headers: [:],
-                kbps: verified.estimatedKbps.map(Int.init) ?? metadata?.kbps ?? 0,
+                kbps: metadata.flatMap { CachedBitrate.estimateKbps(bytes: $0.bytes,
+                    durationSeconds: $0.durationSeconds, complete: $0.complete) }
+                    ?? verified.estimatedKbps.map(Int.init) ?? metadata?.kbps ?? 0,
                 lossless: verified.format.losslessPcm, codec: verified.format.codec,
                 durationSec: metadata?.durationSeconds, loudnessDb: metadata?.relativeLoudnessDb,
                 clientName: "cache", origin: .cache, youtubeVideoId: metadata?.youtubeVideoId), leftover: nil)
