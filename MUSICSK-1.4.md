@@ -46,12 +46,16 @@ El código de Auden incluye dependencias de datos exclusivas de Android. Su port
 | Verificador de IPA | PASS | 17 casos de empaquetado válidos e inválidos. |
 | Archivado y estructura de la IPA | PASS | Xcode 27.2 (27B52), arm64, iOS 18.0, app `app.musicsk.player` y widget. 20 suites pasaron antes de archivar. |
 | Motor real, callback y decodificación | PASS | 47 comprobaciones con Apple Virtual Sound Device a 48 kHz. La muestra WAV de 44,1 kHz avanzó de 0,709 s a 1,444 s. El callback escribió muestras con pico 0,00610 y registró cero underruns en ese intervalo. WAV y ALAC estéreo se decodificaron a 24 bits y 96 kHz. |
+| Apertura de Biblioteca con historial duplicado | PASS | Simulador iOS sin sesión iniciada. El log confirma que Biblioteca terminó de cargar y Replay mostró una pista agregada. El primer intento no capturó esa confirmación. El segundo desplazó la vista hasta la sección Replay. |
+| Medición del primer fotograma de vídeo | BLOCKED | El runner carecía de FFmpeg. El teatro y la transición con una pista real siguen pendientes de validación física. |
 | Biblioteca real, YouTube Music con y sin cuenta, vídeo activo, AirPlay, botones físicos, Control Center, bloqueo y widget instalado | NOT TESTED | Requieren el dispositivo, la fuente activa y las rutas de salida. |
 | Fluidez, CPU, GPU, consumo y latencia en iPhone | BLOCKED | Instrumentación física pendiente. |
 
 Se cronometró el agregado de 7.200 pistas sintéticas repartidas entre 12 meses, en un proceso Swift optimizado en Linux x86-64 y con 15 iteraciones medidas. La mediana de una lectura fue de 41,35 ms en 1.3 y 44,16 ms en 1.4. Cuatro lecturas consecutivas en 1.3 tardaron 172,01 ms. El ahorro que busca la vista viene de hacer menos lecturas. Las cifras de este ensayo aislado no miden el tiempo de apertura, los fotogramas ni el consumo en un iPhone.
 
 GitHub Actions archivó el commit `ffee2a7` y publicó el artefacto sin firmar. SHA-256 de la IPA `29d6db9ba17449c637391712d5456d321e232330eb05a143658edd8e875b4d80`. [Descargar artefacto](https://github.com/he553484-oss/MusicSK/actions/runs/45118654596/artifacts/14793522653) · [Compilación y registros de pruebas](https://github.com/he553484-oss/MusicSK/actions/runs/45118654596)
+
+La ejecución `45121768669` usó `e785cb5`, que añade la configuración del desplazamiento solo para el simulador. Incluye `05-biblioteca-historial-duplicado-es.png` y `biblioteca-validacion.txt`. [Descargar capturas](https://github.com/he553484-oss/MusicSK/actions/runs/45121768669/artifacts/14795891668) · [Registro del simulador](https://github.com/he553484-oss/MusicSK/actions/runs/45121768669)
 
 Para repetir la compilación en macOS desde la rama indicada, con Xcode 27, XcodeGen, CMake, JDK 21 y Rust instalados:
 
