@@ -36,6 +36,13 @@ struct AudenShell: View {
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) { dock }
+        #if targetEnvironment(simulator)
+        .onAppear {
+            if UserDefaults.standard.bool(forKey: "musicsk_capture_render_edition") {
+                PlaybackDebugLog.shared.record("auden fixture mounted Auden")
+            }
+        }
+        #endif
         .onChange(of: current, initial: true) { _, value in
             visited.insert(value)
             if value != .search { rememberedTab = value }

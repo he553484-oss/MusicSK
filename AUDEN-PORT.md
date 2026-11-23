@@ -32,4 +32,14 @@ El objeto de reproducción, el reloj, la cola y los coordinadores se crean en `B
 
 `scripts/check-auden.sh` comprueba el valor predeterminado de edición, la lectura de preferencias, plegado por desplazamiento gradual, tolerancia a pequeñas inversiones, categorías persistidas y geometría del reproductor. En Linux pasaron también las suites locales de vídeo, letras, volumen, Now Playing, rutas, cola, recuperación, Replay, ajustes y menús. El verificador de IPA pasó sus 17 casos de paquete.
 
-El candidato build 7 se archiva con el flujo Release en modo `build-ios`. El modo `capture-ios` abre Original, repite la regresión de Biblioteca de build 6, reproduce un WAV local sintético y cambia varias veces el mismo binding que usa el selector. Comprueba la generación de reproducción, el identificador de pista, los identificadores de la cola y el avance del playhead Rust. Tras relanzar comprueba la edición persistida. Los argumentos de prueba solo se compilan para el simulador.
+El candidato build 8 se archivó con el flujo Release en modo `build-ios`. El modo `capture-ios` abre Original, repite la regresión de Biblioteca de build 6 e intenta reproducir un WAV local sintético antes de cambiar varias veces el mismo binding que usa el selector. Comprueba la generación de reproducción, el identificador de pista, los identificadores de la cola y el avance del playhead Rust. Tras relanzar comprueba la edición persistida. Los argumentos de prueba solo se compilan para el simulador.
+
+| Validación | Resultado |
+| --- | --- |
+| Regresiones antes del archivado | PASS. 21 suites en Xcode 27.2. |
+| IPA de dispositivo | PASS. Build 8 de `c5f665b`, arm64, iOS 18.0 mínimo, app `app.musicsk.player` y WidgetKit. |
+| Motor nativo en macOS | PASS. 47 comprobaciones y archivos WAV y ALAC de 24 bits / 96 kHz. |
+| Primer ensayo de audio en simulador | FAIL antes del primer cambio de edición en build 7. Original superó la prueba de Biblioteca con historial duplicado. El ensayo del WAV no observó avance de la salida. La primera repetición tampoco produjo el marcador de finalización. En la siguiente ejecución las capturas y la persistencia se verifican antes de iniciar el motor. |
+| Paridad visual con Android, bloqueo, vídeo activo y rutas físicas en build 8 | Pendiente de validación en dispositivos. |
+
+El ZIP de GitHub Actions incluye `Musicsk-1.4.0-build8-ios-unsigned.ipa` y `SHA256.txt`. SHA-256 de la IPA `3a6888f5d462e726de988469f07fe25867a871ce3342734c1c9a70280812dbec`. Extrae la IPA y ábrela en AltStore o SideStore desde **My Apps → +**. Conserva la misma firma al actualizar de build 6 para mantener sus datos y vínculos con el widget. [Artefacto de build 8](https://github.com/he553484-oss/MusicSK/actions/runs/45138041693/artifacts/14801229961) · [Log de compilación](https://github.com/he553484-oss/MusicSK/actions/runs/45138041693)

@@ -5,18 +5,22 @@ struct AudenSimulatorCheck: ViewModifier {
     @Binding var edition: MusicAppearance
     @Binding var audenTab: Int
     @Environment(PlaybackController.self) private var controller
-    @Environment(\.scenePhase) private var phase
-    @State private var exercised = false
 
     func body(content: Content) -> some View {
-        content.task(id: phase) {
-            guard phase == .active, !exercised else { return }
-            exercised = true
+        content.task {
             let defaults = UserDefaults.standard
+            if defaults.bool(forKey: "musicsk_capture_render_edition") {
+                audenTab = AppModel.Tab.library.rawValue
+                edition = .auden
+                PlaybackDebugLog.shared.record("auden fixture requested edition=\(edition.rawValue)")
+            }
             if defaults.bool(forKey: "musicsk_capture_check_edition") {
                 PlaybackDebugLog.shared.record("auden fixture restored edition=\(edition.rawValue)")
             }
             if defaults.bool(forKey: "musicsk_capture_switch_edition") {
+                PlaybackDebugLog.shared.record("auden fixture testing playback")
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled else { return }
                 await exerciseAppearance()
             }
         }
@@ -33,7 +37,9 @@ struct AudenSimulatorCheck: ViewModifier {
         let file = folder.appendingPathComponent("auden-fixture.wav")
         let recording = QueueEntry(id: "auden-fixture", title: "Auden Playback Fixture", artist: "Musicsk",
                                    source: file.path, durationText: "1:30", isLocal: true)
+        PlaybackDebugLog.shared.record("auden fixture starting local file=\(FileManager.default.fileExists(atPath: file.path))")
         controller.play([recording], context: "Auden UI regression", contextID: "auden-fixture", boundedContext: true)
+        PlaybackDebugLog.shared.record("auden fixture submitted playback")
         for _ in 0..<70 {
             if controller.isPlaying, controller.engine.positionSeconds() > 0.15 { break }
             if controller.lastError != nil { break }

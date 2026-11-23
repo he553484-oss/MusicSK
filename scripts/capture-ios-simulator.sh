@@ -178,12 +178,13 @@ wait_for_auden_marker() {
     done
     grep -hsF 'auden fixture ' "$support"/Diagnostics/*.log >> "$captureLog" || true
     cat "$captureLog" >&2
+    tail -50 "$scratch/app.log" >&2
     printf 'Missing fixture result: %s\n' "$marker" >&2
     return 1
 }
 
-start_app MAIN -musicsk_capture_switch_edition YES
-wait_for_auden_marker 'auden fixture switch complete edition=auden'
+start_app MAIN -musicsk_capture_render_edition YES
+wait_for_auden_marker 'auden fixture mounted Auden'
 capture 06-auden-biblioteca-es.png
 xcrun simctl openurl "$device_id" musicsk://open-player
 sleep 2
@@ -196,8 +197,16 @@ stop_app
 start_app MAIN -musicsk_capture_check_edition YES
 wait_for_auden_marker 'auden fixture restored edition=auden'
 capture 09-auden-reinicio-es.png
+xcrun simctl openurl "$device_id" 'musicsk://settings/appearance'
+sleep 2
+capture 10-auden-apariencia-es.png
 stop_app
+
+start_app MAIN -musicsk_capture_switch_edition YES
+playbackStatus=0
+wait_for_auden_marker 'auden fixture switch complete edition=auden' || playbackStatus=1
 grep -hsF 'auden fixture ' "$support"/Diagnostics/*.log | tee "$captureLog"
+stop_app
 
 version="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app/Info.plist")"
 build="$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$app/Info.plist")"
@@ -221,9 +230,11 @@ Biblioteca sin sesión y con un mes sintético que repite un identificador.
 El archivo biblioteca-validacion.txt acredita que la vista terminó su carga
 y que Replay agrupó los registros en una sola pista. El simulador se lanzó
 sin pista en reproducción en las cinco primeras capturas. Las siguientes
-ejecutan el mismo binding de edición que usa el selector sobre una grabación
-sintética local y reabren la app para verificar persistencia. El vídeo activo,
+montan el shell Auden mediante el binding del selector y relanzan la app
+para verificar su persistencia. El diagnóstico de audio se ejecuta aparte
+con una grabación sintética local. El vídeo activo,
 el volumen físico, Control Center y la pantalla bloqueada requieren
 comprobaciones adicionales.
 EOF
+[[ "$playbackStatus" -eq 0 ]]
 grep -qF 'auden fixture PASS shared playback' "$captureLog"
