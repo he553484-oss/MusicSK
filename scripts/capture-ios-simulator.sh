@@ -204,7 +204,13 @@ stop_app
 
 start_app MAIN -musicsk_capture_switch_edition YES
 playbackStatus=0
-wait_for_auden_marker 'auden fixture switch complete edition=auden' || playbackStatus=1
+if wait_for_auden_marker 'auden fixture switch complete edition=auden'; then
+    xcrun simctl openurl "$device_id" musicsk://open-player
+    sleep 2
+    capture 11-auden-wav-en-reproduccion-es.png
+else
+    playbackStatus=1
+fi
 grep -hsF 'auden fixture ' "$support"/Diagnostics/*.log | tee "$captureLog"
 stop_app
 
@@ -232,7 +238,8 @@ y que Replay agrupó los registros en una sola pista. El simulador se lanzó
 sin pista en reproducción en las cinco primeras capturas. Las siguientes
 montan el shell Auden mediante el binding del selector y relanzan la app
 para verificar su persistencia. El diagnóstico de audio se ejecuta aparte
-con una grabación sintética local. El vídeo activo,
+con un WAV sintético local. La última captura abre el reproductor Auden
+con ese archivo en reproducción. El vídeo activo,
 el volumen físico, Control Center y la pantalla bloqueada requieren
 comprobaciones adicionales.
 EOF

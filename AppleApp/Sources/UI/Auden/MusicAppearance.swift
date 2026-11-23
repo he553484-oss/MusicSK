@@ -112,7 +112,6 @@ struct AudenScrollTracking: ViewModifier {
 }
 
 struct AudenPanel: ViewModifier {
-    var nativeGlass = true
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceTransparency) private var opaque
 
@@ -120,7 +119,7 @@ struct AudenPanel: ViewModifier {
     func body(content: Content) -> some View {
         if opaque {
             content.background(AudenDesign.panel(scheme), in: Capsule())
-        } else if nativeGlass, #available(iOS 26.0, *) {
+        } else if #available(iOS 26.0, *) {
             content.glassEffect(.regular.interactive(), in: Capsule())
         } else {
             content

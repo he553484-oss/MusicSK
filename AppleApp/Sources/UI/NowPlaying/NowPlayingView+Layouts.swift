@@ -215,29 +215,50 @@ extension NowPlayingView {
         .animation(Motion.playerPane(reduceMotion), value: pane)
     }
 
+    @ViewBuilder
     private func compactCoverSlot(fullBleed: Bool) -> some View {
-        GeometryReader { geometry in
+        let slot = GeometryReader { geometry in
             let art = appearance == .auden && !fullBleed
                 ? AudenPlayerGeometry.sleeveFrame(in: geometry.size)
                 : PlayerLayout.compactPortraitArtworkFrame(stage: geometry.size, fullBleed: fullBleed)
-            Color.clear
+            let anchor = Color.clear
                 .frame(width: art.width, height: art.height)
                 .anchorPreference(key: PlayerArtworkFrames.self, value: .bounds) { [.cover: $0] }
                 .contentShape(Rectangle())
                 .position(x: art.midX, y: art.midY)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .contentShape(Rectangle())
-                .gesture(coverGesture(travel: geometry.size.height))
+            if appearance == .auden {
+                anchor
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .contentShape(Rectangle())
+                    .gesture(coverGesture(travel: geometry.size.height))
+            } else {
+                anchor
+            }
         }
+        .contentShape(Rectangle())
+        if appearance == .auden {
+            coverAccessibility(slot)
+        } else {
+            coverAccessibility(slot.gesture(DragGesture(minimumDistance: 30).onEnded { value in
+                    let drag = value.translation
+                    guard pane == .main, drag.height < -60, abs(drag.height) > abs(drag.width) else { return }
+                    Haptics.play(.expand)
+                    pane = .queue
+            }))
+        }
+    }
+
+    private func coverAccessibility(_ content: some View) -> some View {
+        content
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(controller.current?.title ?? String(localized: "Nothing playing")))
         .accessibilityHint("Swipe up for Up Next")
     }
 
     private func coverGesture(travel: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: appearance == .auden ? 10 : 30, coordinateSpace: .local)
+        DragGesture(minimumDistance: 10, coordinateSpace: .local)
             .updating($audenQueuePreview) { value, progress, transaction in
-                guard appearance == .auden, pane == .main, !reduceMotion,
+                guard pane == .main, !reduceMotion,
                       PlayerPanAxis(translation: value.translation) == .vertical else { return }
                 transaction.animation = nil
                 progress = AudenPlayerMetrics.queueProgress(pull: -value.translation.height, travel: travel)
@@ -245,30 +266,25 @@ extension NowPlayingView {
             .onEnded { value in
                 let drag = value.translation
                 guard pane == .main else { return }
-                if appearance == .auden {
-                    switch PlayerPanAxis(translation: drag) {
-                    case .horizontal:
-                        guard !party.state.controlsLocked else { return }
-                        if (drag.width <= -72 || value.velocity.width <= -500), controller.canPlayNext {
-                            Haptics.play(.skipNext)
-                            controller.next()
-                        } else if (drag.width >= 72 || value.velocity.width >= 500), controller.canPlayPrevious {
-                            Haptics.play(.skipPrevious)
-                            controller.previous()
-                        }
-                    case .vertical:
-                        guard drag.height < 0,
-                              AudenPlayerMetrics.opensQueue(
-                                  progress: AudenPlayerMetrics.queueProgress(pull: -drag.height, travel: travel),
-                                  upwardVelocity: -value.velocity.height
-                              ) else { return }
-                        Haptics.play(.expand)
-                        pane = .queue
-                    case nil: break
+                switch PlayerPanAxis(translation: drag) {
+                case .horizontal:
+                    guard !party.state.controlsLocked else { return }
+                    if (drag.width <= -72 || value.velocity.width <= -500), controller.canPlayNext {
+                        Haptics.play(.skipNext)
+                        controller.next()
+                    } else if (drag.width >= 72 || value.velocity.width >= 500), controller.canPlayPrevious {
+                        Haptics.play(.skipPrevious)
+                        controller.previous()
                     }
-                } else if drag.height < -60, abs(drag.height) > abs(drag.width) {
+                case .vertical:
+                    guard drag.height < 0,
+                          AudenPlayerMetrics.opensQueue(
+                              progress: AudenPlayerMetrics.queueProgress(pull: -drag.height, travel: travel),
+                              upwardVelocity: -value.velocity.height
+                          ) else { return }
                     Haptics.play(.expand)
                     pane = .queue
+                case nil: break
                 }
             }
     }

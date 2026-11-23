@@ -148,7 +148,7 @@ extension NowPlayingView {
                       transitionWindow: controller.smartTransitionWindow.flatMap { window in
                           window.end > window.start ? window.start...window.end : nil
                       },
-                      status: pane == .main ? songStatusLine : nil,
+                      status: pane == .main && showsPlaybackStatusLine ? songStatusLine : nil,
                       seek: { controller.seek(to: $0) },
                       didDrag: { dragging in
                           lyricsScrubbing = dragging

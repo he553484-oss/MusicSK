@@ -2,8 +2,7 @@
 import SwiftUI
 
 extension NowPlayingView {
-    // NowPlayingScreen.kt pins one deck below the artwork. The scrubbing,
-    // volume and action controls are the existing Musicsk components.
+    // NowPlayingScreen.kt pins one deck below the artwork.
     var audenDeck: some View {
         VStack(spacing: 0) {
             if pane == .main { audenCredits.padding(.bottom, 6) }
@@ -39,8 +38,8 @@ extension NowPlayingView {
                     if current?.isExplicit == true { ExplicitMark(color: .white.opacity(0.55)) }
                     Marquee(enabled: pane == .main, onOverflowChange: { titleCrawls = $0 }) {
                         Text(current?.title ?? String(localized: "Nothing playing"))
-                            .scaledFont(size: 20, weight: .semibold)
                             .tracking(-0.2)
+                            .scaledFont(size: 20, weight: .semibold)
                     }
                 }
                 .contentShape(Rectangle())
@@ -137,7 +136,7 @@ extension NowPlayingView {
         } label: {
             Image(image).resizable().scaledToFit()
                 .frame(width: AudenPlayerMetrics.paneIcon, height: AudenPlayerMetrics.paneIcon)
-                .foregroundStyle(selected ? .black : .white.opacity(0.80))
+                .foregroundStyle(selected ? Color.black : Color.white.opacity(0.80))
                 .frame(width: AudenPlayerMetrics.paneTile, height: AudenPlayerMetrics.paneTile)
                 .background(.white.opacity(selected ? 0.62 : 0),
                             in: RoundedRectangle(cornerRadius: AudenPlayerMetrics.paneTileRadius))

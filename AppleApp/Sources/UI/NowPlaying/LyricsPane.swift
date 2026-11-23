@@ -358,13 +358,14 @@ struct LyricsPane: View {
                         LazyVStack(alignment: .leading, spacing: 0) {
                             lyricDocumentRows(document, focus: focus, geometry: geometry, presentation: presentation)
                         }
+                        .scrollTargetLayout()
                     } else {
                         VStack(alignment: .leading, spacing: 6) {
                             lyricDocumentRows(document, focus: focus, geometry: geometry, presentation: presentation)
                         }
+                        .scrollTargetLayout()
                     }
                 }
-                .scrollTargetLayout()
                 .frame(width: geometry.rowWidth, alignment: .leading)
                 .padding(.horizontal, geometry.documentInset)
                 .padding(.top, (presentation.auden ? (phoneColumn ? 30 : viewport.size.height * 0.5) : 20)

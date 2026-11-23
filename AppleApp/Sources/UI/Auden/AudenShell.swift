@@ -196,9 +196,9 @@ private struct AudenMiniPlayer: View {
                         .accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 1) {
                         Text(controller.current?.title ?? "")
-                            .scaledFont(size: 13, weight: .semibold).tracking(0.15).lineLimit(1)
+                            .tracking(0.15).scaledFont(size: 13, weight: .semibold).lineLimit(1)
                         if let artist = controller.current?.artist, !artist.isEmpty {
-                            Text(artist).scaledFont(size: 12, weight: .regular).tracking(0.35)
+                            Text(artist).tracking(0.35).scaledFont(size: 12, weight: .regular)
                                 .foregroundStyle(.secondary).lineLimit(1)
                         }
                     }

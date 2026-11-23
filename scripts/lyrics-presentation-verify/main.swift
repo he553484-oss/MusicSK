@@ -229,3 +229,23 @@ precondition(duetIndex.focus(at: 1610, document: nil).active == [3])
 precondition(duetIndex.focus(at: 1900, document: nil).active.isEmpty)
 
 print("PASS bounded widths for both voice alignments, header occlusion, real RTL/multiline spans, and focused timeline equivalence")
+
+let audenIndex = LyricTimingIndex(lines: [
+    LyricTimingLine(start: 1_000, end: 2_000, holds: true, isGap: false),
+    LyricTimingLine(start: 2_350, end: 2_950, holds: true, isGap: false),
+    LyricTimingLine(start: 4_000, end: 4_600, holds: true, isGap: false),
+], synced: true)
+let anticipated = audenIndex.audenFocus(at: 2_030, document: nil)
+precondition(anticipated.audenScrollLead == 1 && anticipated.audenScrollMilliseconds == 350)
+precondition(anticipated.active.isEmpty)
+precondition(audenIndex.audenFocus(at: 2_350, document: nil).active == [1])
+let afterLongGap = audenIndex.audenFocus(at: 3_501, document: nil)
+precondition(afterLongGap.audenScrollLead == 2 && afterLongGap.audenScrollMilliseconds == 500)
+precondition(afterLongGap.active.isEmpty)
+precondition(audenIndex.audenFocus(at: 1_500, document: nil).active == [0])
+precondition(AudenLyricMetrics.alpha(distance: 2, compact: true) == 0.60)
+precondition(AudenLyricMetrics.alpha(distance: 2, compact: false) == 0.70)
+precondition(AudenLyricMetrics.blur(distance: 0) == 0 && AudenLyricMetrics.blur(distance: 10) == 10)
+precondition(AudenLyricMetrics.sectionTitle(" [Coro: Ana]  ") == "Coro: Ana")
+precondition(AudenLyricMetrics.sectionTitle("Hola [Coro]") == nil)
+print("PASS Auden scroll anticipates the next row without changing real activation, seeks or fade bands")

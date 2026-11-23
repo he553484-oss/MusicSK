@@ -4,7 +4,6 @@ import Foundation
 enum AudenPlayerMetrics {
     static let gutter: CGFloat = 30
     static let maxDeckWidth: CGFloat = 560
-    static let artToTitle: CGFloat = 20
     static let headerArt: CGFloat = 54
     static let headerHeight: CGFloat = 60
     static let scrubberIdle: CGFloat = 7
