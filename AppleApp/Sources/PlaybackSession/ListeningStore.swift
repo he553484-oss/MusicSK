@@ -1,5 +1,4 @@
 import Foundation
-import BitChordShared
 
 /// How far back a Replay reaches — same three chips as upstream `ReplayPeriod`.
 /// Named separately from the UI's `ReplayPeriod` so both can compile until Replay
@@ -123,6 +122,18 @@ final class ListeningStore {
         var ms: Double
         var plays: Int
         var last: Double?
+
+        mutating func accumulate(_ entry: Track) {
+            ms += entry.ms
+            plays += entry.plays
+            album = album ?? entry.album
+            albumId = albumId ?? entry.albumId
+            artistId = artistId ?? entry.artistId
+            art = art ?? entry.art
+            if let timestamp = entry.last, last.map({ timestamp > $0 }) ?? true {
+                last = timestamp
+            }
+        }
     }
 
     struct NameEntry: Codable {
@@ -183,6 +194,12 @@ final class ListeningStore {
         static func from(_ stored: StoredBucket) -> OpenBucket {
             var hours = Array(repeating: 0.0, count: 24)
             for (i, value) in stored.hours.prefix(24).enumerated() { hours[i] = value }
+            // Imports and older files can contain multiple rows for one track.
+            let tracks = Dictionary(stored.tracks.map { ($0.id, $0) }, uniquingKeysWith: { first, next in
+                var merged = first
+                merged.accumulate(next)
+                return merged
+            })
             var artists: [String: NameEntry] = [:]
             for entry in stored.artists {
                 let lead = ListeningStore.primaryArtist(entry.name) ?? entry.name
@@ -215,7 +232,7 @@ final class ListeningStore {
             }
             return OpenBucket(
                 key: stored.month,
-                tracks: Dictionary(uniqueKeysWithValues: stored.tracks.map { ($0.id, $0) }),
+                tracks: tracks,
                 artists: artists,
                 albums: albums,
                 hours: hours,
@@ -343,12 +360,7 @@ final class ListeningStore {
         for month in months {
             for entry in month.tracks {
                 if var existing = tracks[entry.id] {
-                    existing.ms += entry.ms
-                    existing.plays += entry.plays
-                    if existing.album == nil { existing.album = entry.album }
-                    if existing.albumId == nil { existing.albumId = entry.albumId }
-                    if existing.artistId == nil { existing.artistId = entry.artistId }
-                    if existing.art == nil { existing.art = entry.art }
+                    existing.accumulate(entry)
                     tracks[entry.id] = existing
                 } else {
                     tracks[entry.id] = entry
@@ -514,9 +526,7 @@ final class ListeningStore {
                 guard let date = Self.date(fromDayKey: day), date >= firstDay, date <= now else { continue }
                 for entry in entries {
                     if var existing = tracks[entry.id] {
-                        existing.ms += entry.ms
-                        existing.plays += entry.plays
-                        if existing.art == nil { existing.art = entry.art }
+                        existing.accumulate(entry)
                         tracks[entry.id] = existing
                     } else {
                         tracks[entry.id] = entry
@@ -782,8 +792,7 @@ final class ListeningStore {
             writeMonth(month)
             for track in month.tracks {
                 if var existing = rebuilt.tracks[track.id] {
-                    existing.ms += track.ms
-                    existing.plays += track.plays
+                    existing.accumulate(track)
                     rebuilt.tracks[track.id] = existing
                 } else {
                     rebuilt.tracks[track.id] = track

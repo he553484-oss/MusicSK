@@ -59,8 +59,12 @@ struct LibraryLandingView: View {
             await loadShelves(force: true)
         }
         .task(id: auth.sessionEpoch) {
+            PlaybackDebugLog.shared.record("library landing load started signed_in=\(auth.signedIn)")
             downloadStore.refresh()
             await loadShelves()
+            if !Task.isCancelled {
+                PlaybackDebugLog.shared.record("library landing load finished shelves=\(shelves.count) failed=\(error != nil)")
+            }
         }
     }
 

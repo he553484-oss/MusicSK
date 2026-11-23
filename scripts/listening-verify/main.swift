@@ -1,5 +1,4 @@
 import Foundation
-import BitChordShared
 
 /// The genre lookup needs Last.fm and a cache folder; Replay only asks whether
 /// it is on. Stubbed so this check is the store and nothing else.
@@ -75,6 +74,27 @@ func withStore(_ body: (ListeningStore) -> Void) {
 }
 
 print("listening store")
+
+withStore { _ in
+    let month = ListeningStore.monthKey()
+    let folder = ListeningStore.folderOverride!
+    let original = ListeningStore.Track(id: "repeat", title: "Song", artist: "Artist", album: nil,
+        albumId: nil, artistId: nil, art: nil, ms: 20_000, plays: 1, last: 100)
+    var duplicate = original
+    duplicate.ms = 40_000
+    duplicate.art = "https://art.invalid/cover"
+    duplicate.last = 200
+    let stored = ListeningStore.StoredBucket(month: month, tracks: [original, duplicate])
+    let file = folder.appendingPathComponent("\(month).json")
+    try! JSONEncoder().encode(stored).write(to: file)
+
+    let summary = ListeningStore().summary(period: .thisMonth, includeGenres: false)
+    check("Replay opens a saved month containing duplicate track IDs", summary.songs.count == 1)
+    check("duplicate rows keep accumulated listening time and plays",
+          summary.songs.first?.ms == 60_000 && summary.songs.first?.plays == 2)
+    check("duplicate rows retain artwork and the latest play timestamp",
+          summary.songs.first?.art == duplicate.art && summary.songs.first?.last == 200)
+}
 
 withStore { _ in
     let folder = ListeningStore.folderOverride!

@@ -578,13 +578,11 @@ struct ReplayCreditCardView: View {
 struct ReplayHeroSection: View {
     var onOpen: (ReplayStoryPage) -> Void
     @Environment(AuthController.self) private var auth
-    @State private var model = ReplayModel.load(period: .thisYear, holder: "You")
+    @State private var model: ReplayModel?
 
     var body: some View {
         Group {
-            if model.summary.isEmpty {
-                ReplayBanner { onOpen(.intro) }
-            } else {
+            if let model, !model.summary.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(spacing: 12) {
                         ForEach(model.cards) { card in
@@ -601,9 +599,11 @@ struct ReplayHeroSection: View {
                     .padding(.horizontal, 24)
                     .padding(.vertical, 2)
                 }
+            } else {
+                ReplayBanner { onOpen(.intro) }
             }
         }
-        .onAppear { reload() }
+        .task(id: auth.accountName) { reload() }
     }
 
     private func reload() {
@@ -612,14 +612,13 @@ struct ReplayHeroSection: View {
     }
 }
 
-struct ReplayBanner: View {
+private struct ReplayBanner: View {
     var onOpen: () -> Void
-    @State private var model = ReplayModel.load(period: .thisYear, holder: "You")
 
     var body: some View {
         Button(action: onOpen) {
             ZStack(alignment: .leading) {
-                MeshBackdrop(seed: model.summary.songs.first?.title.hashValue ?? 1)
+                MeshBackdrop(seed: 1)
                 LinearGradient(
                     colors: [.black.opacity(0.34), .black.opacity(0.12), .clear],
                     startPoint: .leading,
@@ -630,7 +629,7 @@ struct ReplayBanner: View {
                         Text("Your Replay")
                             .font(.title3.weight(.bold))
                             .foregroundStyle(.white)
-                        Text(bannerDetail)
+                        Text("Top songs, artists, albums and genres — counted on this device")
                             .font(.subheadline)
                             .foregroundStyle(.white.opacity(0.82))
                             .lineLimit(2)
@@ -644,14 +643,6 @@ struct ReplayBanner: View {
             .clipShape(.rect(cornerRadius: 18, style: .continuous))
         }
         .buttonStyle(.plain)
-        .onAppear { model = ReplayModel.load(period: .thisYear, holder: "You") }
-    }
-
-    private var bannerDetail: String {
-        if model.summary.isEmpty {
-            return "Top songs, artists, albums and genres — counted on this device"
-        }
-        return "\(ReplayModel.grouped(model.summary.minutes)) minutes listened · \(model.summary.totalPlays) plays"
     }
 }
 

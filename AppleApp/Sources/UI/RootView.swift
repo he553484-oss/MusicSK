@@ -73,6 +73,11 @@ struct RootView: View {
         shell
         .environment(\.rowSelection, rowSelection)
         .task {
+            #if os(iOS) && targetEnvironment(simulator)
+            if UserDefaults.standard.bool(forKey: "musicsk_capture_library") {
+                selection = AppModel.Tab.library.rawValue
+            }
+            #endif
             // First run only. Someone upgrading — signed in, or with a queue
             // to come back to — has already onboarded themselves.
             guard !onboardingDone else { return }
