@@ -9,6 +9,8 @@ struct AppearanceLab: View {
     @AppStorage("musicsk_player_background") private var background = "original"
     @AppStorage("ambient_animation") private var animated = true
     @AppStorage("musicsk_material_mode") private var material = "automatic"
+    @AppStorage("musicsk_player_motion") private var motion = "automatic"
+    @AppStorage("musicsk_haptics") private var haptics = true
     @AppStorage("ambient_speed") private var speed = 1.0
     @AppStorage("ambient_blur") private var blur = 64.0
     @AppStorage("ambient_intensity") private var intensity = 1.0
@@ -98,6 +100,15 @@ struct AppearanceLab: View {
             } footer: {
                 Text("Applies to MusicSK's own surfaces. System controls manage their own appearance.")
             }
+            Section("Player Animations") {
+                Picker("Player Animations", selection: customBinding($motion)) {
+                    Text("Automatic").tag("automatic")
+                    Text("Fluid").tag("fluid")
+                    Text("Soft").tag("soft")
+                    Text("Reduced").tag("reduced")
+                }
+                Toggle("Haptic Feedback", isOn: customBinding($haptics))
+            }
             Section {
                 Button("Restore Default Appearance") { applyProfile("original") }
             }
@@ -122,6 +133,7 @@ struct AppearanceLab: View {
         background = values.background
         animated = values.animated
         material = values.material
+        motion = values.motion; haptics = values.haptics
         speed = values.speed; blur = values.blur; intensity = values.intensity
         saturation = values.saturation; brightness = values.brightness; darkening = values.darkening
     }

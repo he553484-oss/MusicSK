@@ -21,7 +21,10 @@ enum Haptics {
     static var isEnabled = true
 
     static func play(_ haptic: Haptic) {
-        guard isEnabled, !reduceMotion else { return }
+        let preferences = UserDefaults.standard
+        let hapticsEnabled = preferences.object(forKey: "musicsk_haptics") == nil ||
+            preferences.bool(forKey: "musicsk_haptics")
+        guard isEnabled, hapticsEnabled, !reduceMotion else { return }
 #if os(iOS)
         let style: UIImpactFeedbackGenerator.FeedbackStyle
         let intensity: CGFloat

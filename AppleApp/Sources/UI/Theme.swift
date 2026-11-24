@@ -82,7 +82,11 @@ enum Theme {
 /// `\.accessibilityReduceMotion` into a local and hand it to these.
 enum Motion {
     static func playerPane(_ reduceMotion: Bool) -> Animation {
-        .easeInOut(duration: reduceMotion ? 0.12 : 0.24)
+        let style = UserDefaults.standard.string(forKey: "musicsk_player_motion") ?? "automatic"
+        if reduceMotion || style == "reduced" { return .easeInOut(duration: 0.12) }
+        if style == "soft" { return .easeInOut(duration: 0.36) }
+        if style == "fluid" { return .smooth(duration: 0.30) }
+        return .easeInOut(duration: 0.24)
     }
 
     static func playerDeck(_ reduceMotion: Bool) -> Animation {
@@ -90,7 +94,10 @@ enum Motion {
     }
 
     static func playerDragReturn(_ reduceMotion: Bool) -> Animation? {
-        reduceMotion ? nil : .interactiveSpring(response: 0.34, dampingFraction: 0.88)
+        let style = UserDefaults.standard.string(forKey: "musicsk_player_motion") ?? "automatic"
+        if reduceMotion || style == "reduced" { return nil }
+        if style == "soft" { return .interactiveSpring(response: 0.45, dampingFraction: 0.94) }
+        return .interactiveSpring(response: 0.34, dampingFraction: 0.88)
     }
 
     /// A one-shot animation, shortened under Reduce Motion rather than removed.
