@@ -81,7 +81,7 @@ start_app() {
         -last_player_screen "$screen" "$@" >"$scratch/app.log" 2>&1 &
     app_pid=$!
     # Wait for the scene to render and its first-run tasks to run.
-    sleep 4
+    sleep 12
 }
 stop_app() {
     xcrun simctl terminate "$device_id" "$bundle_id"
@@ -100,21 +100,22 @@ capture() {
 
 start_app MAIN
 capture 01-inicio-es.png
-xcrun simctl openurl "$device_id" musicsk://open-player
-sleep 2
+stop_app
+
+start_app MAIN -musicsk_capture_player YES
 capture 02-reproductor-vacio-es.png
 stop_app
 
-start_app LYRICS
-xcrun simctl openurl "$device_id" 'musicsk://open-player?screen=lyrics'
-sleep 2
+start_app LYRICS -musicsk_capture_player YES
 capture 03-letras-vacias-es.png
 stop_app
 
-start_app MAIN
-xcrun simctl openurl "$device_id" 'musicsk://settings/lyrics'
-sleep 2
+start_app MAIN -musicsk_capture_lyrics_settings YES
 capture 04-ajustes-letras-es.png
+stop_app
+
+start_app QUEUE -musicsk_capture_player YES
+capture 06-cola-vacia-es.png
 stop_app
 
 # Seed the persisted Replay month read by the real Library tab.
@@ -162,7 +163,8 @@ Barra de estado del simulador: $status_bar
 
 Las tres primeras capturas mantienen las pantallas y nombres de 1.2.1 para
 comparar el marco del reproductor y el estado vacío de Letras. La cuarta abre
-Configuración → Letras con el enlace de la aplicación. La quinta abre
+Configuración → Letras con un indicador exclusivo del simulador. La sexta
+muestra la cola vacía. La quinta abre
 Biblioteca sin sesión y con un mes sintético que repite un identificador.
 El archivo biblioteca-validacion.txt acredita que la vista terminó su carga
 y que Replay agrupó los registros en una sola pista. El simulador se lanzó

@@ -77,6 +77,15 @@ struct RootView: View {
             if UserDefaults.standard.bool(forKey: "musicsk_capture_library") {
                 selection = AppModel.Tab.library.rawValue
             }
+            if UserDefaults.standard.bool(forKey: "musicsk_capture_player") {
+                try? await Task.sleep(for: .seconds(1))
+                appModel.nowPlayingPresented = true
+            }
+            if UserDefaults.standard.bool(forKey: "musicsk_capture_lyrics_settings"),
+               let url = URL(string: "musicsk://settings/lyrics") {
+                _ = SettingsDeepLink.handle(url)
+                appModel.settingsPresented = true
+            }
             #endif
             // First run only. Someone upgrading — signed in, or with a queue
             // to come back to — has already onboarded themselves.
