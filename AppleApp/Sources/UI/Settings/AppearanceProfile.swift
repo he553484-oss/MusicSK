@@ -25,3 +25,17 @@ struct AppearanceProfileValues: Equatable {
         }
     }
 }
+
+enum AppearanceInstallDefaults {
+    /// Use the app's existing onboarding decision and never replace an
+    /// explicitly stored appearance preference during an upgrade.
+    static func shouldApplyAppleProfile(onboarded: Bool, signedIn: Bool,
+                                        hasQueue: Bool, hasAppearancePreference: Bool) -> Bool {
+        !onboarded && !signedIn && !hasQueue && !hasAppearancePreference
+    }
+
+    static let preferenceKeys = [
+        "musicsk_appearance_profile", "musicsk_player_background", "legacy_mesh_gradient",
+        "reduce_animation", "reduce_dynamic_blur", "full_bleed_artwork", "animated_canvas", "theme_mode",
+    ]
+}

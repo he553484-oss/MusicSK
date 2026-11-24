@@ -113,6 +113,17 @@ struct RootView: View {
             if auth.signedIn || !controller.queue.isEmpty {
                 onboardingDone = true
             } else {
+                let preferences = UserDefaults.standard
+                let hasAppearance = AppearanceInstallDefaults.preferenceKeys.contains {
+                    preferences.object(forKey: $0) != nil
+                }
+                if AppearanceInstallDefaults.shouldApplyAppleProfile(
+                    onboarded: onboardingDone, signedIn: auth.signedIn,
+                    hasQueue: !controller.queue.isEmpty, hasAppearancePreference: hasAppearance
+                ) {
+                    preferences.set("apple", forKey: "musicsk_appearance_profile")
+                    preferences.set("dynamic", forKey: "musicsk_player_background")
+                }
                 onboardingPresented = true
             }
         }
