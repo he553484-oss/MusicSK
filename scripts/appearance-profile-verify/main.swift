@@ -6,7 +6,7 @@ guard let apple = AppearanceProfileValues.preset("apple"),
 precondition(apple.background == "dynamic" && apple.animated)
 precondition(original.background == "original" && original.blur == 64 && original.brightness == 0)
 precondition(oled.background == "black" && !oled.animated && oled.material == "opaque")
-precondition(oled.motion == "reduced" && !oled.haptics)
+precondition(oled.motion == "reduced" && !oled.haptics && !oled.transitions)
 precondition(apple.motion == "automatic" && apple.haptics)
 precondition(AppearanceProfileValues.preset("custom") == nil)
 precondition(AppearanceProfileValues.preset("unknown") == nil)

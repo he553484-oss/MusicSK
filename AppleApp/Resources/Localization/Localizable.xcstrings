@@ -1,6 +1,16 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Animate Ambient Transitions": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Animar transiciones ambientales"
+          }
+        }
+      }
+    },
     "Player Animations": {
       "localizations": {
         "es": {

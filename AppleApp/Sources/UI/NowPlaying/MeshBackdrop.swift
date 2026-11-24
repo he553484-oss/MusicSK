@@ -31,6 +31,7 @@ struct MeshBackdrop: View {
     @Environment(\.colorScheme) private var colorScheme
     @AppStorage("musicsk_player_background") private var backgroundMode = "original"
     @AppStorage("ambient_animation") private var animationEnabled = true
+    @AppStorage("ambient_transitions") private var transitionsEnabled = true
     @AppStorage("ambient_speed") private var motionSpeed = 1.0
     @AppStorage("ambient_blur") private var blurAmount = 64.0
     @AppStorage("ambient_intensity") private var gradientIntensity = 1.0
@@ -160,6 +161,6 @@ struct MeshBackdrop: View {
             blob2 = mesh.blobs[2]
             blob3 = mesh.blobs[3]
         }
-        withAnimation(reduceAnimation ? nil : .easeInOut(duration: first ? 0.24 : 1.4), run)
+        withAnimation(reduceAnimation || !transitionsEnabled ? nil : .easeInOut(duration: first ? 0.24 : 1.4), run)
     }
 }

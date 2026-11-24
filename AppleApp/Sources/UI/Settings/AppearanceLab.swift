@@ -8,6 +8,7 @@ struct AppearanceLab: View {
     @AppStorage("musicsk_appearance_profile") private var profile = "original"
     @AppStorage("musicsk_player_background") private var background = "original"
     @AppStorage("ambient_animation") private var animated = true
+    @AppStorage("ambient_transitions") private var transitions = true
     @AppStorage("musicsk_material_mode") private var material = "automatic"
     @AppStorage("musicsk_player_motion") private var motion = "automatic"
     @AppStorage("musicsk_haptics") private var haptics = true
@@ -78,6 +79,7 @@ struct AppearanceLab: View {
             }
             Section {
                 Toggle("Animate Background", isOn: customBinding($animated))
+                Toggle("Animate Ambient Transitions", isOn: customBinding($transitions))
                 parameter("Movement Speed", value: $speed, range: 0.2...2)
                 parameter("Gradient Intensity", value: $intensity, range: 0...1)
                 parameter("Blur Intensity", value: $blur, range: 0...100)
@@ -134,6 +136,7 @@ struct AppearanceLab: View {
         animated = values.animated
         material = values.material
         motion = values.motion; haptics = values.haptics
+        transitions = values.transitions
         speed = values.speed; blur = values.blur; intensity = values.intensity
         saturation = values.saturation; brightness = values.brightness; darkening = values.darkening
     }
