@@ -156,6 +156,7 @@ jobs:
           run_check jiosaavn-stream bash scripts/check-jiosaavn-stream.sh
           run_check cached-bitrate bash scripts/check-cached-bitrate.sh
           run_check lossless-note bash scripts/check-lossless-note.sh
+          run_check settings-audio bash scripts/check-settings-audio.sh
           run_check pages bash scripts/check-pages.sh
           run_check settings-parity bash scripts/check-settings-parity.sh
           run_check menus bash scripts/check-menus.sh
@@ -166,6 +167,7 @@ jobs:
         if: env.MODE == 'build-ios'
         run: |
           NATIVE_TARGETS="aarch64-apple-darwin aarch64-apple-ios" scripts/build-native-core.sh
+          cargo test --manifest-path native-core/Cargo.toml --release --target aarch64-apple-darwin --lib eq_commands_change_the_real_mixer_output_and_transparent_bypasses_it
           CONFIG=release scripts/build-shared-framework.sh
           xcodegen generate --spec AppleApp/project.yml
           scripts/package-ios-ipa.sh "$VERSION" --output-dir build/release
