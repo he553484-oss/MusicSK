@@ -51,6 +51,7 @@ struct NowPlayingView: View {
     /// The same switch as Settings ▸ Playback ▸ Show Music Videos, flipped
     /// from the pill while the track plays.
     @AppStorage("show_music_videos") var showMusicVideos = false
+    @AppStorage("musicsk_appearance_profile") var appearanceProfile = "original"
     @AppStorage("musicsk_player_background") var playerBackground = "original"
     @AppStorage("ambient_blur") var ambientBlur = 64.0
     @AppStorage("ambient_saturation") var ambientSaturation = 1.0

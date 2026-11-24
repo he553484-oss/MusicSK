@@ -221,6 +221,32 @@ extension NowPlayingView {
             // Keep the detailed route and pipeline available alongside the
             // system's direct output picker in the player controls.
             Button("Audio Output") { showOutputDevice = true }
+            #if os(iOS)
+            if appearanceProfile == "apple" {
+                Button {
+                    let enabled = !controller.mixWithOtherAudio
+                    Haptics.play(enabled ? .toggleOn : .toggleOff)
+                    controller.setMixWithOtherAudio(enabled)
+                } label: {
+                    Label("Mix with Other Apps", systemImage: controller.mixWithOtherAudio ? "checkmark.circle.fill" : "circle")
+                }
+                Button {
+                    let enabled = !showMusicVideos
+                    Haptics.play(enabled ? .toggleOn : .toggleOff)
+                    showMusicVideos = enabled
+                } label: {
+                    Label("Music Videos", systemImage: showMusicVideos ? "checkmark.circle.fill" : "circle")
+                }
+                Button {
+                    Haptics.play(.tap)
+                    if party.inParty { appModel.partyMembersPresented = true }
+                    else { appModel.listenTogetherPresented = true }
+                } label: {
+                    if party.inParty { Text("People listening") }
+                    else { Text("Listen Together") }
+                }
+            }
+            #endif
             if !controller.displayedLyrics.isEmpty {
                 Divider()
                 Button("Lyrics Offset…") { showLyricsOffset = true }

@@ -1,6 +1,9 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Music Videos": {
+      "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Videos musicales" } } }
+    },
     "Checking for better audio…": {
       "localizations": {
         "es": {
@@ -6804,7 +6807,7 @@
         }
       }
     },
-    "Listen Together": {},
+    "Listen Together": { "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Escuchar juntos" } } } },
     "Listen together": {
       "localizations": {
         "de": {
@@ -7561,7 +7564,7 @@
         }
       }
     },
-    "Mix with Other Apps": {},
+    "Mix with Other Apps": { "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Mezclar con otras apps" } } } },
     "Mixing on": {
       "localizations": {
         "es": {
@@ -9740,7 +9743,7 @@
     "Paused at %@": {},
     "PaxSeniX Key": {},
     "PaxSeniX Spotify and PaxSeniX Musixmatch reach two catalogues Apple Music does not carry, and both need a key from paxsenix.org. Everything else on this list works without one. Stored in the Keychain, not in preferences.": {},
-    "People listening": {},
+    "People listening": { "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Personas escuchando" } } } },
     "Performance": {
       "localizations": {
         "de": {

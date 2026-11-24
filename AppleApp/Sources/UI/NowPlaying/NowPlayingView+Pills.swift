@@ -73,7 +73,19 @@ extension NowPlayingView {
 
     /// Keep output and party controls available on every player pane.
     var actionRowPill: some View {
-        Group { outputPartyPill }
+        Group {
+            #if os(iOS)
+            if appearanceProfile == "apple" {
+                AirPlayRouteButton(tint: UIColor.white.withAlphaComponent(0.88))
+                    .frame(width: 44, height: 44)
+                    .accessibilityLabel("Audio output")
+            } else {
+                outputPartyPill
+            }
+            #else
+            outputPartyPill
+            #endif
+        }
         .transition(.opacity.combined(with: .scale(scale: 0.94)))
     }
 
@@ -106,7 +118,7 @@ extension NowPlayingView {
             }
             .frame(height: 44)
 
-            if !outputCaption.isEmpty {
+            if appearanceProfile != "apple" && !outputCaption.isEmpty {
                 Text(outputCaption)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.white.opacity(0.62))
