@@ -359,7 +359,8 @@ struct UpNextPane: View {
             Spacer(minLength: 0)
             if auth.signedIn, controller.current?.videoId != nil {
                 GlassCircleButton(
-                    icon: controller.isLiked ? .bchHeartFilled : .bchHeart,
+                    system: controller.isLiked ? "star.fill" : "star",
+                    selected: controller.isLiked,
                     label: controller.isLiked ? "Remove Like" : "Like"
                 ) { controller.toggleLike() }
             }
