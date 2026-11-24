@@ -43,7 +43,7 @@ extension PlaybackController {
         var origin: Origin = .other
         var youtubeVideoId: String? = nil
 
-        enum Origin: String, Sendable { case local, cache, youtube, substitute, other }
+        enum Origin: String, Sendable { case local, cache, youtube, jiosaavn, substitute, other }
 
         var format: QualityUpgrade.Format {
             QualityUpgrade.Format(
@@ -129,7 +129,7 @@ extension PlaybackController {
                         // The token request asks for a bitrate; the response
                         // does not confirm the delivered stream's bitrate.
                         source: hit.url, headers: [:], kbps: 0,
-                        lossless: false, origin: .substitute
+                        lossless: false, origin: .jiosaavn
                     ),
                     leftover: nil
                 )
@@ -611,7 +611,7 @@ extension PlaybackController {
     /// A failed speculative download retains the remote stream for normal loading.
     static func bufferPreparedSource(_ outcome: ResolveOutcome, mediaId: String) async throws -> ResolveOutcome {
         let chosen = outcome.source
-        guard chosen.origin == .substitute,
+        guard (chosen.origin == .substitute || chosen.origin == .jiosaavn),
               chosen.source.hasPrefix("https://") || chosen.source.hasPrefix("http://"),
               !PlaybackCodecCapabilities.shared.canRenderDolby(codec: chosen.codec, headers: chosen.headers) else {
             return outcome
@@ -627,7 +627,7 @@ extension PlaybackController {
             let buffered = ResolvedSource(
                 source: path, headers: [:], kbps: chosen.kbps,
                 lossless: chosen.lossless, codec: chosen.codec,
-                durationSec: chosen.durationSec, origin: .substitute
+                durationSec: chosen.durationSec, origin: chosen.origin
             )
             return ResolveOutcome(source: buffered, leftover: outcome.leftover, decisionNote: outcome.decisionNote)
         } catch is CancellationError {

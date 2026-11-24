@@ -105,6 +105,7 @@ extension PlaybackController {
         case .local: sourceKind = "local"
         case .cache: sourceKind = "cache"
         case .youtube: sourceKind = "youtube"
+        case .jiosaavn: sourceKind = "jiosaavn"
         case .substitute: sourceKind = "substitute"
         case .other, .none: sourceKind = "other"
         }

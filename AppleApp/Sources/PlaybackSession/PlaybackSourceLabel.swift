@@ -6,13 +6,13 @@ enum PlaybackSourceLabel {
         switch origin {
         case "substitute": return "Alternative source"
         case "youtube": return "YouTube"
+        case "jiosaavn": return "JioSaavn"
         case "cache": return "Cached audio"
         case "local": return "Local files"
         default:
             if isLocal { return "Local files" }
             if source.hasPrefix("yt:") { return "YouTube" }
             if source.hasPrefix("src:") { return "Add-on" }
-            if source.hasPrefix("saavn:") { return "JioSaavn" }
             return nil
         }
     }

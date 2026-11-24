@@ -146,6 +146,7 @@ jobs:
           run_check now-playing bash scripts/check-now-playing.sh
           run_check lossless-route bash scripts/check-lossless-route.sh
           run_check quality-log bash scripts/check-quality-log.sh
+          run_check source-label bash scripts/check-source-label.sh
           run_check queue bash scripts/check-queue.sh
           run_check session-restore bash scripts/check-session-restore.sh
           run_check stream-recovery bash scripts/check-stream-recovery.sh

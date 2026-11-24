@@ -50,7 +50,7 @@ extension PlaybackController {
         let below = prefs.wantLossless && !outcome.source.lossless
         let youtubeWon = outcome.source.origin == .youtube
         let leftover = outcome.leftover
-        if youtubeWon || (outcome.source.origin == .substitute && below) {
+        if youtubeWon || ((outcome.source.origin == .substitute || outcome.source.origin == .jiosaavn) && below) {
             let pending = QualityUpgrade.settledForLess(
                 mediaId: entry.id,
                 target: QualityUpgrade.Target(
