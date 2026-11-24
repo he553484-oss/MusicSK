@@ -435,5 +435,76 @@ do {
     check("AAC region output regression checks complete", false, "\(error)")
 }
 
+
+// Measure the protected mixer signal through the same generated Swift/UniFFI
+// bridge as the app. This is a synthetic test, not an iPhone listening test.
+func capturedRMS(_ path: String) throws -> Double {
+    let bytes = [UInt8](try Data(contentsOf: URL(fileURLWithPath: path)))
+    guard bytes.count > 44 + 16_000 else { throw NSError(domain: "EQCapture", code: 1) }
+    let samples = (bytes.count - 44) / 4
+    let first = samples / 4 // Ignore filter settling at the start of a capture.
+    var sum = 0.0
+    var count = 0
+    for i in first..<samples {
+        let at = 44 + i * 4
+        let bits = UInt32(bytes[at]) | UInt32(bytes[at + 1]) << 8 |
+            UInt32(bytes[at + 2]) << 16 | UInt32(bytes[at + 3]) << 24
+        let sample = Double(Float(bitPattern: bits))
+        if sample.isFinite { sum += sample * sample; count += 1 }
+    }
+    guard count > 0, sum > 0 else { throw NSError(domain: "EQCapture", code: 2) }
+    return sqrt(sum / Double(count))
+}
+
+do {
+    let eqEngine = PlayerEngine()
+    let eqRecorder = Recorder()
+    eqEngine.registerCallback(callback: eqRecorder)
+    try eqEngine.start(rate: nil, channels: nil)
+    eqEngine.setVolume(gain: 0.01)
+    try eqEngine.setClarityTuning(tuning: ClarityTuning(preset: .reference, wet: 0, trimsDb: Array(repeating: 0, count: 8)))
+    try eqEngine.setLoudnessMode(mode: .off)
+    let low = tmp + "/eq-low.wav", high = tmp + "/eq-high.wav"
+    makeWav(low, seconds: 5, hz: 30)
+    makeWav(high, seconds: 5, hz: 18_000)
+
+    func measure(_ path: String, _ name: String, mode: SoundMode, enabled: Bool, gains: [Float]) throws -> Double {
+        let dir = tmp + "/capture-" + name
+        try? FileManager.default.removeItem(atPath: dir)
+        try eqEngine.setSoundMode(mode: mode)
+        try eqEngine.setEqTuning(enabled: enabled, gainsDb: gains, qs: Array(repeating: 0.707, count: 10), balance: 0)
+        _ = try eqEngine.loadTrackPaused(request: LoadRequest(source: path, title: name, artist: "EQ fixture",
+            startSeconds: 0, plan: nil, headers: nil, claimedKbps: 0, loudnessDb: nil, durationSeconds: 5))
+        try eqEngine.startDiagnosticCapture(directory: dir, seconds: 1.0)
+        try eqEngine.play()
+        Thread.sleep(forTimeInterval: 1.4)
+        try eqEngine.finishDiagnosticCapture()
+        try eqEngine.pause()
+        return try capturedRMS(dir + "/protected.wav")
+    }
+
+    let flat = [Float](repeating: 0, count: 10)
+    var bass = flat; bass[0] = 6
+    var treble = flat; treble[6] = -6
+    let flatLow = try measure(low, "flat-low", mode: .enhanced, enabled: true, gains: flat)
+    let boostedLow = try measure(low, "boosted-low", mode: .enhanced, enabled: true, gains: bass)
+    let disabledLow = try measure(low, "disabled-low", mode: .enhanced, enabled: false, gains: bass)
+    let transparentLow = try measure(low, "transparent-low", mode: .transparent, enabled: true, gains: bass)
+    let transparentFlat = try measure(low, "transparent-flat", mode: .transparent, enabled: true, gains: flat)
+    let flatHigh = try measure(high, "flat-high", mode: .enhanced, enabled: true, gains: flat)
+    let cutHigh = try measure(high, "cut-high", mode: .enhanced, enabled: true, gains: treble)
+    func db(_ a: Double, _ b: Double) -> Double { 20 * log10(a / b) }
+    check("Swift bridge EQ bass changes mixer output", db(boostedLow, flatLow) > 1,
+          String(format: "%.2f dB", db(boostedLow, flatLow)))
+    check("Swift bridge disabled EQ matches flat", abs(db(disabledLow, flatLow)) < 0.3,
+          String(format: "%.2f dB", db(disabledLow, flatLow)))
+    check("Swift bridge Transparent bypasses EQ", abs(db(transparentLow, transparentFlat)) < 0.3,
+          String(format: "%.2f dB", db(transparentLow, transparentFlat)))
+    check("Swift bridge EQ treble cut reaches mixer output", db(cutHigh, flatHigh) < -1,
+          String(format: "%.2f dB", db(cutHigh, flatHigh)))
+} catch {
+    check("Swift bridge EQ capture completes", false, "\(error)")
+}
+
 print(failures == 0 ? "\nall \(checks) checks passed" : "\n\(failures) of \(checks) checks FAILED")
 exit(failures == 0 ? 0 : 1)
