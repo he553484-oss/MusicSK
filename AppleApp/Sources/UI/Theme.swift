@@ -143,11 +143,17 @@ struct ChromeBackground: ViewModifier {
 
     let weight: Weight
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @AppStorage("musicsk_material_mode") private var materialMode = "automatic"
 
     func body(content: Content) -> some View {
         content.background {
-            if reduceTransparency {
+            if reduceTransparency || materialMode == "opaque" {
                 Rectangle().fill(opaque)
+            } else if materialMode == "material" {
+                switch weight {
+                case .thin: Rectangle().fill(.ultraThinMaterial)
+                case .regular: Rectangle().fill(.regularMaterial)
+                }
             } else if #available(iOS 26.0, macOS 26.0, *) {
                 // The system's own glass: it brings the edge treatment and
                 // highlight with it, and it is what the platform now expects of
@@ -182,11 +188,14 @@ extension View {
 struct ChromeGlass<S: Shape>: ViewModifier {
     let shape: S
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @AppStorage("musicsk_material_mode") private var materialMode = "automatic"
 
     @ViewBuilder
     func body(content: Content) -> some View {
-        if reduceTransparency {
+        if reduceTransparency || materialMode == "opaque" {
             content.background(shape.fill(Theme.Materials.opaque))
+        } else if materialMode == "material" {
+            content.background(shape.fill(.ultraThinMaterial))
         } else if #available(iOS 26.0, macOS 26.0, *) {
             content.glassEffect(.regular, in: shape)
         } else {

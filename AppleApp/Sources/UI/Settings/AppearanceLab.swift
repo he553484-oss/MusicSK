@@ -8,6 +8,7 @@ struct AppearanceLab: View {
     @AppStorage("musicsk_appearance_profile") private var profile = "original"
     @AppStorage("musicsk_player_background") private var background = "original"
     @AppStorage("ambient_animation") private var animated = true
+    @AppStorage("musicsk_material_mode") private var material = "automatic"
     @AppStorage("ambient_speed") private var speed = 1.0
     @AppStorage("ambient_blur") private var blur = 64.0
     @AppStorage("ambient_intensity") private var intensity = 1.0
@@ -77,6 +78,17 @@ struct AppearanceLab: View {
                 Text("Movement and gradient intensity apply to Apple Dynamic. Accessibility and Low Power Mode can reduce effects.")
             }
             Section {
+                Picker("Materials", selection: customBinding($material)) {
+                    Text("Automatic Glass").tag("automatic")
+                    Text("Translucent Material").tag("material")
+                    Text("Opaque").tag("opaque")
+                }
+            } header: {
+                Text("Materials")
+            } footer: {
+                Text("Applies to MusicSK's own surfaces. System controls manage their own appearance.")
+            }
+            Section {
                 Button("Restore Default Appearance") { applyProfile("original") }
             }
         }
@@ -99,6 +111,7 @@ struct AppearanceLab: View {
         guard let values = AppearanceProfileValues.preset(selected) else { return }
         background = values.background
         animated = values.animated
+        material = values.material
         speed = values.speed; blur = values.blur; intensity = values.intensity
         saturation = values.saturation; brightness = values.brightness; darkening = values.darkening
     }

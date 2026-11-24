@@ -1,6 +1,56 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Materials": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Materiales"
+          }
+        }
+      }
+    },
+    "Automatic Glass": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cristal automático"
+          }
+        }
+      }
+    },
+    "Translucent Material": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Material translúcido"
+          }
+        }
+      }
+    },
+    "Opaque": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opaco"
+          }
+        }
+      }
+    },
+    "Applies to MusicSK's own surfaces. System controls manage their own appearance.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Se aplica a las superficies de MusicSK. Los controles del sistema administran su propia apariencia."
+          }
+        }
+      }
+    },
     "Movement and gradient intensity apply to Apple Dynamic. Accessibility and Low Power Mode can reduce effects.": {
       "localizations": {
         "es": {
