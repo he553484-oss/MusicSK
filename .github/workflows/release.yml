@@ -183,13 +183,11 @@ jobs:
 
       - name: Test shared JioSaavn response handling on macOS
         if: env.MODE == 'build-ios'
-        continue-on-error: true
         timeout-minutes: 10
         run: ./gradlew :shared:macosArm64Test --tests '*JioSaavnTransportTest*'
 
       - name: Exercise the native audio engine on macOS
         if: env.MODE == 'build-ios'
-        continue-on-error: true
         timeout-minutes: 6
         run: |
           set -o pipefail
@@ -252,7 +250,7 @@ jobs:
         run: scripts/release-apple.sh "$VERSION" --output-dir build/release
 
       - name: Keep the files as a workflow artifact
-        if: env.MODE != 'capture-ios'
+        if: ${{ (success() || (failure() && env.MODE == 'build-ios')) && env.MODE != 'capture-ios' }}
         uses: actions/upload-artifact@v4
         with:
           name: Musicsk-${{ env.VERSION }}
