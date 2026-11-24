@@ -278,6 +278,6 @@ extension NowPlayingView {
             return routeName
         }
         if party.inParty { return party.state.you?.name ?? "Playing together" }
-        return "Default Device"
+        return String(localized: "Default Device")
     }
 }

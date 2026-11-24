@@ -1,6 +1,56 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Checking for better audio…": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Buscando mejor audio…"
+          }
+        }
+      }
+    },
+    "Default Device": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dispositivo predeterminado"
+          }
+        }
+      }
+    },
+    "Playing from %@": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducción desde %@"
+          }
+        }
+      }
+    },
+    "Playing from Local files": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducción desde archivos locales"
+          }
+        }
+      }
+    },
+    "Playing from YouTube": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducción desde YouTube"
+          }
+        }
+      }
+    },
     "Requested Provider": {
       "localizations": {
         "es": {
@@ -15472,7 +15522,16 @@
         }
       }
     },
-    "Up next": {},
+    "Up next": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A continuación"
+          }
+        }
+      }
+    },
     "Upgrade Quality": {},
     "Use This Profile": {},
     "Use your own server": {

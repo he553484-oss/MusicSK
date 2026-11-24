@@ -229,11 +229,11 @@ struct NowPlayingView: View {
     var songStatusLine: String? {
         guard !hideSongStatus else { return nil }
         var parts: [String] = []
-        if let source = controller.playbackSourceName { parts.append(source) }
+        if let source = controller.playbackSourceName { parts.append(localizedPlaybackSource(source)) }
         if let nerd = controller.nerd {
             parts.append(QualityUpgrade.Format.isLosslessCodec(nerd.codec) ? "Lossless" : nerd.codec)
         }
-        if controller.racingLossless { parts.append("Checking for better audio…") }
+        if controller.racingLossless { parts.append(String(localized: "Checking for better audio…")) }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
@@ -241,17 +241,28 @@ struct NowPlayingView: View {
     /// Nerd statistics stay in the deck; they are not the origin of playback.
     var playbackOriginCaption: String? {
         guard !hideSongStatus, let current = controller.current else { return nil }
-        if controller.resolvedOrigin[current.id] == .substitute,
+        if (controller.resolvedOrigin[current.id] == .substitute || controller.resolvedOrigin[current.id] == .jiosaavn),
            let source = controller.playbackSourceName {
-            return "Playing from \(source)"
+            let displaySource = localizedPlaybackSource(source)
+            return String(localized: "Playing from \(displaySource)")
         }
         if let context = controller.playbackContext, !context.isEmpty {
-            return "Playing from \(context)"
+            return String(localized: "Playing from \(context)")
         }
-        if current.isLocal { return "Playing from Local files" }
-        if current.source.hasPrefix("yt:") { return "Playing from YouTube" }
-        guard !current.source.isEmpty else { return nil }
-        return "Playing from \(current.source)"
+        if current.isLocal { return String(localized: "Playing from Local files") }
+        if current.source.hasPrefix("yt:") { return String(localized: "Playing from YouTube") }
+        return nil
+    }
+
+    func localizedPlaybackSource(_ source: String) -> String {
+        switch source {
+        case "Local files": String(localized: "Local files")
+        case "Network library": String(localized: "Network library")
+        case "Cached audio": String(localized: "Cached audio")
+        case "Alternative source": String(localized: "Alternative source")
+        case "Add-on": String(localized: "Add-on")
+        default: source
+        }
     }
 
     // ---- Shared pieces ------------------------------------------------------

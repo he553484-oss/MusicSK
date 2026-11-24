@@ -82,24 +82,22 @@ struct UpNextPane: View {
                                 historyQueueRow(item)
                             }
                         }
-                        if controller.current != nil {
+                        if controller.current != nil && (!showsCurrentTrackHeader || showQueueHistory) {
                             Text("Now playing")
                                 .font(.headline.weight(.medium))
                                 .foregroundStyle(.white.opacity(0.75))
-                                .padding(.top, 12)
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
-                                .listRowInsets(EdgeInsets(top: 12, leading: 24, bottom: 6, trailing: 24))
+                                .listRowInsets(EdgeInsets(top: 4, leading: 24, bottom: 4, trailing: 24))
                             currentQueueRow
                         }
                         if !manualUpcoming.isEmpty {
                             Text("Up next")
                                 .font(.headline.weight(.medium))
                                 .foregroundStyle(.white.opacity(0.75))
-                                .padding(.top, 16)
                                 .listRowBackground(Color.clear)
                                 .listRowSeparator(.hidden)
-                                .listRowInsets(EdgeInsets(top: 16, leading: 24, bottom: 6, trailing: 24))
+                                .listRowInsets(EdgeInsets(top: 4, leading: 24, bottom: 4, trailing: 24))
                             ForEach(Array(manualUpcoming.enumerated()), id: \.element.id) { localIndex, item in
                                 queueListRow(item, section: 0, index: localIndex, rows: manualUpcoming)
                             }
@@ -158,12 +156,12 @@ struct UpNextPane: View {
                         .listRowInsets(EdgeInsets(top: 10, leading: 24, bottom: 10, trailing: 24))
                     }
                     .listStyle(.plain)
+                    .environment(\.defaultMinListRowHeight, 44)
                     .scrollContentBackground(.hidden)
                     .mask(
                         LinearGradient(
                             stops: [
-                                .init(color: .clear, location: 0),
-                                .init(color: .black, location: 0.04),
+                                .init(color: .black, location: 0),
                                 .init(color: .black, location: 0.96),
                                 .init(color: .clear, location: 1),
                             ],
@@ -344,18 +342,29 @@ struct UpNextPane: View {
 
     private var queueHeader: some View {
         HStack(spacing: 12) {
-            ArtworkView(entry: controller.current, side: 72)
-                .clipShape(.rect(cornerRadius: 8, style: .continuous))
-            VStack(alignment: .leading, spacing: 3) {
-                Text(controller.current?.title ?? "Nothing playing")
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                Text(controller.current?.artist ?? "")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.68))
-                    .lineLimit(1)
+            Button {
+                let at = controller.playingIndex
+                if controller.queue.indices.contains(at) { controller.playQueueItem(at: at) }
+            } label: {
+                HStack(spacing: 12) {
+                    ArtworkView(entry: controller.current, side: 72)
+                        .clipShape(.rect(cornerRadius: 8, style: .continuous))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Group {
+                            if let title = controller.current?.title { Text(title) } else { Text("Nothing playing") }
+                        }
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.white)
+                            .lineLimit(1)
+                        Text(controller.current?.artist ?? "")
+                            .font(.subheadline)
+                            .foregroundStyle(.white.opacity(0.68))
+                            .lineLimit(1)
+                    }
+                }
             }
+            .buttonStyle(.plain)
+            .disabled(controller.current == nil)
             Spacer(minLength: 0)
             if auth.signedIn, controller.current?.videoId != nil {
                 GlassCircleButton(

@@ -339,13 +339,17 @@ struct PlaybackPill: View {
 
     private var info: some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text(controller.current?.title ?? "Not Playing")
+            Group {
+                if let title = controller.current?.title { Text(title) } else { Text("Not Playing") }
+            }
                 .font(.callout.weight(.semibold))
                 .foregroundStyle(controller.current == nil ? .secondary : .primary)
                 .lineLimit(1)
             // Inline there is room for the title alone, as in Music.
             if !inline {
-                Text(controller.current?.artist ?? "Music you start appears here")
+                Group {
+                    if let artist = controller.current?.artist { Text(artist) } else { Text("Music you start appears here") }
+                }
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)

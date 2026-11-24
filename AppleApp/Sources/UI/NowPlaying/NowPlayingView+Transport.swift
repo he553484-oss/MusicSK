@@ -254,7 +254,7 @@ extension NowPlayingView {
         if nerd.bitDepth > 0 { parts.append("\(nerd.bitDepth)-bit") }
         if nerd.sampleRate > 0 { parts.append("\(nerd.sampleRate) Hz") }
         if nerd.channels > 0 { parts.append("\(nerd.channels) ch") }
-        if let source = controller.playbackSourceName { parts.append(source) }
+        if let source = controller.playbackSourceName { parts.append(localizedPlaybackSource(source)) }
         if controller.racingLossless { parts.append("Upgrading Quality") }
         if let gain = nerd.loudnessGainDb, gain != 0 {
             parts.append(String(format: "%+.1f dB", gain))
