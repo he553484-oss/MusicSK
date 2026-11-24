@@ -69,6 +69,7 @@ struct SettingsView: View {
     @State var smartAlign = PlatformSettings.shared.getBoolean(key: "smart_version_alignment", default: true)
     @State var legacyMesh = PlatformSettings.shared.getBoolean(key: "legacy_mesh_gradient", default: false)
     @AppStorage("musicsk_player_background") var playerBackground = "original"
+    @AppStorage("musicsk_appearance_profile") var appearanceProfile = "original"
     @State var preferMusicOnly = PlatformSettings.shared.getBoolean(key: "prefer_music_only", default: false)
     @State var confirmImport = false
     @State var theme = PlatformSettings.shared.getString(key: "theme_mode", default: "dark")

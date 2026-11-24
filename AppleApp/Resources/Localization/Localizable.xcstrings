@@ -1,6 +1,196 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Appearance Lab": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apariencia y personalización"
+          }
+        }
+      }
+    },
+    "Player background and visual profiles": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fondo del reproductor y perfiles visuales"
+          }
+        }
+      }
+    },
+    "Preview": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vista previa"
+          }
+        }
+      }
+    },
+    "Player Preview": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vista previa del reproductor"
+          }
+        }
+      }
+    },
+    "Play a song to preview its artwork": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproduce una canción para ver su portada"
+          }
+        }
+      }
+    },
+    "Visual Profile": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Perfil visual"
+          }
+        }
+      }
+    },
+    "Apple Experience": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Experiencia Apple"
+          }
+        }
+      }
+    },
+    "MusicSK Original": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MusicSK original"
+          }
+        }
+      }
+    },
+    "OLED Minimal": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OLED minimalista"
+          }
+        }
+      }
+    },
+    "Apple Dynamic": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dinámico Apple"
+          }
+        }
+      }
+    },
+    "Animate Background": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Animar el fondo"
+          }
+        }
+      }
+    },
+    "Movement Speed": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Velocidad de movimiento"
+          }
+        }
+      }
+    },
+    "Gradient Intensity": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Intensidad del degradado"
+          }
+        }
+      }
+    },
+    "Saturation": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saturación"
+          }
+        }
+      }
+    },
+    "Brightness": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Brillo"
+          }
+        }
+      }
+    },
+    "Darkening": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oscurecimiento"
+          }
+        }
+      }
+    },
+    "Ambient Background": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fondo ambiental"
+          }
+        }
+      }
+    },
+    "Restore Default Appearance": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaurar apariencia predeterminada"
+          }
+        }
+      }
+    },
+    "Gradient, movement and blur controls affect the ambient gradient. Artwork Blur uses the existing cached artwork effect. System accessibility and Low Power Mode can reduce effects.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Los controles de degradado, movimiento y desenfoque afectan al fondo ambiental. Portada desenfocada usa el efecto existente en caché. La accesibilidad y el modo de bajo consumo pueden reducir los efectos."
+          }
+        }
+      }
+    },
     "Player Background": {
       "localizations": {
         "es": {

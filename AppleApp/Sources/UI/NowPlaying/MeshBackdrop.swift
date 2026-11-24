@@ -28,7 +28,15 @@ struct MeshBackdrop: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.colorScheme) private var colorScheme
     @AppStorage("musicsk_player_background") private var backgroundMode = "original"
+    @AppStorage("ambient_animation") private var animationEnabled = true
+    @AppStorage("ambient_speed") private var motionSpeed = 1.0
+    @AppStorage("ambient_blur") private var blurAmount = 64.0
+    @AppStorage("ambient_intensity") private var gradientIntensity = 1.0
+    @AppStorage("ambient_saturation") private var saturation = 1.0
+    @AppStorage("ambient_brightness") private var brightness = 0.0
+    @AppStorage("ambient_darkening") private var darkening = 0.0
     @State private var appliedSeed: Int?
     @State private var phase: Double = 0
     @State private var base: Color?
@@ -49,9 +57,12 @@ struct MeshBackdrop: View {
         Group {
             if backgroundMode == "black" {
                 Color.black.ignoresSafeArea().allowsHitTesting(false)
+            } else if backgroundMode == "system" {
+                (colorScheme == .dark ? Color.black : Color(white: 0.30))
+                    .ignoresSafeArea().allowsHitTesting(false)
             } else if backgroundMode == "solid" {
                 (base ?? initialBase).ignoresSafeArea().allowsHitTesting(false)
-            } else if backgroundMode == "static" || legacyMesh || reduceTransparency {
+            } else if backgroundMode == "static" || (legacyMesh && backgroundMode == "original") || reduceTransparency {
                 // v1.5's backdrop behind its switch: one static wash, no
                 // animated blobs. The colour still follows the artwork; only
                 // the motion is gone.
@@ -66,9 +77,20 @@ struct MeshBackdrop: View {
                     .ignoresSafeArea()
                     .allowsHitTesting(false)
             } else {
-                animatedMesh
+                if backgroundMode == "dynamic" {
+                    TimelineView(.animation(minimumInterval: 1.0 / 24.0,
+                                            paused: reduceAnimation || !animationEnabled)) { timeline in
+                        let time = timeline.date.timeIntervalSinceReferenceDate
+                        animatedMesh(at: reduceAnimation || !animationEnabled ? 0 : time * 0.08 * motionSpeed)
+                    }
+                } else {
+                    animatedMesh(at: phase)
+                }
             }
         }
+        .saturation(saturation)
+        .brightness(backgroundMode == "black" ? 0 : brightness)
+        .overlay { Color.black.opacity(darkening).allowsHitTesting(false) }
         .task(id: PaletteInput(seed: seed, artwork: artwork)) {
             let input = PaletteInput(seed: seed, artwork: artwork)
             let palette = await Task.detached(priority: .utility) {
@@ -90,9 +112,8 @@ struct MeshBackdrop: View {
         PlatformSettings.shared.getBoolean(key: "legacy_mesh_gradient", default: false)
     }
 
-    private var animatedMesh: some View {
+    private func animatedMesh(at angle: Double) -> some View {
         let blobs = [blob0, blob1, blob2, blob3]
-        let angle = phase
         return Canvas(rendersAsynchronously: true) { context, size in
             let anchors: [(CGFloat, CGFloat)] = [
                 (0.20, 0.25), (0.80, 0.20), (0.75, 0.80), (0.25, 0.75),
@@ -107,7 +128,7 @@ struct MeshBackdrop: View {
                 context.fill(
                     Path(ellipseIn: rect),
                     with: .radialGradient(
-                        Gradient(colors: [color.opacity(0.85), color.opacity(0)]),
+                        Gradient(colors: [color.opacity(0.85 * gradientIntensity), color.opacity(0)]),
                         center: CGPoint(x: x, y: y),
                         startRadius: 0,
                         endRadius: radius
@@ -124,7 +145,7 @@ struct MeshBackdrop: View {
             )
         }
         .background(base ?? initialBase)
-        .blur(radius: reduceBlur ? 0 : 64)
+        .blur(radius: reduceBlur ? 0 : blurAmount)
         .scaleEffect(1.3)
         .clipped()
         .ignoresSafeArea()

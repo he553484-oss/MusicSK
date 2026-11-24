@@ -157,6 +157,7 @@ jobs:
           run_check cached-bitrate bash scripts/check-cached-bitrate.sh
           run_check lossless-note bash scripts/check-lossless-note.sh
           run_check settings-audio bash scripts/check-settings-audio.sh
+          run_check appearance-profile bash scripts/check-appearance-profile.sh
           run_check pages bash scripts/check-pages.sh
           run_check settings-parity bash scripts/check-settings-parity.sh
           run_check menus bash scripts/check-menus.sh

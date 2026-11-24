@@ -10,17 +10,27 @@ import AppKit
 // Appearance and performance.
 extension SettingsView {
     func buildAppearanceRows(_ rows: inout SettingsRows) {
+        rows.row("Appearance Lab", "appearance", "personalization", "profiles", "background", "apariencia", "personalización") {
+            PushLink { AppearanceLab() } label: {
+                SettingsLine(glyph: .theme, title: "Appearance Lab", subtitle: String(localized: "Player background and visual profiles")) { EmptyView() }
+            }
+        }
         rows.row("Player Background", "background", "artwork", "ambient", "oled", "fondo", "color") {
             VStack(alignment: .leading, spacing: 10) {
                 SettingsLine(glyph: .mesh, title: "Player Background") { EmptyView() }
-                Picker("Player Background", selection: $playerBackground) {
+                Picker("Player Background", selection: Binding(get: { playerBackground }, set: {
+                    playerBackground = $0
+                    appearanceProfile = "custom"
+                })) {
                     Text("Original Ambient").tag("original")
+                    Text("Apple Dynamic").tag("dynamic")
                     #if os(iOS)
                     Text("Artwork Blur").tag("artwork")
                     #endif
                     Text("Static Gradient").tag("static")
                     Text("Dominant Color").tag("solid")
                     Text("OLED Black").tag("black")
+                    Text("System").tag("system")
                 }
                 .padding(.leading, 41)
             }
