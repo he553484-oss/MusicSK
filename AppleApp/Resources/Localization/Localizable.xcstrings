@@ -1,6 +1,76 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Requested Provider": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proveedor solicitado"
+          }
+        }
+      }
+    },
+    "Effective Provider": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proveedor efectivo"
+          }
+        }
+      }
+    },
+    "Local files": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archivos locales"
+          }
+        }
+      }
+    },
+    "Network library": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biblioteca de red"
+          }
+        }
+      }
+    },
+    "Cached audio": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Audio en caché"
+          }
+        }
+      }
+    },
+    "Alternative source": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fuente alternativa"
+          }
+        }
+      }
+    },
+    "Add-on": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Complemento"
+          }
+        }
+      }
+    },
     "Automatic": {
       "localizations": {
         "es": {

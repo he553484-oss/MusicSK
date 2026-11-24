@@ -44,7 +44,8 @@ struct AudioPipelineSheet: View {
                     stage(0, "doc.text", "Track Info") {
                         row("Requested Source Quality", claimedQuality)
                         row("Stream format (reported)", measuredStream)
-                        row("Source", sourceName)
+                        row("Requested Provider", requestedProvider)
+                        row("Effective Provider", sourceName)
                         if let id = controller.current?.id, let note = controller.sourceDecisionNotes[id] {
                             row("Source decision", note)
                         }
@@ -248,7 +249,25 @@ struct AudioPipelineSheet: View {
     private var device: OutputDeviceRec { controller.outputDevice }
 
     private var sourceName: String {
-        controller.playbackSourceName ?? "—"
+        localizedProvider(controller.playbackSourceName)
+    }
+
+    private var requestedProvider: String {
+        guard let entry = controller.current else { return "—" }
+        return localizedProvider(PlaybackSourceLabel.requested(source: entry.source, id: entry.id, isLocal: entry.isLocal))
+    }
+
+    private func localizedProvider(_ name: String?) -> String {
+        switch name {
+        case "Local files": String(localized: "Local files")
+        case "Network library": String(localized: "Network library")
+        case "Cached audio": String(localized: "Cached audio")
+        case "Alternative source": String(localized: "Alternative source")
+        case "Add-on": String(localized: "Add-on")
+        case "YouTube": "YouTube"
+        case "JioSaavn": "JioSaavn"
+        default: name ?? "—"
+        }
     }
 
     private var codec: String { nerd?.codec.isEmpty == false ? nerd!.codec : "—" }
