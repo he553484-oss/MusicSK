@@ -249,7 +249,10 @@ struct NowPlayingView: View {
         if let context = controller.playbackContext, !context.isEmpty {
             return String(localized: "Playing from \(context)")
         }
-        if current.isLocal { return String(localized: "Playing from Local files") }
+        if current.isLocal, let source = controller.playbackSourceName {
+            let displaySource = localizedPlaybackSource(source)
+            return String(localized: "Playing from \(displaySource)")
+        }
         if current.source.hasPrefix("yt:") { return String(localized: "Playing from YouTube") }
         return nil
     }
