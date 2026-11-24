@@ -1,9 +1,44 @@
 package com.music.bitchord.data.sources
 
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.CancellationException
 import kotlin.test.*
 
 class JioSaavnTransportTest {
+    @Test fun cancellationIsNotConvertedIntoAnUnavailableSong() = runTest {
+        val source = JioSaavnSource(SourceConfig(kind = SourceKind.JIOSAAVN)) { _, _ ->
+            throw CancellationException("cancelled fixture")
+        }
+        var cancelled = false
+        try {
+            source.stream("fixture", StreamRequest.Best)
+        } catch (_: CancellationException) {
+            cancelled = true
+        }
+        assertTrue(cancelled)
+    }
+
+    @Test fun fallsBackWhenRequestedRenditionHasNoUrl() = runTest {
+        val requested = mutableListOf<String>()
+        val source = JioSaavnSource(SourceConfig(kind = SourceKind.JIOSAAVN)) { call, args ->
+            when (call) {
+                "song.getDetails" -> """{"songs":[{"id":"fixture","title":"Example","more_info":{"encrypted_media_url":"opaque"}}]}"""
+                "song.generateAuthToken" -> {
+                    val bitrate = args["bitrate"].orEmpty()
+                    requested += bitrate
+                    if (bitrate == "160") """{"auth_url":"https://example.test/audio.mp4"}""" else """{}"""
+                }
+                else -> error("Unexpected API method")
+            }
+        }
+        val stream = source.stream("fixture", StreamRequest.Best)
+        assertNotNull(stream)
+        assertEquals(listOf("320", "160"), requested)
+        assertEquals("https://example.test/audio.mp4", stream.url)
+        assertNull(stream.format.kbps)
+        assertNull(stream.format.codec)
+    }
+
     @Test fun catalogueAndMediaUseProviderProtocol() = runTest {
         val calls = mutableListOf<String>()
         val song = """{"id":"fixture","title":"Example","image":"https://example.test/150x150.jpg","explicit_content":"1","more_info":{"album":"Album","duration":"180","encrypted_media_url":"opaque","artistMap":{"primary_artists":[{"name":"Artist"}]}}}"""

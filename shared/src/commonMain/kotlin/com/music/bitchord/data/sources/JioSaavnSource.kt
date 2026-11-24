@@ -3,6 +3,7 @@ package com.music.bitchord.data.sources
 import com.music.bitchord.data.DebugLog
 import com.music.bitchord.data.http.Http
 import com.music.bitchord.data.model.Song
+import kotlinx.coroutines.CancellationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -91,24 +92,34 @@ class JioSaavnSource internal constructor(
      */
     override suspend fun stream(trackId: String, request: StreamRequest): SourceStream? {
         val song = runCatching { fetchSong(trackId) }
-            .onFailure { DebugLog.d("JioSaavn song failed: ${it.message}") }
+            .onFailure {
+                if (it is CancellationException) throw it
+                DebugLog.d("JioSaavn song failed: ${it.message}")
+            }
             .getOrNull() ?: return null
         val cap = request.kbpsCeiling
-        val bitrate = listOf(320, 160, 96, 48).firstOrNull { cap == null || it <= cap } ?: return null
+        val bitrates = listOf(320, 160, 96, 48).filter { cap == null || it <= cap }
         val encrypted = song.encryptedMediaUrl ?: return null
-        val response = api("song.generateAuthToken", mapOf("url" to encrypted, "bitrate" to bitrate.toString()))
-        val url = (response as? JsonObject)?.str("auth_url")
-            ?.takeIf { it.startsWith("https://") } ?: return null
-        return SourceStream(
-            url = url,
-            // The bitrate is a request to the token endpoint, not proof of
-            // what its URL serves. The native verifier fills in the actual
-            // format when it can inspect the stream.
-            format = StreamFormat(),
-            belowRequest = false,
-            durationSec = song.durationSec,
-            sourceConfigId = config.id,
-        )
+        for (bitrate in bitrates) {
+            // A failed request is a network/service error; avoid four retries
+            // against an unreachable service. A valid response without a URL
+            // may simply mean that this rendition is unavailable.
+            val response = runCatching {
+                api("song.generateAuthToken", mapOf("url" to encrypted, "bitrate" to bitrate.toString()))
+            }.onFailure { if (it is CancellationException) throw it }.getOrNull() ?: return null
+            val url = (response as? JsonObject)?.str("auth_url")
+                ?.takeIf { it.startsWith("https://") } ?: continue
+            return SourceStream(
+                url = url,
+                // A requested bitrate is not proof of what the URL serves.
+                // The native verifier fills in the actual format when possible.
+                format = StreamFormat(),
+                belowRequest = false,
+                durationSec = song.durationSec,
+                sourceConfigId = config.id,
+            )
+        }
+        return null
     }
 
     // ── Transport ─────────────────────────────────────────────────────────
