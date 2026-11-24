@@ -249,6 +249,10 @@ extension NowPlayingView {
 #endif
     }
 
+    private var pillDivider: some View {
+        Rectangle().fill(.white.opacity(0.20)).frame(width: 1, height: 44)
+    }
+
     var outputCaption: String {
         // The live CoreAudio route, which is the only place the *current*
         // output is named on iOS: cpal's default device does not follow a
