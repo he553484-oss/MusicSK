@@ -39,6 +39,28 @@ class JioSaavnTransportTest {
         assertNull(stream.format.codec)
     }
 
+    @Test fun tokenCancellationDoesNotRetryOtherRenditions() = runTest {
+        val requested = mutableListOf<String>()
+        val source = JioSaavnSource(SourceConfig(kind = SourceKind.JIOSAAVN)) { call, args ->
+            when (call) {
+                "song.getDetails" -> """{"songs":[{"id":"fixture","title":"Example","more_info":{"encrypted_media_url":"opaque"}}]}"""
+                "song.generateAuthToken" -> {
+                    requested += args["bitrate"].orEmpty()
+                    throw CancellationException("cancelled token fixture")
+                }
+                else -> error("Unexpected API method")
+            }
+        }
+        var cancelled = false
+        try {
+            source.stream("fixture", StreamRequest.Best)
+        } catch (_: CancellationException) {
+            cancelled = true
+        }
+        assertTrue(cancelled)
+        assertEquals(listOf("320"), requested)
+    }
+
     @Test fun catalogueAndMediaUseProviderProtocol() = runTest {
         val calls = mutableListOf<String>()
         val song = """{"id":"fixture","title":"Example","image":"https://example.test/150x150.jpg","explicit_content":"1","more_info":{"album":"Album","duration":"180","encrypted_media_url":"opaque","artistMap":{"primary_artists":[{"name":"Artist"}]}}}"""
