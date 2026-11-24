@@ -423,10 +423,17 @@ fn mixer_eq_tone(hz: f64, mode: SoundMode, enabled: bool, bands: [f32; 7]) -> f6
         preamp_db: curve.preamp_db, balance: 0.0,
     }, &mut producer);
     let mut output = Vec::new();
-    for _ in 0..4 {
+    // Voice decoding runs on a worker. A fixed number of immediate render
+    // attempts can finish before that worker produces any samples on CI.
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    while output.len() < rate as usize * 2 && std::time::Instant::now() < deadline {
+        let before = output.len();
         super::super::render::render_available(&mut state, &mut producer);
         while let Ok(sample) = consumer.pop() { output.push(sample); }
         state.buffered_frames.store(0, Ordering::Relaxed);
+        if output.len() == before {
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
     }
     let rms = rms_window(&output, rate as usize / 2, rate as usize / 2);
     assert!(rms > 0.0, "the mixer must render the test tone");
