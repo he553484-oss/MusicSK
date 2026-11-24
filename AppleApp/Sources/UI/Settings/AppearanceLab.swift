@@ -30,12 +30,22 @@ struct AppearanceLab: View {
                             .overlay { Color.black.opacity(darkening) }
                     }
                     #endif
-                    VStack(alignment: .leading, spacing: 5) {
+                    VStack {
                         Spacer()
-                        Text(controller.current?.title ?? String(localized: "Player Preview"))
-                            .font(.headline).lineLimit(1)
-                        Text(controller.current?.artist ?? String(localized: "Play a song to preview its artwork"))
-                            .font(.subheadline).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
+                        HStack(spacing: 10) {
+                            ArtworkView(entry: controller.current, side: 42)
+                                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(controller.current?.title ?? String(localized: "Player Preview"))
+                                    .font(.headline).lineLimit(1)
+                                Text(controller.current?.artist ?? String(localized: "Play a song to preview its artwork"))
+                                    .font(.subheadline).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
+                            }
+                            Spacer(minLength: 0)
+                            Image(systemName: "play.fill").font(.body.weight(.semibold))
+                        }
+                        .padding(10)
+                        .chromeGlass(in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity, alignment: .leading)
