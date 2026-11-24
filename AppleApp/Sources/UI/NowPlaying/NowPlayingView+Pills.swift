@@ -152,6 +152,11 @@ extension NowPlayingView {
 
     private var outputPartyPill: some View {
         HStack(spacing: 0) {
+            #if os(iOS)
+            AirPlayRouteButton(tint: UIColor.white.withAlphaComponent(0.88))
+                .frame(width: outputPartyButtonWidth, height: 44)
+                .accessibilityLabel("Audio output")
+            #else
             Button {
                 Haptics.play(.tap)
                 showOutputDevice = true
@@ -164,6 +169,7 @@ extension NowPlayingView {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Audio output")
+            #endif
 
             pillDivider
 

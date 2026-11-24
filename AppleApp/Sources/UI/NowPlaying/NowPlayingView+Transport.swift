@@ -218,8 +218,9 @@ extension NowPlayingView {
             if let current = controller.current {
                 SongActionButtons(entry: current, showSleepTimer: true, showDebugLog: true)
             }
-            // The output route and live pipeline have their own player control;
-            // this menu follows the upstream track-action list.
+            // Keep the detailed route and pipeline available alongside the
+            // system's direct output picker in the player controls.
+            Button("Audio Output") { showOutputDevice = true }
             if !controller.displayedLyrics.isEmpty {
                 Divider()
                 Button("Lyrics Offset…") { showLyricsOffset = true }

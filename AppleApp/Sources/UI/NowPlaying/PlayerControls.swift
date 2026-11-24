@@ -95,12 +95,16 @@ struct ToolbarVolumeSlider: View {
 
 #if os(iOS)
 struct AirPlayRouteButton: UIViewRepresentable {
+    var tint: UIColor? = nil
     func makeUIView(context: Context) -> AVRoutePickerView {
         let view = AVRoutePickerView()
         view.prioritizesVideoDevices = false
+        if let tint { view.tintColor = tint }
         return view
     }
-    func updateUIView(_ uiView: AVRoutePickerView, context: Context) {}
+    func updateUIView(_ uiView: AVRoutePickerView, context: Context) {
+        if let tint { uiView.tintColor = tint }
+    }
 }
 #else
 
