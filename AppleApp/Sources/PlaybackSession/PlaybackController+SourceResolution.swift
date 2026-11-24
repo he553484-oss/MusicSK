@@ -126,7 +126,9 @@ extension PlaybackController {
                 await latencyResolved?(ProcessInfo.processInfo.systemUptime, "cold", "JioSaavn")
                 return ResolveOutcome(
                     source: ResolvedSource(
-                        source: hit.url, headers: [:], kbps: hit.kbps,
+                        // The token request asks for a bitrate; the response
+                        // does not confirm the delivered stream's bitrate.
+                        source: hit.url, headers: [:], kbps: 0,
                         lossless: false, origin: .substitute
                     ),
                     leftover: nil

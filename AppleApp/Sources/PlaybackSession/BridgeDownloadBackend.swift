@@ -22,7 +22,7 @@ struct BridgeDownloadBackend: DownloadBackend {
             let id = String((entry.source.hasPrefix("saavn:") ? entry.source : entry.id).dropFirst(6))
             if let stream = await JioSaavn.streamURL(for: id) {
                 return try encode(url: stream.url, headers: [:], provider: "jiosaavn", identity: id,
-                    codec: "MP4", kbps: stream.kbps, lossless: false)
+                    codec: nil, kbps: nil, lossless: false)
             }
         }
         guard entry.source.hasPrefix("yt:"), let videoId = entry.videoId else {
