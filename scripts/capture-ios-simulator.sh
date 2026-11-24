@@ -172,11 +172,13 @@ stop_app
 
 # Static, explicitly labelled metadata and artwork exercise layout only.
 # They do not start audio or represent a successful provider stream.
-start_app MAIN -musicsk_capture_fixture YES -musicsk_capture_player YES
+start_app MAIN -musicsk_capture_fixture YES -musicsk_capture_player YES \
+    -musicsk_appearance_profile apple -musicsk_player_background dynamic
 capture 07-reproductor-fixture-es.png
 stop_app
 
-start_app QUEUE -musicsk_capture_fixture YES -musicsk_capture_player YES
+start_app QUEUE -musicsk_capture_fixture YES -musicsk_capture_player YES \
+    -musicsk_appearance_profile apple -musicsk_player_background dynamic
 capture 08-cola-fixture-es.png
 stop_app
 
@@ -204,6 +206,7 @@ El archivo biblioteca-validacion.txt acredita que la vista terminó su carga
 y que Replay agrupó los registros en una sola pista. El simulador se lanzó
 sin pista en reproducción. La reproducción, el vídeo, el volumen físico,
 Control Center y la pantalla bloqueada requieren comprobaciones adicionales.
-Las capturas 07 y 08 contienen metadatos y portada sintéticos, sin audio, para
-comprobar únicamente la distribución del reproductor y la cola.
+Las capturas 07 y 08 usan el perfil Apple Experience, con metadatos y portada
+sintéticos, sin audio, para comprobar únicamente la distribución del reproductor
+y la cola.
 EOF
