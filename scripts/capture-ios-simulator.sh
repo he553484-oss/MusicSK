@@ -146,6 +146,16 @@ grep -qF 'library landing load finished shelves=0 failed=false' "$output/bibliot
 grep -qF 'library replay ready songs=1' "$output/biblioteca-validacion.txt"
 stop_app
 
+# Static, explicitly labelled metadata and artwork exercise layout only.
+# They do not start audio or represent a successful provider stream.
+start_app MAIN -musicsk_capture_fixture YES -musicsk_capture_player YES
+capture 07-reproductor-fixture-es.png
+stop_app
+
+start_app QUEUE -musicsk_capture_fixture YES -musicsk_capture_player YES
+capture 08-cola-fixture-es.png
+stop_app
+
 version="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app/Info.plist")"
 build="$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$app/Info.plist")"
 toolchain="$(xcodebuild -version | paste -sd ' ' -)"
@@ -170,4 +180,6 @@ El archivo biblioteca-validacion.txt acredita que la vista terminó su carga
 y que Replay agrupó los registros en una sola pista. El simulador se lanzó
 sin pista en reproducción. La reproducción, el vídeo, el volumen físico,
 Control Center y la pantalla bloqueada requieren comprobaciones adicionales.
+Las capturas 07 y 08 contienen metadatos y portada sintéticos, sin audio, para
+comprobar únicamente la distribución del reproductor y la cola.
 EOF

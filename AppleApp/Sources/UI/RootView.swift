@@ -77,6 +77,25 @@ struct RootView: View {
             if UserDefaults.standard.bool(forKey: "musicsk_capture_library") {
                 selection = AppModel.Tab.library.rawValue
             }
+            if UserDefaults.standard.bool(forKey: "musicsk_capture_fixture") {
+                // Synthetic UI fixture in a disposable simulator only. It
+                // deliberately does not start an engine or claim playback.
+                let artwork = UIGraphicsImageRenderer(size: CGSize(width: 256, height: 256)).pngData { context in
+                    UIColor(red: 0.08, green: 0.18, blue: 0.62, alpha: 1).setFill()
+                    context.fill(CGRect(x: 0, y: 0, width: 256, height: 256))
+                    UIColor.white.withAlphaComponent(0.65).setFill()
+                    context.cgContext.fillEllipse(in: CGRect(x: 68, y: 68, width: 120, height: 120))
+                }
+                let entries = (0..<6).map { index in
+                    QueueEntry(id: "capture-\(index)", title: index == 0 ? "Pista de prueba" : "Siguiente pista \(index)",
+                               artist: "Captura sin audio", source: "/capture-fixture-\(index)",
+                               thumbnailUrl: nil, durationText: nil, albumName: nil,
+                               artworkData: artwork, isLocal: true)
+                }
+                controller.queue = entries
+                controller.playingIndex = 0
+                controller.current = entries.first
+            }
             if UserDefaults.standard.bool(forKey: "musicsk_capture_player") {
                 try? await Task.sleep(for: .seconds(1))
                 appModel.nowPlayingPresented = true
