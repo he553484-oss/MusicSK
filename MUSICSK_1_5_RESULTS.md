@@ -70,3 +70,9 @@ También pasaron 13 pruebas Rust aisladas de `sound.rs` y del remuestreador, inc
 Solicitud de IPA: no se encontró ninguna IPA de esta rama. Este entorno es Linux sin Xcode; `gh auth status` volvió a rechazar la credencial disponible, por lo que no se pudo publicar la rama ni lanzar el workflow `build-ios`. No se ha generado artefacto en esta sesión.
 
 `5b6805b`: prepara el candidato 1.5.0 build 10 y agrega al modo `build-ios` las verificaciones de JioSaavn, bitrate de caché y razones de fallback. Las cuatro pruebas pasaron en Linux y ambos YAML son sintácticamente válidos. No se ha ejecutado el workflow remoto ni compilado la aplicación; la IPA pendiente sería sin firmar y necesitaría firma/provisión adecuada para instalarse.
+
+## Compilación iOS del candidato
+
+El workflow [45428991965](https://github.com/he553484-oss/MusicSK/actions/runs/45428991965) terminó correctamente para el commit de código `7a3c9ecdcff840634cfb885fe63138733c8d49ec`. Pasaron las verificaciones previas, el archivo iOS y las pruebas adicionales de motor en macOS (47 comprobaciones y decodificación PCM/ALAC de 24 bits y 96 kHz). El artefacto contiene `Musicsk-1.5.0-build10-ios-unsigned.ipa`; se volvió a validar su SHA-256 y estructura iOS arm64, versión, identificador, extensión y revisión.
+
+SHA-256: `b0a5604812da0e52e2070ae34420361d1044a2a7b9d229d6c6af8b6df2c96a8d`. La IPA no está firmada y requiere firma y provisión adecuadas para instalarse. La ejecución utilizó salida virtual de macOS y no prueba un iPhone, Bluetooth, bloqueo, segundo plano ni JioSaavn real. El crash de Biblioteca comunicado continúa sin reproducirse con el historial y registro del dispositivo.
