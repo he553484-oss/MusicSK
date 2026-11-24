@@ -20,6 +20,29 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# A successful screenshot command can still capture the black launch screen.
+# Inspect the body of the image, excluding the status bar, before accepting it.
+cat >"$scratch/check-capture.swift" <<'SWIFT'
+import AppKit
+import Foundation
+guard CommandLine.arguments.count == 2,
+      let image = NSImage(contentsOfFile: CommandLine.arguments[1]),
+      let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+    fatalError("Could not decode simulator capture")
+}
+let bitmap = NSBitmapImageRep(cgImage: cg)
+var visible = 0
+for y in 15..<90 {
+    for x in 0..<100 {
+        guard let color = bitmap.colorAt(x: x * max(1, cg.width - 1) / 100,
+                                         y: y * max(1, cg.height - 1) / 100)?.usingColorSpace(.deviceRGB) else { continue }
+        if color.redComponent + color.greenComponent + color.blueComponent > 0.24 { visible += 1 }
+    }
+}
+guard visible >= 30 else { fatalError("Simulator capture appears to be a black launch screen") }
+SWIFT
+xcrun swiftc "$scratch/check-capture.swift" -o "$scratch/check-capture"
+
 selection="$(xcrun simctl list devices available --json | python3 -c '
 import json
 import sys
@@ -96,6 +119,7 @@ capture() {
     fi
     xcrun simctl io "$device_id" screenshot "$output/$1"
     [[ -s "$output/$1" ]]
+    "$scratch/check-capture" "$output/$1"
 }
 
 start_app MAIN
