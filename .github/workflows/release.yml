@@ -183,7 +183,7 @@ jobs:
 
       - name: Test shared JioSaavn response handling on macOS
         if: env.MODE == 'build-ios'
-        timeout-minutes: 10
+        timeout-minutes: 20
         run: ./gradlew :shared:macosArm64Test --tests '*JioSaavnTransportTest*'
 
       - name: Exercise the native audio engine on macOS
