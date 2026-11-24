@@ -101,9 +101,10 @@ class JioSaavnSource internal constructor(
             ?.takeIf { it.startsWith("https://") } ?: return null
         return SourceStream(
             url = url,
-            // JioSaavn serves AAC in an MP4 container, so the container is what
-            // actually matters to the engine and to the extension a download writes.
-            format = StreamFormat(codec = "aac", kbps = bitrate),
+            // The bitrate is a request to the token endpoint, not proof of
+            // what its URL serves. The native verifier fills in the actual
+            // format when it can inspect the stream.
+            format = StreamFormat(),
             belowRequest = false,
             durationSec = song.durationSec,
             sourceConfigId = config.id,
