@@ -235,11 +235,16 @@ struct ArtworkContinuation: View {
 /// scaled across the screen under a dark readability wash.
 struct FullArtworkBlurBackdrop: View {
     let entry: QueueEntry?
+    /// Nil preserves the existing lyric/queue blur. The appearance preview
+    /// and selected artwork background can request their own cached radius.
+    var blurRadius: Double? = nil
     @State private var image: PlatformImage?
 
     private var cacheKey: String? {
         guard let entry else { return nil }
-        return entry.thumbnailUrl ?? "embedded:\(entry.id)"
+        let artworkKey = entry.thumbnailUrl ?? "embedded:\(entry.id)"
+        guard let blurRadius else { return artworkKey }
+        return "\(artworkKey):ambient-blur:\(Int(blurRadius.rounded()))"
     }
 
     var body: some View {
@@ -281,7 +286,8 @@ struct FullArtworkBlurBackdrop: View {
             let prepared = await PlayerArtworkBlurCache.image(
                 key: cacheKey,
                 url: entry.thumbnailUrl,
-                data: entry.artworkData
+                data: entry.artworkData,
+                radius: blurRadius.map { Float(min(100, max(0, $0)) * 22 / 64) } ?? 22
             )
             guard !Task.isCancelled else { return }
             image = prepared
@@ -302,7 +308,7 @@ private enum PlayerArtworkBlurCache {
     private static let context = CIContext(options: [.cacheIntermediates: false])
     private static let pixelLimit: CGFloat = 256
 
-    static func image(key: String, url: String?, data: Data?) async -> PlatformImage? {
+    static func image(key: String, url: String?, data: Data?, radius: Float = 22) async -> PlatformImage? {
         if let cached = images.object(forKey: key as NSString) { return cached }
         let source: PlatformImage?
         if let data {
@@ -320,7 +326,7 @@ private enum PlayerArtworkBlurCache {
         guard await MainActor.run(body: { UIApplication.shared.applicationState != .background }) else { return nil }
         #endif
         let prepared = await Task.detached(priority: .utility) {
-            renderBlurred(source)
+            renderBlurred(source, radius: radius)
         }.value
         if let prepared {
             images.setObject(prepared, forKey: key as NSString, cost: decodedCost(prepared))
@@ -339,7 +345,7 @@ private enum PlayerArtworkBlurCache {
         #endif
     }
 
-    private static func renderBlurred(_ source: PlatformImage) -> PlatformImage? {
+    private static func renderBlurred(_ source: PlatformImage, radius: Float) -> PlatformImage? {
         #if os(iOS)
         guard let cgImage = source.cgImage else { return nil }
         #else
@@ -355,7 +361,7 @@ private enum PlayerArtworkBlurCache {
         let scaled = input.transformed(by: CGAffineTransform(scaleX: scale, y: scale))
         let filter = CIFilter.gaussianBlur()
         filter.inputImage = scaled.clampedToExtent()
-        filter.radius = 22
+        filter.radius = radius
         guard let output = filter.outputImage?.cropped(to: scaled.extent),
               let blurred = context.createCGImage(output, from: scaled.extent)
         else { return nil }

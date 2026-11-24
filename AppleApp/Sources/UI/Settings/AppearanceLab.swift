@@ -23,7 +23,10 @@ struct AppearanceLab: View {
                                  artwork: controller.current?.artworkData)
                     #if os(iOS)
                     if background == "artwork" && !reduceTransparency {
-                        FullArtworkBlurBackdrop(entry: controller.current)
+                        FullArtworkBlurBackdrop(entry: controller.current, blurRadius: blur)
+                            .saturation(saturation)
+                            .brightness(brightness)
+                            .overlay { Color.black.opacity(darkening) }
                     }
                     #endif
                     VStack(alignment: .leading, spacing: 5) {
@@ -71,7 +74,7 @@ struct AppearanceLab: View {
             } header: {
                 Text("Ambient Background")
             } footer: {
-                Text("Gradient, movement and blur controls affect the ambient gradient. Artwork Blur uses the existing cached artwork effect. System accessibility and Low Power Mode can reduce effects.")
+                Text("Movement and gradient intensity apply to Apple Dynamic. Accessibility and Low Power Mode can reduce effects.")
             }
             Section {
                 Button("Restore Default Appearance") { applyProfile("original") }

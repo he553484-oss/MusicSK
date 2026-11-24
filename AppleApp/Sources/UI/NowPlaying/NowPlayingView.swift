@@ -52,6 +52,10 @@ struct NowPlayingView: View {
     /// from the pill while the track plays.
     @AppStorage("show_music_videos") var showMusicVideos = false
     @AppStorage("musicsk_player_background") var playerBackground = "original"
+    @AppStorage("ambient_blur") var ambientBlur = 64.0
+    @AppStorage("ambient_saturation") var ambientSaturation = 1.0
+    @AppStorage("ambient_brightness") var ambientBrightness = 0.0
+    @AppStorage("ambient_darkening") var ambientDarkening = 0.0
     /// The one sung line under the title. Off leaves the player to the
     /// artwork, credits and controls; the lyrics pane is untouched.
     @AppStorage("player_lyric_line") var showsLyricLine = true

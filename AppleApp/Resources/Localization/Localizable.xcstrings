@@ -1,6 +1,16 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Movement and gradient intensity apply to Apple Dynamic. Accessibility and Low Power Mode can reduce effects.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El movimiento y la intensidad del degradado se aplican al fondo Dinámico Apple. La accesibilidad y el modo de bajo consumo pueden reducir los efectos."
+          }
+        }
+      }
+    },
     "Appearance Lab": {
       "localizations": {
         "es": {

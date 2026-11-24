@@ -93,7 +93,10 @@ extension NowPlayingView {
                     MeshBackdrop(seed: controller.current?.id.hashValue ?? 0, artwork: controller.current?.artworkData,
                                  initialBase: fill)
                     if playerBackground == "artwork" && !reduceTransparency {
-                        FullArtworkBlurBackdrop(entry: controller.current)
+                        FullArtworkBlurBackdrop(entry: controller.current, blurRadius: ambientBlur)
+                            .saturation(ambientSaturation)
+                            .brightness(ambientBrightness)
+                            .overlay { Color.black.opacity(ambientDarkening) }
                     }
                     if continuation && playerBackground == "original" {
                         ArtworkContinuation(entry: controller.current, seam: width)
