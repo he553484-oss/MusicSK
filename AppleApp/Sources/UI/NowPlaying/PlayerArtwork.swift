@@ -240,10 +240,15 @@ struct FullArtworkBlurBackdrop: View {
     var blurRadius: Double? = nil
     @State private var image: PlatformImage?
 
+    private var safeBlurRadius: Double? {
+        guard let blurRadius, blurRadius.isFinite else { return nil }
+        return min(100, max(0, blurRadius))
+    }
+
     private var cacheKey: String? {
         guard let entry else { return nil }
         let artworkKey = entry.thumbnailUrl ?? "embedded:\(entry.id)"
-        guard let blurRadius else { return artworkKey }
+        guard let blurRadius = safeBlurRadius else { return artworkKey }
         return "\(artworkKey):ambient-blur:\(Int(blurRadius.rounded()))"
     }
 
@@ -287,7 +292,7 @@ struct FullArtworkBlurBackdrop: View {
                 key: cacheKey,
                 url: entry.thumbnailUrl,
                 data: entry.artworkData,
-                radius: blurRadius.map { Float(min(100, max(0, $0)) * 22 / 64) } ?? 22
+                radius: safeBlurRadius.map { Float($0 * 22 / 64) } ?? 22
             )
             guard !Task.isCancelled else { return }
             image = prepared
