@@ -95,12 +95,12 @@ extension NowPlayingView {
                     if playerBackground == "artwork" && !reduceTransparency {
                         FullArtworkBlurBackdrop(entry: controller.current)
                     }
-                    if continuation {
+                    if continuation && playerBackground == "original" {
                         ArtworkContinuation(entry: controller.current, seam: width)
                             .opacity(pane == .main && !videoShowing ? 1 : 0)
                             .animation(Motion.playerPane(reduceMotion), value: blurred)
                     }
-                    if lyricBackdrop == .artwork && (compact || blurred) {
+                    if playerBackground == "original" && lyricBackdrop == .artwork && (compact || blurred) {
                         FullArtworkBlurBackdrop(entry: controller.current)
                             .opacity(blurred ? 1 : 0)
                             .animation(Motion.playerPane(reduceMotion), value: blurred)
