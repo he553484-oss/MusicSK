@@ -71,21 +71,9 @@ extension NowPlayingView {
         .padding(.horizontal, 24)
     }
 
-    /// Below-volume pill, pane-reactive on every layout that carries one:
-    /// the queue-modes pill (shuffle · repeat · AutoPlay · AutoMix) in the
-    /// queue pane, output/party everywhere else. One definition so the
-    /// portrait deck, compact landscape and desktop columns cannot disagree
-    /// about which pill a pane shows — the desktop column used to hardcode
-    /// the output pill, which is why pane toggles never changed anything on
-    /// iPad landscape or macOS.
+    /// Keep output and party controls available on every player pane.
     var actionRowPill: some View {
-        Group {
-            if pane == .queue {
-                queueModesPill
-            } else {
-                outputPartyPill
-            }
-        }
+        Group { outputPartyPill }
         .transition(.opacity.combined(with: .scale(scale: 0.94)))
     }
 
@@ -107,11 +95,6 @@ extension NowPlayingView {
                         pane = pane == .lyrics ? .main : .lyrics
                     }
                     Spacer(minLength: 0)
-                    // The queue pane swaps the output/party pill for the
-                    // queue-modes pill (shuffle · repeat · AutoPlay · AutoMix).
-                    // This is the pill's only home, and it is per platform and
-                    // pane alike: iPad used to be excluded here, which is why its
-                    // queue pane showed output controls instead of these.
                     actionRowPill
                     Spacer(minLength: 0)
                     actionGlyph(.bchQueue, selected: pane == .queue, label: "Up Next") {
@@ -264,89 +247,6 @@ extension NowPlayingView {
 #else
         64
 #endif
-    }
-
-    /// The phone queue keeps its established shuffle/repeat/AutoPlay pill.
-    /// iPad and desktop show these modes with the queue itself instead.
-    var queueModesPill: some View {
-        HStack(spacing: 0) {
-            Button {
-                Haptics.play(controller.shuffleEnabled ? .toggleOff : .toggleOn)
-                controller.toggleShuffle()
-            } label: {
-                Image(.bchShuffle)
-                    .resizable().scaledToFit()
-                    .frame(width: 22, height: 22)
-                    .foregroundStyle(.white.opacity(controller.shuffleEnabled ? 1 : 0.75))
-                    .frame(width: 52, height: 44)
-                    .background(.white.opacity(controller.shuffleEnabled ? 0.14 : 0))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(controller.shuffleEnabled ? "Shuffle on" : "Shuffle off")
-
-            pillDivider
-
-            Button {
-                Haptics.play(.select)
-                controller.cycleRepeat()
-            } label: {
-                Group {
-                    if controller.repeatMode == .one {
-                        Text("1").scaledFont(size: 19, weight: .bold)
-                    } else {
-                        Image(.bchRepeat).resizable().scaledToFit().frame(width: 22, height: 22)
-                    }
-                }
-                .foregroundStyle(.white.opacity(controller.repeatMode == .off ? 0.75 : 1))
-                .frame(width: 52, height: 44)
-                .background(.white.opacity(controller.repeatMode == .off ? 0 : 0.14))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(repeatLabel)
-
-            pillDivider
-
-            Button {
-                Haptics.play(controller.autoplayEnabled ? .toggleOff : .toggleOn)
-                controller.toggleAutoplay()
-            } label: {
-                Image(.bchInfinity)
-                    .resizable().scaledToFit()
-                    .frame(width: 22, height: 22)
-                    .foregroundStyle(.white.opacity(controller.autoplayEnabled ? 1 : 0.75))
-                    .frame(width: 52, height: 44)
-                    .background(.white.opacity(controller.autoplayEnabled ? 0.14 : 0))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(controller.autoplayEnabled ? "AutoPlay on" : "AutoPlay off")
-
-            pillDivider
-
-            // AutoMix is the fourth and last slot, at the right end of the pill.
-            Button {
-                Haptics.play(controller.automixEnabled ? .toggleOff : .toggleOn)
-                controller.toggleAutomix()
-            } label: {
-                Image(.bchVinylRecord)
-                    .resizable().scaledToFit()
-                    .frame(width: 22, height: 22)
-                    .foregroundStyle(.white.opacity(controller.automixEnabled ? 1 : 0.75))
-                    .frame(width: 52, height: 44)
-                    .background(.white.opacity(controller.automixEnabled ? 0.14 : 0))
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(controller.automixEnabled ? "AutoMix on" : "AutoMix off")
-            .help(controller.automixEnabled
-                ? "AutoMix blends the end of one track into the next"
-                : "AutoMix off — tracks change at the end")
-        }
-        .background(.white.opacity(0.12))
-        .clipShape(Capsule())
-        .accessibilityElement(children: .contain)
-    }
-
-    private var pillDivider: some View {
-        Rectangle().fill(.white.opacity(0.20)).frame(width: 1, height: 44)
     }
 
     var outputCaption: String {

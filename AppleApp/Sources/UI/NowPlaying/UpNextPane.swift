@@ -43,6 +43,8 @@ struct UpNextPane: View {
             if showsCurrentTrackHeader {
                 queueHeader
             }
+            QueueModeControls()
+                .padding(.horizontal, 24)
             HStack(alignment: .firstTextBaseline) {
                 Text("Queue")
                     .font(.title2.weight(.bold))
@@ -274,12 +276,6 @@ struct UpNextPane: View {
 
     private func queueListRow(_ item: QueueRow, section: Int, index: Int, rows: [QueueRow]) -> some View {
         HStack(spacing: 10) {
-            Image(systemName: "line.3.horizontal")
-                .font(.body.weight(.medium))
-                .foregroundStyle(.white.opacity(0.4))
-                .frame(width: 20, height: 44)
-                .contentShape(.rect)
-                .onDrag { NSItemProvider(object: "\(section):\(index)" as NSString) }
             Button {
                 controller.playQueueItem(at: item.index)
             } label: {
@@ -312,6 +308,12 @@ struct UpNextPane: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Remove \(item.entry.title) from queue")
+            Image(systemName: "line.3.horizontal")
+                .font(.body.weight(.medium))
+                .foregroundStyle(.white.opacity(0.4))
+                .frame(width: 28, height: 44)
+                .contentShape(.rect)
+                .onDrag { NSItemProvider(object: "\(section):\(index)" as NSString) }
         }
         .listRowBackground(Color.clear)
         .listRowSeparator(.hidden)
@@ -342,7 +344,7 @@ struct UpNextPane: View {
 
     private var queueHeader: some View {
         HStack(spacing: 12) {
-            ArtworkView(entry: controller.current, side: 56)
+            ArtworkView(entry: controller.current, side: 72)
                 .clipShape(.rect(cornerRadius: 8, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {
                 Text(controller.current?.title ?? "Nothing playing")
@@ -401,6 +403,51 @@ struct UpNextPane: View {
     private func remove(_ offsets: IndexSet, rows: [QueueRow]) {
         let indices = IndexSet(offsets.compactMap { rows.indices.contains($0) ? rows[$0].index : nil })
         controller.removeFromQueue(at: indices)
+    }
+}
+
+/// Four separate controls match the queue's compact header while keeping
+/// their actions on the same playback controller as the rest of the player.
+private struct QueueModeControls: View {
+    @Environment(PlaybackController.self) private var controller
+
+    var body: some View {
+        HStack(spacing: 12) {
+            control("shuffle", selected: controller.shuffleEnabled,
+                    label: controller.shuffleEnabled ? "Shuffle on" : "Shuffle off") {
+                Haptics.play(controller.shuffleEnabled ? .toggleOff : .toggleOn)
+                controller.toggleShuffle()
+            }
+            control(controller.repeatMode == .one ? "repeat.1" : "repeat",
+                    selected: controller.repeatMode != .off,
+                    label: controller.repeatMode == .one ? "Repeat one" : controller.repeatMode == .off ? "Repeat off" : "Repeat all") {
+                Haptics.play(.select)
+                controller.cycleRepeat()
+            }
+            control("infinity", selected: controller.autoplayEnabled,
+                    label: controller.autoplayEnabled ? "AutoPlay on" : "AutoPlay off") {
+                Haptics.play(controller.autoplayEnabled ? .toggleOff : .toggleOn)
+                controller.toggleAutoplay()
+            }
+            control("circle.lefthalf.filled", selected: controller.automixEnabled,
+                    label: controller.automixEnabled ? "AutoMix on" : "AutoMix off") {
+                Haptics.play(controller.automixEnabled ? .toggleOff : .toggleOn)
+                controller.toggleAutomix()
+            }
+        }
+    }
+
+    private func control(_ symbol: String, selected: Bool, label: LocalizedStringKey,
+                         action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(selected ? Color.black.opacity(0.8) : .white)
+                .frame(maxWidth: .infinity, minHeight: 40)
+                .background(selected ? Color.white.opacity(0.68) : Color.white.opacity(0.13), in: Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(label))
     }
 }
 
