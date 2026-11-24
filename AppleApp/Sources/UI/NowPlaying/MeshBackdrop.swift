@@ -26,6 +26,8 @@ struct MeshBackdrop: View {
     }
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.scenePhase) private var scenePhase
     @State private var appliedSeed: Int?
     @State private var phase: Double = 0
     @State private var base: Color?
@@ -35,15 +37,16 @@ struct MeshBackdrop: View {
     @State private var blob3 = Color.clear
 
     private var reduceBlur: Bool {
-        PlatformSettings.shared.getBoolean(key: "reduce_dynamic_blur", default: false)
+        reduceTransparency || PlatformSettings.shared.getBoolean(key: "reduce_dynamic_blur", default: false)
     }
     private var reduceAnimation: Bool {
-        reduceMotion || PlatformSettings.shared.getBoolean(key: "reduce_animation", default: false)
+        reduceMotion || scenePhase != .active || ProcessInfo.processInfo.isLowPowerModeEnabled ||
+            PlatformSettings.shared.getBoolean(key: "reduce_animation", default: false)
     }
 
     var body: some View {
         Group {
-            if legacyMesh {
+            if legacyMesh || reduceTransparency {
                 // v1.5's backdrop behind its switch: one static wash, no
                 // animated blobs. The colour still follows the artwork; only
                 // the motion is gone.

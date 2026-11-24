@@ -19,7 +19,8 @@ enum ArtworkPalette {
     }
 
     static func hashPalette(seed: Int) -> [Color] {
-        let base = Double(abs(seed) % 360)
+        // Int.min cannot be passed to abs without overflowing.
+        let base = Double(seed.magnitude % 360)
         func hsl(_ offset: Double, _ s: Double, _ l: Double) -> Color {
             let hue = (base + offset).truncatingRemainder(dividingBy: 360) / 360
             return Color(hue: hue, saturation: s, brightness: l)
@@ -130,6 +131,40 @@ enum ArtworkPalette {
         var blobs: [Color]
     }
 
+    private final class MeshCacheKey: NSObject {
+        let data: Data
+        let seed: Int
+
+        init(data: Data, seed: Int) {
+            self.data = data
+            self.seed = seed
+        }
+
+        override var hash: Int {
+            var hasher = Hasher()
+            hasher.combine(data)
+            hasher.combine(seed)
+            return hasher.finalize()
+        }
+
+        override func isEqual(_ object: Any?) -> Bool {
+            guard let other = object as? MeshCacheKey else { return false }
+            return seed == other.seed && data == other.data
+        }
+    }
+
+    private final class CachedMesh {
+        let value: MeshBlobs
+        init(_ value: MeshBlobs) { self.value = value }
+    }
+
+    private static let meshCache: NSCache<MeshCacheKey, CachedMesh> = {
+        let cache = NSCache<MeshCacheKey, CachedMesh>()
+        cache.countLimit = 16
+        cache.totalCostLimit = 16 * 1024 * 1024
+        return cache
+    }()
+
     private static let fallbackBlobs: [Color] = [
         Color(red: 0x3A / 255, green: 0x1C / 255, blue: 0x71 / 255),
         Color(red: 0xD7 / 255, green: 0x6D / 255, blue: 0x77 / 255),
@@ -138,6 +173,8 @@ enum ArtworkPalette {
     ]
 
     static func meshBlobs(from data: Data?, seed: Int) -> MeshBlobs {
+        let key = data.map { MeshCacheKey(data: $0, seed: seed) }
+        if let key, let cached = meshCache.object(forKey: key) { return cached.value }
         let sampled = from(data: data, seed: seed)
         var distinct: [Color] = []
         for color in sampled where distinct.allSatisfy({ !isClose($0, color) }) {
@@ -152,7 +189,9 @@ enum ArtworkPalette {
             step += 1
         }
         let tunedFour = four.prefix(4).map(tuned)
-        return MeshBlobs(base: dimmed(tunedFour[0]), blobs: Array(tunedFour))
+        let result = MeshBlobs(base: dimmed(tunedFour[0]), blobs: Array(tunedFour))
+        if let key { meshCache.setObject(CachedMesh(result), forKey: key, cost: key.data.count) }
+        return result
     }
 
     private static func isClose(_ a: Color, _ b: Color) -> Bool {
