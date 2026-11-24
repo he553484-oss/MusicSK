@@ -228,9 +228,7 @@ jobs:
           {
             printf 'First decoded frame on macOS using the local H.264 fixture\n'
             printf 'Baseline %s\nCandidate %s\n' "$VIDEO_STARTUP_BASELINE_REF" "$GITHUB_SHA"
-            if ! command -v ffmpeg >/dev/null; then
-              printf 'BLOCKED: ffmpeg is unavailable on this runner\n'
-            elif bash scripts/check-video-startup.sh; then
+            if bash scripts/check-video-startup.sh; then
               printf 'PASS: benchmark completed\n'
             else
               printf 'FAIL: benchmark did not complete\n'

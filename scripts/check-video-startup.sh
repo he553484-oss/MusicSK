@@ -1,6 +1,6 @@
 #!/bin/bash
 # A decoded-frame benchmark against a local H.264 fixture, with one fixed
-# delay per HTTP request. Requires ffmpeg; does not contact YouTube or play sound.
+# delay per HTTP request. Does not contact YouTube or play sound.
 # VIDEO_STARTUP_BASELINE_REF=<git-ref> also measures the previous loader.
 set -euo pipefail
 repo="$(cd "$(dirname "$0")/.." && pwd)"
@@ -11,10 +11,10 @@ cleanup() {
   rm -rf "$work"
 }
 trap cleanup EXIT
-command -v ffmpeg >/dev/null || { echo 'This optional benchmark requires ffmpeg.' >&2; exit 2; }
-ffmpeg -hide_banner -loglevel error -f lavfi -i testsrc2=size=1920x1080:rate=30 -t 4 \
-  -c:v libx264 -threads 2 -preset veryfast -crf 28 -pix_fmt yuv420p -g 30 \
-  -movflags +frag_keyframe+empty_moov+default_base_moof+global_sidx -an "$work/video.mp4"
+# The checked-in synthetic fixture keeps macOS runners reproducible even when
+# ffmpeg is absent. It uses the synthetic testsrc2 pattern at 1080p/30 fps,
+# has no audio and contains no third-party content.
+cp "$repo/scripts/video-startup-verify/fixture-1080p.mp4" "$work/video.mp4"
 python3 "$repo/scripts/video-startup-verify/fixture.py" "$work/video.mp4" "$work/port" > "$work/server.log" 2>&1 &
 fixture_pid=$!
 for _ in $(seq 1 100); do [[ -s "$work/port" ]] && break; sleep 0.05; done
