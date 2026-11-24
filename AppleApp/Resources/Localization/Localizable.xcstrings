@@ -1941,9 +1941,27 @@
       }
     },
     "AutoMix blends the end of one track into the next": {},
-    "AutoMix off": {},
+    "AutoMix off": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mezcla automática desactivada"
+          }
+        }
+      }
+    },
     "AutoMix off — tracks change at the end": {},
-    "AutoMix on": {},
+    "AutoMix on": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mezcla automática activada"
+          }
+        }
+      }
+    },
     "AutoPlay": {
       "localizations": {
         "es": {
@@ -1954,8 +1972,26 @@
         }
       }
     },
-    "AutoPlay off": {},
-    "AutoPlay on": {},
+    "AutoPlay off": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducción automática desactivada"
+          }
+        }
+      }
+    },
+    "AutoPlay on": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproducción automática activada"
+          }
+        }
+      }
+    },
     "Automix Models": {},
     "Automix Performance": {},
     "Automix Transitions": {},
