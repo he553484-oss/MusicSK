@@ -43,7 +43,7 @@ extension PlaybackController {
         var origin: Origin = .other
         var youtubeVideoId: String? = nil
 
-        enum Origin: String, Sendable { case local, cache, youtube, jiosaavn, substitute, other }
+        enum Origin: String, Sendable { case local, network, cache, youtube, jiosaavn, substitute, other }
 
         var format: QualityUpgrade.Format {
             QualityUpgrade.Format(
@@ -192,7 +192,7 @@ extension PlaybackController {
                     headers: WebDavBridge.shared.playbackHeaders(fileUrl: entry.source),
                     kbps: 0,
                     codec: ["ac3", "ec3", "eac3"].contains(URL(string: entry.source)?.pathExtension.lowercased() ?? "") ? URL(string: entry.source)?.pathExtension : nil,
-                    origin: .local
+                    origin: entry.source.hasPrefix("https://") || entry.source.hasPrefix("http://") ? .network : .local
                 ),
                 leftover: nil
             )

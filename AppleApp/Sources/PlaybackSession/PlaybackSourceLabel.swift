@@ -19,8 +19,9 @@ enum PlaybackSourceLabel {
         case "jiosaavn": return "JioSaavn"
         case "cache": return "Cached audio"
         case "local": return "Local files"
+        case "network": return "Network library"
         default:
-            if isLocal { return "Local files" }
+            if isLocal { return source.hasPrefix("https://") || source.hasPrefix("http://") ? "Network library" : "Local files" }
             if source.hasPrefix("yt:") { return "YouTube" }
             if source.hasPrefix("src:") { return "Add-on" }
             return nil

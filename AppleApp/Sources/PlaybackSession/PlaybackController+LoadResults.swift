@@ -103,6 +103,7 @@ extension PlaybackController {
         let sourceKind: String
         switch resolvedOrigin[entry.id] {
         case .local: sourceKind = "local"
+        case .network: sourceKind = "network"
         case .cache: sourceKind = "cache"
         case .youtube: sourceKind = "youtube"
         case .jiosaavn: sourceKind = "jiosaavn"
