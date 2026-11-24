@@ -154,7 +154,11 @@ extension PlaybackController {
     func updateSoundMode(_ value: String) {
         soundMode = value == "ENHANCED" ? "ENHANCED" : "TRANSPARENT"
         PlatformSettings.shared.putString(key: "sound_mode", value: soundMode)
-        try? engine.setSoundMode(mode: soundMode == "ENHANCED" ? .enhanced : .transparent)
+        do {
+            try engine.setSoundMode(mode: soundMode == "ENHANCED" ? .enhanced : .transparent)
+        } catch {
+            lastError = "Could not change sound processing: \(error.localizedDescription)"
+        }
         applySpatialPreference()
         scheduleLoudnessMeasurement()
     }

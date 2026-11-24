@@ -18038,6 +18038,66 @@
           }
         }
       }
+    },
+    "Switch to Enhanced": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cambiar a Mejorado"
+          }
+        }
+      }
+    },
+    "Play a track to check the equalizer's actual state.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reproduce una pista para comprobar el estado real del ecualizador."
+          }
+        }
+      }
+    },
+    "Transparent mode bypasses the equalizer.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El modo Transparente omite el ecualizador."
+          }
+        }
+      }
+    },
+    "Equalizer processing is active in the audio path.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "La ecualización está activa en la ruta de audio."
+          }
+        }
+      }
+    },
+    "The equalizer is flat or not currently processing audio.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El ecualizador está plano o no está procesando audio."
+          }
+        }
+      }
+    },
+    "Equalizer is off in the audio path.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El ecualizador está desactivado en la ruta de audio."
+          }
+        }
+      }
     }
   },
   "version": "1.0"

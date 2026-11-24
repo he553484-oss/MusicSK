@@ -124,6 +124,13 @@ struct AudioSettingsReadout {
         guard loaded else { return "Stored preference · play a track to check its effect." }
         return activeStages.contains(stage) ? "Active in the current audio path." : "Not active in the current audio path."
     }
+    func equalizerStatus(requested: Bool, soundMode: String) -> String {
+        if let processingBypass { return processingBypass }
+        guard loaded && outputStarted else { return "Play a track to check the equalizer's actual state." }
+        if activeStages.contains("Manual EQ / tone") { return "Equalizer processing is active in the audio path." }
+        if soundMode != "ENHANCED" { return "Transparent mode bypasses the equalizer." }
+        return requested ? "The equalizer is flat or not currently processing audio." : "Equalizer is off in the audio path."
+    }
     static func pcmLabel(_ mode: String) -> String {
         switch mode {
         case "FLOAT_32": return "Float 32"

@@ -398,3 +398,58 @@ fn silence_classifier_matches_media3_int16_threshold() {
     assert!(!is_silent(&mixed));
     assert!(!is_silent(&[]));
 }
+
+/// Measure the production mixer output ring after the EQ command, rather than
+/// only testing the filter in isolation. The source stays well below clipping.
+fn mixer_eq_tone(hz: f64, mode: SoundMode, enabled: bool, bands: [f32; 7]) -> f64 {
+    let path = std::env::temp_dir().join(format!("musicsk-eq-mixer-{}-{hz}.wav", std::process::id()));
+    let rate = 44_100u32;
+    let pcm: Vec<f32> = (0..rate * 2)
+        .flat_map(|i| {
+            let x = (i as f64 * std::f64::consts::TAU * hz / rate as f64).sin() as f32 * 0.04;
+            [x, x]
+        })
+        .collect();
+    crate::diagnostics::write_float_wav(&path, rate, &pcm).unwrap();
+    let mut state = armed_test_state(&path, &path, Phase::Arming);
+    state.transition = None;
+    state.incoming = None;
+    state.sound_mode = mode;
+    state.clarity.set(mode, ClarityTuning { wet: 0.0, ..ClarityTuning::default() });
+    let curve = crate::eq::manual_curve(&bands);
+    let (mut producer, mut consumer) = rtrb::RingBuffer::new(rate as usize * 2);
+    super::super::commands::handle_command(&mut state, Command::SetEqTuning {
+        enabled, gains_db: curve.gains_db, qs: curve.qs,
+        preamp_db: curve.preamp_db, balance: 0.0,
+    }, &mut producer);
+    let mut output = Vec::new();
+    for _ in 0..4 {
+        super::super::render::render_available(&mut state, &mut producer);
+        while let Ok(sample) = consumer.pop() { output.push(sample); }
+        state.buffered_frames.store(0, Ordering::Relaxed);
+    }
+    let rms = rms_window(&output, rate as usize / 2, rate as usize / 2);
+    assert!(rms > 0.0, "the mixer must render the test tone");
+    std::fs::remove_file(path).unwrap();
+    rms
+}
+
+#[test]
+fn eq_commands_change_the_real_mixer_output_and_transparent_bypasses_it() {
+    let flat = [0.0; 7];
+    let mut bass = flat;
+    bass[0] = 6.0;
+    let enhanced_flat = mixer_eq_tone(30.0, SoundMode::Enhanced, true, flat);
+    let enhanced_bass = mixer_eq_tone(30.0, SoundMode::Enhanced, true, bass);
+    assert!(20.0 * (enhanced_bass / enhanced_flat).log10() > 1.0, "bass boost must reach the mixer output");
+    let disabled = mixer_eq_tone(30.0, SoundMode::Enhanced, false, bass);
+    assert!((20.0 * (disabled / enhanced_flat).log10()).abs() < 0.1, "disabled EQ must match flat");
+    let transparent_flat = mixer_eq_tone(30.0, SoundMode::Transparent, true, flat);
+    let transparent_bass = mixer_eq_tone(30.0, SoundMode::Transparent, true, bass);
+    assert!((20.0 * (transparent_bass / transparent_flat).log10()).abs() < 0.1, "Transparent must bypass EQ");
+    let mut treble = flat;
+    treble[6] = -6.0;
+    let high_flat = mixer_eq_tone(18_000.0, SoundMode::Enhanced, true, flat);
+    let high_cut = mixer_eq_tone(18_000.0, SoundMode::Enhanced, true, treble);
+    assert!(20.0 * (high_cut / high_flat).log10() < -1.0, "treble cut must reach the mixer output");
+}

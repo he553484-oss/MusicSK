@@ -384,10 +384,13 @@ pub(super) fn render_available(state: &mut MixerState, ring: &mut Producer<f32>)
                     }
                     if state.clarity.active() {
                         stages.push("Enhanced clarity (4× exciter)".into());
-                        if state.eq.active() {
-                            stages.push("Manual EQ / tone".into());
-                        }
                         stages.push("True-peak protection".into());
+                    }
+                    // `clarity.active()` can stay true briefly as it glides
+                    // out after switching to Transparent. EQ is not processed
+                    // in that mode, even if its stored target is non-flat.
+                    if state.sound_mode == SoundMode::Enhanced && state.eq.active() {
+                        stages.push("Manual EQ / tone".into());
                     }
                     for v in state.current.iter().chain(state.incoming.iter()) {
                         for (active, name) in [

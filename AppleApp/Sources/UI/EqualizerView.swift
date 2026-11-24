@@ -98,7 +98,18 @@ struct EqualizerView: View {
                     } else if controller.soundMode == "TRANSPARENT" {
                         Text("Your EQ settings are saved. Choose Enhanced in Sound Processing to hear them; Transparent bypasses EQ.")
                             .font(.footnote).foregroundStyle(.secondary)
+                        if enabled {
+                            Button("Switch to Enhanced") {
+                                controller.updateSoundMode("ENHANCED")
+                                controller.applyEqualizer()
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.large)
+                        }
                     }
+                    Text(LocalizedStringKey(controller.settingsAudioReadout.equalizerStatus(requested: enabled, soundMode: controller.soundMode)))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)

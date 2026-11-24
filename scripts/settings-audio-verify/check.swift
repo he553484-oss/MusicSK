@@ -13,6 +13,12 @@ import Foundation
   precondition(output.processingBypass != nil && output.bitPerfectStatus(requested: true).contains("Active ·"))
   output.appleRenderer = true
   precondition(output.processingBypass!.contains("Apple") && !output.sampleRateStatus(requested: true).contains("Currently matched"))
+  precondition(output.equalizerStatus(requested: true, soundMode: "ENHANCED").contains("Dolby"))
+  output.appleRenderer = false; output.bitPerfectActive = false
+  precondition(output.equalizerStatus(requested: true, soundMode: "TRANSPARENT").contains("bypasses"))
+  precondition(output.equalizerStatus(requested: true, soundMode: "ENHANCED").contains("flat"))
+  output.activeStages = ["Manual EQ / tone"]
+  precondition(output.equalizerStatus(requested: true, soundMode: "ENHANCED").contains("active"))
   precondition(AudioSettingsReadout.pcmLabel("UNKNOWN") != "PCM 16")
   precondition(ReleaseIdentity(version: "1.0.3", build: 13).compared(to: .init(version:"1.0.3",build:12)) == .newer)
   precondition(ReleaseIdentity(version: "1.0.3", build: 7).compared(to: .init(version:"1.0.3",build:12)) == .older)
