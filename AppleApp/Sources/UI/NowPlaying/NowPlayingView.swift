@@ -21,6 +21,7 @@ struct NowPlayingView: View {
     var usesFullscreenCover = false
 
     @Environment(\.accessibilityReduceMotion) var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) var reduceTransparency
     @Environment(PlaybackController.self) var controller
     @Environment(AppModel.self) var appModel
     @Environment(PartyStore.self) var party
@@ -50,6 +51,7 @@ struct NowPlayingView: View {
     /// The same switch as Settings ▸ Playback ▸ Show Music Videos, flipped
     /// from the pill while the track plays.
     @AppStorage("show_music_videos") var showMusicVideos = false
+    @AppStorage("musicsk_player_background") var playerBackground = "original"
     /// The one sung line under the title. Off leaves the player to the
     /// artwork, credits and controls; the lyrics pane is untouched.
     @AppStorage("player_lyric_line") var showsLyricLine = true

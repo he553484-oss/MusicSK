@@ -92,6 +92,9 @@ extension NowPlayingView {
                 ZStack {
                     MeshBackdrop(seed: controller.current?.id.hashValue ?? 0, artwork: controller.current?.artworkData,
                                  initialBase: fill)
+                    if playerBackground == "artwork" && !reduceTransparency {
+                        FullArtworkBlurBackdrop(entry: controller.current)
+                    }
                     if continuation {
                         ArtworkContinuation(entry: controller.current, seam: width)
                             .opacity(pane == .main && !videoShowing ? 1 : 0)

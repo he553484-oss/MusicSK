@@ -15,6 +15,9 @@ extension SettingsView {
                 SettingsLine(glyph: .mesh, title: "Player Background") { EmptyView() }
                 Picker("Player Background", selection: $playerBackground) {
                     Text("Original Ambient").tag("original")
+                    #if os(iOS)
+                    Text("Artwork Blur").tag("artwork")
+                    #endif
                     Text("Static Gradient").tag("static")
                     Text("Dominant Color").tag("solid")
                     Text("OLED Black").tag("black")
