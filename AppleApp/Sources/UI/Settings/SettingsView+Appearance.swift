@@ -10,6 +10,19 @@ import AppKit
 // Appearance and performance.
 extension SettingsView {
     func buildAppearanceRows(_ rows: inout SettingsRows) {
+        rows.row("Player Background", "background", "artwork", "ambient", "oled", "fondo", "color") {
+            VStack(alignment: .leading, spacing: 10) {
+                SettingsLine(glyph: .mesh, title: "Player Background") { EmptyView() }
+                Picker("Player Background", selection: $playerBackground) {
+                    Text("Original Ambient").tag("original")
+                    Text("Static Gradient").tag("static")
+                    Text("Dominant Color").tag("solid")
+                    Text("OLED Black").tag("black")
+                }
+                .padding(.leading, 41)
+            }
+            .padding(.vertical, 4)
+        }
         rows.row("Appearance", "theme", "dark mode", "light mode", "colour", "color", "system", "accent", "tint") {
             VStack(alignment: .leading, spacing: 10) {
                 SettingsLine(glyph: .theme, title: "Appearance") { EmptyView() }

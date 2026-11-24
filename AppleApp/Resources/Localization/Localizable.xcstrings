@@ -1,6 +1,56 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Player Background": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fondo del reproductor"
+          }
+        }
+      }
+    },
+    "Original Ambient": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ambiental original"
+          }
+        }
+      }
+    },
+    "Static Gradient": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Degradado estático"
+          }
+        }
+      }
+    },
+    "Dominant Color": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Color dominante"
+          }
+        }
+      }
+    },
+    "OLED Black": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Negro OLED"
+          }
+        }
+      }
+    },
     "A line begins": {
       "localizations": {
         "es": {

@@ -28,6 +28,7 @@ struct MeshBackdrop: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage("musicsk_player_background") private var backgroundMode = "original"
     @State private var appliedSeed: Int?
     @State private var phase: Double = 0
     @State private var base: Color?
@@ -46,7 +47,11 @@ struct MeshBackdrop: View {
 
     var body: some View {
         Group {
-            if legacyMesh || reduceTransparency {
+            if backgroundMode == "black" {
+                Color.black.ignoresSafeArea().allowsHitTesting(false)
+            } else if backgroundMode == "solid" {
+                (base ?? initialBase).ignoresSafeArea().allowsHitTesting(false)
+            } else if backgroundMode == "static" || legacyMesh || reduceTransparency {
                 // v1.5's backdrop behind its switch: one static wash, no
                 // animated blobs. The colour still follows the artwork; only
                 // the motion is gone.
@@ -73,7 +78,7 @@ struct MeshBackdrop: View {
             let trackChanged = appliedSeed != input.seed
             apply(palette, first: appliedSeed == nil)
             appliedSeed = input.seed
-            if trackChanged && !reduceAnimation && !legacyMesh {
+            if trackChanged && !reduceAnimation && !legacyMesh && backgroundMode == "original" {
                 withAnimation(.timingCurve(0.4, 0.0, 0.2, 1.0, duration: 8)) {
                     phase += .pi * 0.45
                 }
