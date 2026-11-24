@@ -121,7 +121,8 @@ extension PlaybackController {
         }
         if entry.source.hasPrefix("saavn:") || entry.id.hasPrefix("saavn:") {
             let id = entry.source.hasPrefix("saavn:") ? String(entry.source.dropFirst(6)) : String(entry.id.dropFirst(6))
-            if let hit = await JioSaavn.streamURL(for: id) {
+            switch await JioSaavn.resolveStream(for: id) {
+            case .success(let hit):
                 await latencyResolved?(ProcessInfo.processInfo.systemUptime, "cold", "JioSaavn")
                 return ResolveOutcome(
                     source: ResolvedSource(
@@ -130,8 +131,20 @@ extension PlaybackController {
                     ),
                     leftover: nil
                 )
+            case .failure(let failure):
+                let message: String
+                switch failure {
+                case .cancelled: throw CancellationError()
+                case .network: message = String(localized: "JioSaavn could not be reached. Check the network and try again.")
+                case .accessDenied: message = String(localized: "JioSaavn denied access. Authentication or regional availability may be required.")
+                case .notFound: message = String(localized: "JioSaavn did not return this song. It may be unavailable.")
+                case .server: message = String(localized: "JioSaavn's server is unavailable. Try again later.")
+                case .invalidID: message = String(localized: "The JioSaavn song identifier is invalid.")
+                case .invalidResponse: message = String(localized: "JioSaavn returned an invalid audio response.")
+                case .noPlayableSource: message = String(localized: "JioSaavn did not provide a playable source for this song.")
+                }
+                throw InnertubeStreamResolver.StreamError(message: message)
             }
-            throw InnertubeStreamResolver.StreamError(message: "JioSaavn had no stream")
         }
         if entry.source.hasPrefix("src:") || entry.id.hasPrefix("src:") {
             // An addon search row keeps its own `src:` key rather than a video

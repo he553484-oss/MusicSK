@@ -63,10 +63,27 @@ enum JioSaavn {
         }
     }
 
+    enum Failure: Error, Equatable {
+        case invalidID, network, accessDenied, notFound, server, invalidResponse, noPlayableSource, cancelled
+
+        static func http(_ status: Int) -> Failure {
+            switch status {
+            case 401, 403: return .accessDenied
+            case 404: return .notFound
+            case 500...599: return .server
+            default: return .invalidResponse
+            }
+        }
+    }
+
     static func streamURL(for trackId: String, session: URLSession = .shared) async -> (url: String, kbps: Int)? {
+        try? await resolveStream(for: trackId, session: session).get()
+    }
+
+    static func resolveStream(for trackId: String, session: URLSession = .shared) async -> Result<(url: String, kbps: Int), Failure> {
         let id = (trackId.hasPrefix("saavn:") ? String(trackId.dropFirst(6)) : trackId)
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !id.isEmpty else { return nil }
+        guard !id.isEmpty else { return .failure(.invalidID) }
         var comps = URLComponents(string: base)!
         comps.queryItems = [
             .init(name: "__call", value: "song.getDetails"),
@@ -76,22 +93,31 @@ enum JioSaavn {
             .init(name: "ctx", value: "android"),
             .init(name: "pids", value: id),
         ]
-        guard let url = comps.url else { return nil }
+        guard let url = comps.url else { return .failure(.invalidID) }
         var req = URLRequest(url: url, timeoutInterval: 12)
         req.setValue(ua, forHTTPHeaderField: "User-Agent")
-        guard let (data, response) = try? await session.data(for: req),
-              let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode),
-              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
-        let song = JioSaavnResponse.song(in: root, id: id)
-        guard let song,
-              let info = song["more_info"] as? [String: Any],
+        let data: Data
+        let response: URLResponse
+        do {
+            (data, response) = try await session.data(for: req)
+        } catch {
+            return .failure(Task.isCancelled ? .cancelled : .network)
+        }
+        guard let http = response as? HTTPURLResponse else { return .failure(.invalidResponse) }
+        guard (200..<300).contains(http.statusCode) else { return .failure(.http(http.statusCode)) }
+        guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return .failure(.invalidResponse)
+        }
+        guard let song = JioSaavnResponse.song(in: root, id: id) else { return .failure(.notFound) }
+        guard let info = song["more_info"] as? [String: Any],
               let encrypted = info["encrypted_media_url"] as? String,
-              !encrypted.isEmpty else { return nil }
+              !encrypted.isEmpty else { return .failure(.noPlayableSource) }
 
         // Ask the service for a playable URL. Rewriting a decrypted URL to
         // pretend that a 320 kbps rendition exists can produce a broken URL.
+        var failure: Failure = .noPlayableSource
         for bitrate in [320, 160, 96, 48] {
-            guard !Task.isCancelled else { return nil }
+            guard !Task.isCancelled else { return .failure(.cancelled) }
             var tokenComponents = URLComponents(string: base)!
             tokenComponents.queryItems = [
                 .init(name: "__call", value: "song.generateAuthToken"),
@@ -106,12 +132,24 @@ enum JioSaavn {
             var tokenRequest = URLRequest(url: tokenURL, timeoutInterval: 12)
             tokenRequest.setValue(ua, forHTTPHeaderField: "User-Agent")
             tokenRequest.setValue("application/json", forHTTPHeaderField: "Accept")
-            guard let (data, response) = try? await session.data(for: tokenRequest),
-                  let http = response as? HTTPURLResponse,
-                  let url = JioSaavnResponse.streamURL(data: data, statusCode: http.statusCode) else { continue }
-            return (url.absoluteString, bitrate)
+            do {
+                let (data, response) = try await session.data(for: tokenRequest)
+                guard let http = response as? HTTPURLResponse else { failure = .invalidResponse; continue }
+                guard (200..<300).contains(http.statusCode) else {
+                    failure = .http(http.statusCode)
+                    continue
+                }
+                guard let url = JioSaavnResponse.streamURL(data: data, statusCode: http.statusCode) else {
+                    failure = .invalidResponse
+                    continue
+                }
+                return .success((url.absoluteString, bitrate))
+            } catch {
+                if Task.isCancelled { return .failure(.cancelled) }
+                failure = .network
+            }
         }
-        return nil
+        return .failure(failure)
     }
 
     /// Upstream `matchAndStream` for this catalogue: search, score, then open

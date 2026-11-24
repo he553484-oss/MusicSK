@@ -18098,6 +18098,76 @@
           }
         }
       }
+    },
+    "JioSaavn could not be reached. Check the network and try again.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se pudo conectar con JioSaavn. Comprueba la conexión e inténtalo de nuevo."
+          }
+        }
+      }
+    },
+    "JioSaavn denied access. Authentication or regional availability may be required.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JioSaavn rechazó el acceso. Puede depender de la autenticación o la disponibilidad regional."
+          }
+        }
+      }
+    },
+    "JioSaavn did not return this song. It may be unavailable.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JioSaavn no devolvió esta canción. Puede que no esté disponible."
+          }
+        }
+      }
+    },
+    "JioSaavn's server is unavailable. Try again later.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El servidor de JioSaavn no está disponible. Inténtalo más tarde."
+          }
+        }
+      }
+    },
+    "The JioSaavn song identifier is invalid.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "El identificador de la canción de JioSaavn no es válido."
+          }
+        }
+      }
+    },
+    "JioSaavn returned an invalid audio response.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JioSaavn devolvió una respuesta de audio inválida."
+          }
+        }
+      }
+    },
+    "JioSaavn did not provide a playable source for this song.": {
+      "localizations": {
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JioSaavn no proporcionó una fuente reproducible para esta canción."
+          }
+        }
+      }
     }
   },
   "version": "1.0"
