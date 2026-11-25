@@ -18,6 +18,8 @@ let input = #"""
 ]}
 """#
 let shelves = try decode(input)
+let report = try LibraryFeedDecoder.decodeWithReport(Data(input.utf8))
+precondition(report.malformedCount == 6 && report.duplicateCount == 1)
 precondition(LibraryFeedDecoder.belongsToCurrentSession(4, current: 4))
 precondition(!LibraryFeedDecoder.belongsToCurrentSession(4, current: 5))
 precondition(!LibraryFeedDecoder.belongsToCurrentSession(nil, current: 5))
@@ -27,6 +29,7 @@ precondition(shelves[0].items.map(\.title) == ["Privada", "Álbum", "Otra"])
 let empty = try decode(#"{"shelves":[]}"#)
 precondition(empty.isEmpty)
 do { _ = try decode(#"{"shelves":42}"#); fatalError("invalid response accepted") } catch {}
+do { _ = try decode(#"{"shelves":[null]}"#); fatalError("malformed response presented as empty") } catch {}
 let items = (0..<10_000).map { ["title": "Track \($0)", "browseId": "VL\($0)"] }
 let data = try JSONSerialization.data(withJSONObject: ["shelves": [["title":"Playlists", "items":items]]])
 let large = try LibraryFeedDecoder.decode(data)

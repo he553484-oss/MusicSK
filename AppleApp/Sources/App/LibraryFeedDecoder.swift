@@ -18,8 +18,17 @@ enum LibraryFeedDecoder {
         let subtitle: String?
         var items: [Item]
     }
+    struct Report {
+        let shelves: [Shelf]
+        let malformedCount: Int
+        let duplicateCount: Int
+    }
 
     static func decode(_ data: Data) throws -> [Shelf] {
+        try decodeWithReport(data).shelves
+    }
+
+    static func decodeWithReport(_ data: Data) throws -> Report {
         guard let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
               let rows = root["shelves"] as? [Any] else {
             throw URLError(.cannotDecodeContentData)
@@ -27,15 +36,21 @@ enum LibraryFeedDecoder {
         var result: [Shelf] = []
         var shelfIndex: [String: Int] = [:]
         var itemIDs: [String: Set<String>] = [:]
-        for case let row as [String: Any] in rows {
-            guard let title = nonempty(row["title"]), let items = row["items"] as? [Any] else { continue }
+        var malformed = 0
+        var duplicates = 0
+        for element in rows {
+            guard let row = element as? [String: Any], let title = nonempty(row["title"]),
+                  let items = row["items"] as? [Any] else { malformed += 1; continue }
             var valid: [Item] = []
             var seen = itemIDs[title, default: []]
-            for case let raw as [String: Any] in items {
-                guard let name = nonempty(raw["title"]) else { continue }
+            for element in items {
+                guard let raw = element as? [String: Any], let name = nonempty(raw["title"]) else {
+                    malformed += 1; continue
+                }
                 let browse = nonempty(raw["browseId"])
                 let video = nonempty(raw["videoId"])
-                guard let id = video ?? browse, seen.insert(id).inserted else { continue }
+                guard let id = video ?? browse else { malformed += 1; continue }
+                guard seen.insert(id).inserted else { duplicates += 1; continue }
                 valid.append(Item(title: name, subtitle: raw["subtitle"] as? String,
                                   thumbnailURL: raw["thumbnailUrl"] as? String,
                                   videoID: video, browseID: browse))
@@ -49,7 +64,8 @@ enum LibraryFeedDecoder {
                 result.append(Shelf(title: title, subtitle: row["subtitle"] as? String, items: valid))
             }
         }
-        return result
+        if result.isEmpty && malformed > 0 { throw URLError(.cannotDecodeContentData) }
+        return Report(shelves: result, malformedCount: malformed, duplicateCount: duplicates)
     }
 
     private static func nonempty(_ value: Any?) -> String? {

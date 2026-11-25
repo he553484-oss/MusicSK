@@ -217,7 +217,11 @@ final class InnertubeFeed: Sendable {
             LibraryBridge.shared.library(callback: LibraryFeedAdapter { json, message in
                 if let json {
                     do {
-                        let shelves = try LibraryFeedDecoder.decode(Data(json.utf8)).map { shelf in
+                        let report = try LibraryFeedDecoder.decodeWithReport(Data(json.utf8))
+                        if report.malformedCount > 0 || report.duplicateCount > 0 {
+                            PlaybackDebugLog.shared.record("library feed validation malformed=\(report.malformedCount) duplicates=\(report.duplicateCount)")
+                        }
+                        let shelves = report.shelves.map { shelf in
                             FeedShelf(title: shelf.title, items: shelf.items.map { item in
                                 ShelfCard(title: item.title, subtitle: item.subtitle,
                                           thumbnailUrl: item.thumbnailURL, videoId: item.videoID,
