@@ -15,6 +15,8 @@ Estado: **incompleto; candidata experimental**. En el simulador, la ejecución s
 
 ## Compilación
 
+La [compilación diagnóstica posterior](https://github.com/he553484-oss/MusicSK/actions/runs/45613482612), del commit `189a308034f5`, también terminó correctamente. Su [IPA sin firmar](https://github.com/he553484-oss/MusicSK/actions/runs/45613482612/artifacts/15023246483) se verificó con el identificador de código, arquitectura arm64, iOS 18 mínimo, app y widget, versión 1.7.0 build 12. SHA-256 `6ce64c4283e6654accec4f2a7a20b151d9aea89971d9f2f30c0832e0702fe533`. Añade trazas de etapas y recuentos del puente de Biblioteca sin registrar datos de cuenta. Sigue siendo experimental, requiere firma y no demuestra que el cierre real esté corregido.
+
 La [compilación iOS](https://github.com/he553484-oss/MusicSK/actions/runs/45549917197) del commit `53fcf06` terminó correctamente. Su [IPA sin firmar](https://github.com/he553484-oss/MusicSK/actions/runs/45549917197/artifacts/14993784086) se descargó y verificó: arm64, iOS 18 mínimo, app y widget, versión 1.7.0 build 12. SHA-256 `f8d371af312eb92e8568ae2027e52c913c27fb404dc62fed2869844535c6c7c5`. Es experimental y requiere firma.
 
 El registro del mismo artefacto informa 51 comprobaciones del motor en macOS, incluida la señal a través de Swift y UniFFI: graves +2,66 dB, agudos −5,50 dB y bypass coincidente. También pasó la decodificación PCM/ALAC de 24 bits y 96 kHz. Estas pruebas no validan la salida física ni el comportamiento en iPhone.
