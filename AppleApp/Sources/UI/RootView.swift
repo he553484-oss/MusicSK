@@ -122,6 +122,7 @@ struct RootView: View {
                     hasQueue: !controller.queue.isEmpty, hasAppearancePreference: hasAppearance
                 ) {
                     preferences.set("apple", forKey: "musicsk_appearance_profile")
+                    preferences.set("apple", forKey: "musicsk_player_layout")
                     preferences.set("dynamic", forKey: "musicsk_player_background")
                 }
                 onboardingPresented = true

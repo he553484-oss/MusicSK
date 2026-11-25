@@ -52,7 +52,11 @@ struct NowPlayingView: View {
     /// from the pill while the track plays.
     @AppStorage("show_music_videos") var showMusicVideos = false
     @AppStorage("musicsk_appearance_profile") var appearanceProfile = "original"
+    @AppStorage("musicsk_player_layout") var playerLayout = ""
     @AppStorage("musicsk_player_background") var playerBackground = "original"
+    var usesApplePlayerLayout: Bool {
+        AppearanceLayout.usesApple(profile: appearanceProfile, storedLayout: playerLayout, background: playerBackground)
+    }
     @AppStorage("ambient_blur") var ambientBlur = 64.0
     @AppStorage("ambient_saturation") var ambientSaturation = 1.0
     @AppStorage("ambient_brightness") var ambientBrightness = 0.0

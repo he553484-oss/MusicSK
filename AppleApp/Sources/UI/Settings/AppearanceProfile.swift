@@ -35,7 +35,15 @@ enum AppearanceInstallDefaults {
     }
 
     static let preferenceKeys = [
-        "musicsk_appearance_profile", "musicsk_player_background", "legacy_mesh_gradient",
+        "musicsk_appearance_profile", "musicsk_player_layout", "musicsk_player_background", "legacy_mesh_gradient",
         "reduce_animation", "reduce_dynamic_blur", "full_bleed_artwork", "animated_canvas", "theme_mode",
     ]
+}
+
+enum AppearanceLayout {
+    static func usesApple(profile: String, storedLayout: String, background: String) -> Bool {
+        if storedLayout == "apple" { return true }
+        if storedLayout == "original" { return false }
+        return profile == "apple" || (profile == "custom" && background == "dynamic")
+    }
 }

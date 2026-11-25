@@ -222,7 +222,7 @@ extension NowPlayingView {
             // system's direct output picker in the player controls.
             Button("Audio Output") { showOutputDevice = true }
             #if os(iOS)
-            if appearanceProfile == "apple" {
+            if usesApplePlayerLayout {
                 Button {
                     let enabled = !controller.mixWithOtherAudio
                     Haptics.play(enabled ? .toggleOn : .toggleOff)

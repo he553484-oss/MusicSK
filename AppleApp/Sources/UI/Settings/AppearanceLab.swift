@@ -6,6 +6,7 @@ struct AppearanceLab: View {
     @Environment(PlaybackController.self) private var controller
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @AppStorage("musicsk_appearance_profile") private var profile = "original"
+    @AppStorage("musicsk_player_layout") private var playerLayout = ""
     @AppStorage("musicsk_player_background") private var background = "original"
     @AppStorage("ambient_animation") private var animated = true
     @AppStorage("ambient_transitions") private var transitions = true
@@ -119,7 +120,14 @@ struct AppearanceLab: View {
     }
 
     private func customBinding<Value>(_ value: Binding<Value>) -> Binding<Value> {
-        Binding(get: { value.wrappedValue }, set: { value.wrappedValue = $0; profile = "custom" })
+        Binding(get: { value.wrappedValue }, set: {
+            if playerLayout.isEmpty {
+                playerLayout = AppearanceLayout.usesApple(profile: profile, storedLayout: "", background: background)
+                    ? "apple" : "original"
+            }
+            value.wrappedValue = $0
+            profile = "custom"
+        })
     }
 
     private func parameter(_ name: LocalizedStringKey, value: Binding<Double>, range: ClosedRange<Double>) -> some View {
@@ -132,6 +140,7 @@ struct AppearanceLab: View {
     private func applyProfile(_ selected: String) {
         profile = selected
         guard let values = AppearanceProfileValues.preset(selected) else { return }
+        playerLayout = selected == "original" ? "original" : "apple"
         background = values.background
         animated = values.animated
         material = values.material

@@ -75,7 +75,7 @@ extension NowPlayingView {
     var actionRowPill: some View {
         Group {
             #if os(iOS)
-            if appearanceProfile == "apple" {
+            if usesApplePlayerLayout {
                 AirPlayRouteButton(tint: UIColor.white.withAlphaComponent(0.88))
                     .frame(width: 44, height: 44)
                     .accessibilityLabel("Audio output")
@@ -118,7 +118,7 @@ extension NowPlayingView {
             }
             .frame(height: 44)
 
-            if appearanceProfile != "apple" && !outputCaption.isEmpty {
+            if !usesApplePlayerLayout && !outputCaption.isEmpty {
                 Text(outputCaption)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(.white.opacity(0.62))

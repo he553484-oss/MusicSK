@@ -23,9 +23,11 @@ struct UpNextPane: View {
     @State private var hasScrolledOnce = false
     @AppStorage("show_queue_history") private var showQueueHistory = false
     @AppStorage("musicsk_appearance_profile") private var appearanceProfile = "original"
+    @AppStorage("musicsk_player_layout") private var playerLayout = ""
+    @AppStorage("musicsk_player_background") private var playerBackground = "original"
 
     private var compactAppleHeader: Bool {
-        appearanceProfile == "apple" && showsCurrentTrackHeader
+        AppearanceLayout.usesApple(profile: appearanceProfile, storedLayout: playerLayout, background: playerBackground) && showsCurrentTrackHeader
     }
 
     /// The queue list, one layout on every platform: "Queue" with Clear, a

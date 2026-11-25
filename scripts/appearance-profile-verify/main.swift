@@ -15,4 +15,8 @@ precondition(!AppearanceInstallDefaults.shouldApplyAppleProfile(onboarded: true,
 precondition(!AppearanceInstallDefaults.shouldApplyAppleProfile(onboarded: false, signedIn: true, hasQueue: false, hasAppearancePreference: false))
 precondition(!AppearanceInstallDefaults.shouldApplyAppleProfile(onboarded: false, signedIn: false, hasQueue: true, hasAppearancePreference: false))
 precondition(!AppearanceInstallDefaults.shouldApplyAppleProfile(onboarded: false, signedIn: false, hasQueue: false, hasAppearancePreference: true))
+precondition(AppearanceLayout.usesApple(profile: "apple", storedLayout: "", background: "dynamic"))
+precondition(AppearanceLayout.usesApple(profile: "custom", storedLayout: "apple", background: "black"))
+precondition(!AppearanceLayout.usesApple(profile: "custom", storedLayout: "original", background: "dynamic"))
+precondition(!AppearanceLayout.usesApple(profile: "original", storedLayout: "", background: "original"))
 print("PASS appearance profile defaults, OLED and custom preservation")
