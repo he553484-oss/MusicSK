@@ -15,7 +15,7 @@ Estado: **incompleto; candidata en verificación**. No se ha reproducido ni diag
 
 ## Compilación
 
-La [compilación iOS](https://github.com/he553484-oss/MusicSK/actions/runs/45549604730) y las [capturas](https://github.com/he553484-oss/MusicSK/actions/runs/45549609795) corresponden a `683c7d1`. Consultar sus resultados y validar la IPA arm64 antes de atribuir éxito. La versión configurada es 1.7.0 build 12. No se afirma que se haya generado una IPA hasta verificar el artefacto.
+La [compilación iOS](https://github.com/he553484-oss/MusicSK/actions/runs/45549917197) y las [capturas](https://github.com/he553484-oss/MusicSK/actions/runs/45549921190) corresponden a `53fcf06`. Consultar sus resultados y validar la IPA arm64 antes de atribuir éxito. La versión configurada es 1.7.0 build 12. No se afirma que se haya generado una IPA hasta verificar el artefacto.
 
 ## Registro de crash en iPhone
 
