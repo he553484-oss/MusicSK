@@ -699,7 +699,7 @@ struct DetailView: View {
     private func albumIdentity(_ page: DetailPageModel, title: String) -> some View {
         let credit = headerLines(page).credit.ifBlank { page.songs.first?.artist ?? "" }
         let info = releaseInfoLine(page)
-        return VStack(alignment: .leading, spacing: 6) {
+        return VStack(alignment: isWide ? .leading : .center, spacing: 6) {
             Text(title)
                 .font(.largeTitle.bold())
                 .accessibilityAddTraits(.isHeader)
@@ -725,6 +725,8 @@ struct DetailView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+        .multilineTextAlignment(isWide ? .leading : .center)
+        .frame(maxWidth: .infinity, alignment: isWide ? .leading : .center)
     }
 
     private func immersiveAlbumActions(_ page: DetailPageModel, tint: ArtworkPalette.PageTint) -> some View {
