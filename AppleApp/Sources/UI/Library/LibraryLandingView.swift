@@ -318,6 +318,7 @@ struct LibraryLandingView: View {
 
     private func pinnedShelves(_ shelves: [FeedShelf]) -> [FeedShelf] {
         let pinned = PlaylistPinning.pinnedIds()
+        guard !pinned.isEmpty else { return shelves }
         return shelves.map { shelf in
             guard isPlaylistsShelf(shelf) else { return shelf }
             let items = shelf.items.sorted { a, b in
