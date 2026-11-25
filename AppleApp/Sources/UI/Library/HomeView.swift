@@ -20,11 +20,24 @@ struct HomeView: View {
     /// is a singleton while the reader's place in it was not (upstream hoists
     /// `homeListState` outside its tab switch for the same reason).
     var scrollPosition: Binding<ScrollPosition>? = nil
+    #if os(iOS) && targetEnvironment(simulator)
+    @State private var captureAlbumPresented = false
+    #endif
 
     var body: some View {
         PageStack {
             content
                 .navigationTitle("Home")
+                #if os(iOS) && targetEnvironment(simulator)
+                .navigationDestination(isPresented: $captureAlbumPresented) {
+                    DetailView(browseId: "MPREb-capture", initialTitle: "Álbum de prueba")
+                }
+                .task {
+                    if UserDefaults.standard.bool(forKey: "musicsk_capture_album") {
+                        captureAlbumPresented = true
+                    }
+                }
+                #endif
                 .toolbar {
                     #if os(iOS)
                     // Upstream FrostedTopBar's root-page leading BitChord logo.

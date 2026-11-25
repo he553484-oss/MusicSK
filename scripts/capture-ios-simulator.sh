@@ -200,7 +200,7 @@ capture 08-cola-fixture-es.png
 stop_app
 
 # A simulator-only album fixture; no catalogue request or audio playback.
-start_app MAIN -musicsk_capture_album YES
+start_app MAIN -musicsk_capture_album YES -musicsk_capture_fixture YES
 capture 09-album-fixture-es.png
 grep -hsF 'simulator album fixture loaded' "$support"/Diagnostics/*.log >/dev/null
 stop_app
