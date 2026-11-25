@@ -45,8 +45,26 @@ private struct SystemVolumeSlider: UIViewRepresentable {
         view.showsVolumeSlider = true
         view.showsRouteButton = false
         view.tintColor = .white
+        // MPVolumeView remains the visible, interactive system control. Only
+        // its public track and thumb images change; no app gain is involved.
+        let filled = Self.trackImage(UIColor.white.withAlphaComponent(0.85))
+        let remaining = Self.trackImage(UIColor.white.withAlphaComponent(0.28))
+        let thumb = UIGraphicsImageRenderer(size: CGSize(width: 1, height: 1)).image { _ in }
+        for state: UIControl.State in [.normal, .highlighted] {
+            view.setMinimumVolumeSliderImage(filled, for: state)
+            view.setMaximumVolumeSliderImage(remaining, for: state)
+            view.setVolumeThumbImage(thumb, for: state)
+        }
         context.coordinator.connect(to: view)
         return view
+    }
+
+    private static func trackImage(_ color: UIColor) -> UIImage {
+        let image = UIGraphicsImageRenderer(size: CGSize(width: 8, height: 4)).image { _ in
+            color.setFill()
+            UIBezierPath(roundedRect: CGRect(x: 0, y: 0, width: 8, height: 4), cornerRadius: 2).fill()
+        }
+        return image.resizableImage(withCapInsets: UIEdgeInsets(top: 0, left: 2, bottom: 0, right: 2), resizingMode: .stretch)
     }
 
     func updateUIView(_ uiView: MPVolumeView, context: Context) {
