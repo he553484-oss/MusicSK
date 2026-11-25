@@ -710,7 +710,7 @@ struct DetailView: View {
         let info = releaseInfoLine(page)
         return VStack(alignment: isWide ? .leading : .center, spacing: 6) {
             Text(title)
-                .font(.largeTitle.bold())
+                .font(isWide ? .largeTitle.bold() : .title2.bold())
                 .accessibilityAddTraits(.isHeader)
                 .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
                 .fixedSize(horizontal: false, vertical: true)
@@ -740,24 +740,43 @@ struct DetailView: View {
 
     private func immersiveAlbumActions(_ page: DetailPageModel, tint: ArtworkPalette.PageTint) -> some View {
         let isPlaying = controller.isPlaybackContextPlaying(browseId)
-        return ViewThatFits(in: .horizontal) {
-            HStack(spacing: 8) {
-                PlayPill(iconOnly: false, isPlaying: isPlaying) { playContext(page) }
-                ShufflePill { playContext(page, shuffled: true) }
-                Spacer(minLength: 4)
-                releaseSecondaryActions(page, tint: tint)
-            }
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 8) {
-                    ViewThatFits(in: .horizontal) {
+        return Group {
+            if isWide {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
                         PlayPill(iconOnly: false, isPlaying: isPlaying) { playContext(page) }
-                        PlayPill(iconOnly: true, isPlaying: isPlaying) { playContext(page) }
+                        ShufflePill { playContext(page, shuffled: true) }
+                        Spacer(minLength: 4)
+                        releaseSecondaryActions(page, tint: tint)
                     }
-                    CircleIconButton(icon: Image(.bchShuffle), label: "Shuffle", veiled: true) {
-                        playContext(page, shuffled: true)
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 8) {
+                            ViewThatFits(in: .horizontal) {
+                                PlayPill(iconOnly: false, isPlaying: isPlaying) { playContext(page) }
+                                PlayPill(iconOnly: true, isPlaying: isPlaying) { playContext(page) }
+                            }
+                            CircleIconButton(icon: Image(.bchShuffle), label: "Shuffle", veiled: true) {
+                                playContext(page, shuffled: true)
+                            }
+                        }
+                        HStack(spacing: 8) { releaseSecondaryActions(page, tint: tint) }
                     }
                 }
-                HStack(spacing: 8) { releaseSecondaryActions(page, tint: tint) }
+            } else {
+                VStack(spacing: 10) {
+                    HStack(spacing: 12) {
+                        CircleIconButton(icon: Image(.bchShuffle), label: "Shuffle", veiled: true) {
+                            playContext(page, shuffled: true)
+                        }
+                        ViewThatFits(in: .horizontal) {
+                            PlayPill(iconOnly: false, isPlaying: isPlaying) { playContext(page) }
+                            PlayPill(iconOnly: true, isPlaying: isPlaying) { playContext(page) }
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    HStack(spacing: 8) { releaseSecondaryActions(page, tint: tint) }
+                        .frame(maxWidth: .infinity)
+                }
             }
         }
     }
