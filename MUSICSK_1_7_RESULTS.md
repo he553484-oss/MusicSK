@@ -1,6 +1,6 @@
 # MusicSK 1.7 — estado de desarrollo
 
-Estado: **incompleto; candidata experimental**. En el simulador, la ejecución sintética de Biblioteca terminó antes de la captura; todavía no se ha determinado si terminó la app o el monitor, ni si tiene la misma causa que el iPhone. No se ha diagnosticado el cierre con la cuenta real; no se declara resuelto. La rama parte de `1db723e`, que conserva el código de 1.6 compilado en `5d05337`.
+Estado: **incompleto; candidata experimental**. En el simulador, la ejecución sintética de Biblioteca terminó antes de la captura. Una ejecución posterior confirmó que el proceso de la app había terminado, pero no produjo un informe de excepción; no se sabe por qué terminó ni si tiene la misma causa que el iPhone. No se ha diagnosticado el cierre con la cuenta real; no se declara resuelto. La rama parte de `1db723e`, que conserva el código de 1.6 compilado en `5d05337`.
 
 ## Cambios y evidencias
 
@@ -23,7 +23,7 @@ El registro del mismo artefacto informa 51 comprobaciones del motor en macOS, in
 
 En el runner de Apple también pasaron el verificador Swift de biblioteca y la ejecución Kotlin/Native filtrada para `AuthenticatedLibraryParserTest` y `JioSaavnTransportTest`. Estas pruebas usan datos sintéticos y no demuestran acceso o reproducción real del proveedor.
 
-El workflow de [capturas](https://github.com/he553484-oss/MusicSK/actions/runs/45549921190) falló al iniciar la biblioteca sintética; guardó capturas anteriores, incluida la del álbum, pero no dejó una traza de excepción. Se preparó una ejecución posterior que comprueba el proceso de la app y, si existe, guarda un resumen acotado del crash sin credenciales. El fallo no demuestra por sí solo que el crash autenticado real esté reproducido.
+El workflow de [capturas](https://github.com/he553484-oss/MusicSK/actions/runs/45549921190) falló al iniciar la biblioteca sintética. Una [repetición diagnóstica](https://github.com/he553484-oss/MusicSK/actions/runs/45612738023) comprobó que tanto el monitor como el proceso de la app habían terminado antes de la captura; no encontró ningún informe de crash. Su [artefacto parcial](https://github.com/he553484-oss/MusicSK/actions/runs/45612738023/artifacts/15022883471) conserva las capturas anteriores y el resumen. No hay evidencia suficiente para identificar la causa ni afirmar que el crash autenticado real esté reproducido. Una ejecución posterior añade etapas de diagnóstico sin datos privados.
 
 ## Registro de crash en iPhone
 
