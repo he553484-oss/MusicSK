@@ -44,15 +44,19 @@ guard visible >= 30 else { fatalError("Simulator capture appears to be a black l
 SWIFT
 xcrun swiftc "$scratch/check-capture.swift" -o "$scratch/check-capture"
 
+xcrun simctl list runtimes --json > "$scratch/runtimes.json"
 selection="$(xcrun simctl list devices available --json | python3 -c '
 import json
 import sys
 
+with open(sys.argv[1]) as runtimes_file:
+    usable_runtimes = {runtime["identifier"] for runtime in json.load(runtimes_file)["runtimes"]
+                       if runtime.get("isAvailable")}
 available = json.load(sys.stdin)["devices"]
 runtime_devices = [
     (runtime, device)
     for runtime, devices in available.items()
-    if ".iOS-" in runtime
+    if ".iOS-" in runtime and runtime in usable_runtimes
     for device in devices
     if device["name"].startswith("iPhone")
     and device.get("isAvailable")
@@ -69,7 +73,7 @@ for preferred in ("iPhone 15 Pro", "iPhone 18 Pro", None):
         break
 else:
     sys.exit("No usable iPhone simulator found")
-')"
+' "$scratch/runtimes.json")"
 IFS=$'\t' read -r device_name device_type runtime <<< "$selection"
 device_id="$(xcrun simctl create "Musicsk-Capture-${RANDOM}" "$device_type" "$runtime")"
 revision="$(git -C "$repo" rev-parse HEAD)"
