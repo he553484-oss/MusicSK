@@ -137,6 +137,9 @@ enum JioSaavn {
                 guard let http = response as? HTTPURLResponse else { failure = .invalidResponse; continue }
                 guard (200..<300).contains(http.statusCode) else {
                     failure = .http(http.statusCode)
+                    // An access denial or service failure applies to the request,
+                    // not evidence that a lower rendition is authorized.
+                    if failure == .accessDenied || failure == .server { return .failure(failure) }
                     continue
                 }
                 guard let url = JioSaavnResponse.streamURL(data: data, statusCode: http.statusCode) else {
@@ -146,7 +149,7 @@ enum JioSaavn {
                 return .success((url.absoluteString, bitrate))
             } catch {
                 if Task.isCancelled { return .failure(.cancelled) }
-                failure = .network
+                return .failure(.network)
             }
         }
         return .failure(failure)

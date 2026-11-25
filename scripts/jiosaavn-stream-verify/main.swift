@@ -6,6 +6,7 @@ import FoundationNetworking
 final class MockProtocol: URLProtocol {
     static var requests: [String] = []
     static var detailsStatus = 200
+    static var tokenFailure: Int?
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
@@ -22,12 +23,15 @@ final class MockProtocol: URLProtocol {
         } else if call == "song.getDetails" {
             status = Self.detailsStatus
             body = #"{"songs":[{"id":"track","more_info":{"encrypted_media_url":"opaque"}}]}"#
+        } else if call == "song.generateAuthToken", let tokenFailure = Self.tokenFailure {
+            status = tokenFailure
+            body = #"{"error":"unavailable"}"#
         } else if call == "song.generateAuthToken", params["bitrate"] == "160" {
             status = 200
             body = #"{"auth_url":"https://cdn.example.test/audio.mp4"}"#
         } else {
-            status = 403
-            body = #"{"error":"unavailable"}"#
+            status = 200
+            body = #"{}"#
         }
         client?.urlProtocol(self, didReceive: HTTPURLResponse(url: url, statusCode: status, httpVersion: nil, headerFields: nil)!, cacheStoragePolicy: .notAllowed)
         client?.urlProtocol(self, didLoad: Data(body.utf8))
@@ -52,6 +56,15 @@ final class MockProtocol: URLProtocol {
         let result = await JioSaavn.streamURL(for: "saavn:track", session: session)
         precondition(result?.url == "https://cdn.example.test/audio.mp4" && result?.kbps == 160)
         precondition(MockProtocol.requests == ["song.getDetails:", "song.generateAuthToken:320", "song.generateAuthToken:160"])
+        MockProtocol.requests = []
+        MockProtocol.tokenFailure = 403
+        if case .failure(.accessDenied) = await JioSaavn.resolveStream(for: "track", session: session) {} else { preconditionFailure("expected token access error") }
+        precondition(MockProtocol.requests == ["song.getDetails:", "song.generateAuthToken:320"])
+        MockProtocol.requests = []
+        MockProtocol.tokenFailure = 503
+        if case .failure(.server) = await JioSaavn.resolveStream(for: "track", session: session) {} else { preconditionFailure("expected token server error") }
+        precondition(MockProtocol.requests == ["song.getDetails:", "song.generateAuthToken:320"])
+        MockProtocol.tokenFailure = nil
         MockProtocol.requests = []
         MockProtocol.detailsStatus = 503
         if case .failure(.server) = await JioSaavn.resolveStream(for: "track", session: session) {} else { preconditionFailure("expected server error") }
