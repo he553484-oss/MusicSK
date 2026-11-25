@@ -8,5 +8,5 @@ if command -v xcrun >/dev/null 2>&1; then
 else
   compiler=(swiftc)
 fi
-"${compiler[@]}" -o "$work/check" "$repo/AppleApp/Sources/App/LibraryFeedDecoder.swift" "$repo/scripts/authenticated-library-verify/main.swift"
+"${compiler[@]}" -o "$work/check" "$repo/AppleApp/Sources/App/LibraryFeedDecoder.swift" "$repo/AppleApp/Sources/UI/Library/LibraryGridGeometry.swift" "$repo/scripts/authenticated-library-verify/main.swift"
 "$work/check"
