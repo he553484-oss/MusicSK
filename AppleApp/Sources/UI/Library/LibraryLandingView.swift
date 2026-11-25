@@ -74,7 +74,10 @@ struct LibraryLandingView: View {
 
     @ViewBuilder
     private func collection(grid: ArtworkGrid) -> some View {
-        let savedShelves = pinnedShelves(shelves).filter { !$0.items.isEmpty }
+        // The account can change before the replacement task gets its first
+        // turn. Never render the preceding account's cards in that interval.
+        let currentShelves = LibraryFeedDecoder.belongsToCurrentSession(dataGeneration, current: PageSession.generation()) ? shelves : []
+        let savedShelves = pinnedShelves(currentShelves).filter { !$0.items.isEmpty }
 
         if auth.signedIn && loading && savedShelves.isEmpty {
             LazyVGrid(columns: grid.columns, alignment: .leading, spacing: 18) {

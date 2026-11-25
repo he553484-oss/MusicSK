@@ -18,6 +18,9 @@ let input = #"""
 ]}
 """#
 let shelves = try decode(input)
+precondition(LibraryFeedDecoder.belongsToCurrentSession(4, current: 4))
+precondition(!LibraryFeedDecoder.belongsToCurrentSession(4, current: 5))
+precondition(!LibraryFeedDecoder.belongsToCurrentSession(nil, current: 5))
 precondition(shelves.count == 1)
 precondition(shelves[0].title == "Playlists")
 precondition(shelves[0].items.map(\.title) == ["Privada", "Álbum", "Otra"])

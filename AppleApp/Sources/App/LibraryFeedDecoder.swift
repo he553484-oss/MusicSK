@@ -3,6 +3,9 @@ import Foundation
 /// Validate the authenticated library boundary before giving identities to SwiftUI.
 /// The bridge returns account data as JSON; no payload or credentials are logged.
 enum LibraryFeedDecoder {
+    static func belongsToCurrentSession(_ generation: Int64?, current: Int64) -> Bool {
+        generation == current
+    }
     struct Item: Equatable {
         let title: String
         let subtitle: String?
