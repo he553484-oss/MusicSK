@@ -182,6 +182,12 @@ start_app QUEUE -musicsk_capture_fixture YES -musicsk_capture_player YES \
 capture 08-cola-fixture-es.png
 stop_app
 
+# A simulator-only album fixture; no catalogue request or audio playback.
+start_app MAIN -musicsk_capture_album YES
+capture 09-album-fixture-es.png
+grep -hsF 'simulator album fixture loaded' "$support"/Diagnostics/*.log >/dev/null
+stop_app
+
 version="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app/Info.plist")"
 build="$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$app/Info.plist")"
 toolchain="$(xcodebuild -version | paste -sd ' ' -)"
@@ -209,4 +215,5 @@ Control Center y la pantalla bloqueada requieren comprobaciones adicionales.
 Las capturas 07 y 08 usan el perfil Apple Experience, con metadatos y portada
 sintéticos, sin audio, para comprobar únicamente la distribución del reproductor
 y la cola.
+La captura 09 usa un álbum y portada sintéticos, sin audio ni acceso a catálogo.
 EOF

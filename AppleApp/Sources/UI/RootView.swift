@@ -100,6 +100,10 @@ struct RootView: View {
                 try? await Task.sleep(for: .seconds(1))
                 appModel.nowPlayingPresented = true
             }
+            if UserDefaults.standard.bool(forKey: "musicsk_capture_album") {
+                try? await Task.sleep(for: .seconds(1))
+                appModel.openPage(browseId: "MPREb-capture", title: "Álbum de prueba")
+            }
             if UserDefaults.standard.bool(forKey: "musicsk_capture_lyrics_settings"),
                let url = URL(string: "musicsk://settings/lyrics") {
                 _ = SettingsDeepLink.handle(url)

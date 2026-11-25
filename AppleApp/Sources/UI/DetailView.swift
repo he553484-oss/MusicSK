@@ -1,6 +1,9 @@
 import SwiftUI
 import BitChordShared
 import ImageIO
+#if os(iOS) && targetEnvironment(simulator)
+import UIKit
+#endif
 
 /// Detail page for an album / artist / playlist browseId.
 ///
@@ -365,6 +368,9 @@ struct DetailView: View {
             }
         }
         .task(id: page.thumbnailUrl) {
+            #if os(iOS) && targetEnvironment(simulator)
+            if UserDefaults.standard.bool(forKey: "musicsk_capture_album"), browseId == "MPREb-capture" { return }
+            #endif
             let art = await loadHeaderArt(page.thumbnailUrl)
             guard !Task.isCancelled else { return }
             headerArt = art
@@ -1502,6 +1508,26 @@ struct DetailView: View {
     }
 
     private func load(force: Bool = false) async {
+        #if os(iOS) && targetEnvironment(simulator)
+        if UserDefaults.standard.bool(forKey: "musicsk_capture_album"), browseId == "MPREb-capture" {
+            let payload = #"{"browseId":"MPREb-capture","title":"Álbum de prueba","subtitle":"Artista de prueba · 2026","type":"ALBUM","description":"Contenido sintético para verificar la distribución del álbum.","songs":[{"videoId":"fixture-1","title":"Primera pista","artist":"Artista de prueba","isVideo":false},{"videoId":"fixture-2","title":"Segunda pista","artist":"Artista de prueba","isVideo":false}]}"#
+            guard let fixture = try? JSONDecoder().decode(DetailPageModel.self, from: Data(payload.utf8)) else {
+                error = "Album fixture could not be decoded"
+                loading = false
+                return
+            }
+            page = fixture
+            headerArt = UIGraphicsImageRenderer(size: CGSize(width: 600, height: 600)).pngData { context in
+                UIColor(red: 0.45, green: 0.12, blue: 0.18, alpha: 1).setFill()
+                context.fill(CGRect(x: 0, y: 0, width: 600, height: 600))
+                UIColor(red: 0.87, green: 0.53, blue: 0.46, alpha: 1).setFill()
+                context.cgContext.fillEllipse(in: CGRect(x: 110, y: 110, width: 380, height: 380))
+            }
+            loading = false
+            PlaybackDebugLog.shared.record("simulator album fixture loaded")
+            return
+        }
+        #endif
         let request = UUID(); pageRequestID = request
         let generation = PageSession.generation()
         loading = page == nil
