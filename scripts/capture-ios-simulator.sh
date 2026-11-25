@@ -8,6 +8,7 @@ repo="$(cd "$(dirname "$0")/.." && pwd)"
 mkdir -p "$1"
 output="$(cd "$1" && pwd)"
 scratch="$(mktemp -d)"
+run_started="$(date +%s)"
 device_id=""
 app_pid=""
 cleanup() {
@@ -113,9 +114,19 @@ stop_app() {
 }
 capture() {
     if ! kill -0 "$app_pid" 2>/dev/null; then
-        printf 'Musicsk exited before capture.\n' >&2
-        tail -30 "$scratch/app.log" >&2
-        exit 1
+        # simctl's console monitor may exit independently. Check the actual
+        # simulator process before calling this an app termination.
+        local simulator_pid
+        simulator_pid="$(awk '/^app\.musicsk\.player: [0-9]+$/ {print $2}' "$scratch/app.log" | tail -1)"
+        if [[ ! "$simulator_pid" =~ ^[0-9]+$ ]] || ! kill -0 "$simulator_pid" 2>/dev/null; then
+            printf 'Musicsk process exited before capture.\n' >&2
+            tail -30 "$scratch/app.log" >&2
+            # CrashReporter can write the IPS just after the process exits.
+            sleep 5
+            python3 "$repo/scripts/summarize-simulator-crash.py" \
+                "$HOME/Library/Logs/DiagnosticReports" "$output/simulator-crash-summary.txt" "$run_started" || true
+            exit 1
+        fi
     fi
     xcrun simctl io "$device_id" screenshot "$output/$1"
     [[ -s "$output/$1" ]]
