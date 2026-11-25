@@ -7,6 +7,7 @@ final class MockProtocol: URLProtocol {
     static var requests: [String] = []
     static var detailsStatus = 200
     static var tokenFailure: Int?
+    static var tokenNetworkFailure = false
     override class func canInit(with request: URLRequest) -> Bool { true }
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
     override func startLoading() {
@@ -15,6 +16,10 @@ final class MockProtocol: URLProtocol {
         let params = Dictionary(items.map { ($0.name, $0.value ?? "") }, uniquingKeysWith: { first, _ in first })
         let call = params["__call"] ?? ""
         Self.requests.append(call + ":" + (params["bitrate"] ?? ""))
+        if call == "song.generateAuthToken", Self.tokenNetworkFailure {
+            client?.urlProtocol(self, didFailWithError: URLError(.timedOut))
+            return
+        }
         let status: Int
         let body: String
         if call == "search.getResults" {
@@ -65,6 +70,11 @@ final class MockProtocol: URLProtocol {
         if case .failure(.server) = await JioSaavn.resolveStream(for: "track", session: session) {} else { preconditionFailure("expected token server error") }
         precondition(MockProtocol.requests == ["song.getDetails:", "song.generateAuthToken:320"])
         MockProtocol.tokenFailure = nil
+        MockProtocol.requests = []
+        MockProtocol.tokenNetworkFailure = true
+        if case .failure(.network) = await JioSaavn.resolveStream(for: "track", session: session) {} else { preconditionFailure("expected token network error") }
+        precondition(MockProtocol.requests == ["song.getDetails:", "song.generateAuthToken:320"])
+        MockProtocol.tokenNetworkFailure = false
         MockProtocol.requests = []
         MockProtocol.detailsStatus = 503
         if case .failure(.server) = await JioSaavn.resolveStream(for: "track", session: session) {} else { preconditionFailure("expected server error") }
