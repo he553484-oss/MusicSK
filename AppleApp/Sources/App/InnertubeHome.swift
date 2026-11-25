@@ -215,6 +215,7 @@ final class InnertubeFeed: Sendable {
     private func raw_library() async throws -> [FeedShelf] {
         try await withCheckedThrowingContinuation { continuation in
             LibraryBridge.shared.library(callback: LibraryFeedAdapter { json, message in
+                PlaybackDebugLog.shared.record("library bridge callback payload=\(json != nil)")
                 if let json {
                     do {
                         let report = try LibraryFeedDecoder.decodeWithReport(Data(json.utf8))
@@ -228,8 +229,10 @@ final class InnertubeFeed: Sendable {
                                           browseId: item.browseID)
                             }, subtitle: shelf.subtitle)
                         }
+                        PlaybackDebugLog.shared.record("library feed decoded shelves=\(shelves.count)")
                         continuation.resume(returning: shelves)
                     } catch {
+                        PlaybackDebugLog.shared.record("library feed decode failed")
                         continuation.resume(throwing: error)
                     }
                 } else {
@@ -250,6 +253,7 @@ final class InnertubeFeed: Sendable {
     private func raw_librarySongs() async throws -> [YouTubeSong] {
         try await withCheckedThrowingContinuation { continuation in
             LibraryBridge.shared.librarySongs(callback: LibraryFeedAdapter { json, message in
+                PlaybackDebugLog.shared.record("library songs bridge callback payload=\(json != nil)")
                 if let json {
                     do {
                         let report = try LibraryFeedDecoder.decodeSongs(Data(json.utf8))
@@ -262,8 +266,10 @@ final class InnertubeFeed: Sendable {
                                 artistId: song.artistID, albumId: song.albumID, albumName: song.albumName,
                                 isVideo: song.isVideo, setVideoId: song.setVideoID)
                         }
+                        PlaybackDebugLog.shared.record("library songs decoded count=\(songs.count)")
                         continuation.resume(returning: songs)
                     } catch {
+                        PlaybackDebugLog.shared.record("library songs decode failed")
                         continuation.resume(throwing: error)
                     }
                 } else {
