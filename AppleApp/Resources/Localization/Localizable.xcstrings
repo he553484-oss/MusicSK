@@ -1,6 +1,11 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Lock Screen": { "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Pantalla de bloqueo" } } } },
+    "Animated artwork preferences": { "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Preferencias de portada animada" } } } },
+    "Allow Animated Artwork": { "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Permitir portadas animadas" } } } },
+    "Animated Artwork on Wi-Fi Only": { "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Portadas animadas solo con Wi-Fi" } } } },
+    "The system controls artwork expansion and may show a still image for accessibility, power, data or thermal reasons.": { "localizations": { "es": { "stringUnit": { "state": "translated", "value": "El sistema controla la expansión de la portada y puede mostrar una imagen estática por accesibilidad, ahorro de energía, datos o temperatura." } } } },
     "Continue Playing": {
       "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Seguir reproduciendo" } } }
     },

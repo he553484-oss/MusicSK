@@ -317,6 +317,7 @@ final class NowPlayingController {
         let names: [Notification.Name] = [
             .NSProcessInfoPowerStateDidChange,
             ProcessInfo.thermalStateDidChangeNotification,
+            LockScreenArtworkPolicy.preferencesChanged,
             UIAccessibility.reduceMotionStatusDidChangeNotification,
             UIAccessibility.videoAutoplayStatusDidChangeNotification
         ]
@@ -332,6 +333,7 @@ final class NowPlayingController {
     private func observeArtworkNetwork() {
         withObservationTracking {
             _ = NetworkQuality.shared.pathChanges
+            _ = NetworkQuality.shared.usesWiFi
         } onChange: { [weak self] in
             Task { @MainActor [weak self] in
                 guard let self else { return }
@@ -344,10 +346,16 @@ final class NowPlayingController {
     @available(iOS 26, *)
     private var artworkPolicyAllowsMotion: Bool {
         let device = ProcessInfo.processInfo
-        return NetworkQuality.shared.canvasAllowed && !NetworkQuality.shared.constrained
-            && !UIAccessibility.isReduceMotionEnabled && !device.isLowPowerModeEnabled
-            && UIAccessibility.isVideoAutoplayEnabled
-            && device.thermalState.rawValue < ProcessInfo.ThermalState.serious.rawValue
+        let preferences = UserDefaults.standard
+        let enabled = preferences.object(forKey: "lockscreen_animated_artwork") as? Bool ?? true
+        let wifiOnly = preferences.bool(forKey: "lockscreen_artwork_wifi_only")
+        return LockScreenArtworkPolicy.allowsAnimation(
+            enabled: enabled, wifiOnly: wifiOnly, usesWiFi: NetworkQuality.shared.usesWiFi,
+            canvasAllowed: NetworkQuality.shared.canvasAllowed, constrained: NetworkQuality.shared.constrained,
+            reduceMotion: UIAccessibility.isReduceMotionEnabled, lowPower: device.isLowPowerModeEnabled,
+            autoPlay: UIAccessibility.isVideoAutoplayEnabled,
+            thermalSerious: device.thermalState.rawValue >= ProcessInfo.ThermalState.serious.rawValue
+        )
     }
 
     @available(iOS 26, *)

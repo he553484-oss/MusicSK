@@ -10,6 +10,13 @@ import AppKit
 // Appearance and performance.
 extension SettingsView {
     func buildAppearanceRows(_ rows: inout SettingsRows) {
+        #if os(iOS)
+        rows.row("Lock Screen", "artwork", "animated", "pantalla de bloqueo", "portada") {
+            PushLink { LockScreenArtworkSettings() } label: {
+                SettingsLine(glyph: .theme, title: "Lock Screen", subtitle: String(localized: "Animated artwork preferences")) { EmptyView() }
+            }
+        }
+        #endif
         rows.row("Appearance Lab", "appearance", "personalization", "profiles", "background", "apariencia", "personalización") {
             PushLink { AppearanceLab() } label: {
                 SettingsLine(glyph: .theme, title: "Appearance Lab", subtitle: String(localized: "Player background and visual profiles")) { EmptyView() }

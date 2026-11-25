@@ -11,6 +11,7 @@ final class NetworkQuality {
     private(set) var metered = false
     private(set) var constrained = false
     private(set) var connected = true
+    private(set) var usesWiFi = false
     @ObservationIgnored private let monitor = NWPathMonitor()
     /// Which interface carries traffic, and whether it is up. A change here is
     /// what strands a request on a dead socket (leaving Wi-Fi, a VPN coming up).
@@ -21,6 +22,7 @@ final class NetworkQuality {
     init() {
         monitor.pathUpdateHandler = { [weak self] path in
             let expensive = path.isExpensive || path.isConstrained
+            let usesWiFi = path.usesInterfaceType(.wifi)
             let signature = "\(path.status)|\(path.isExpensive)|\(path.isConstrained)|" + path.availableInterfaces.filter { path.usesInterfaceType($0.type) }
                 .map { "\($0.type):\($0.name)" }.sorted().joined(separator: ",")
             Task { @MainActor in
@@ -29,6 +31,7 @@ final class NetworkQuality {
                 self.metered = expensive
                 self.constrained = path.isConstrained
                 self.connected = path.status == .satisfied
+                self.usesWiFi = usesWiFi && self.connected
                 StreamDownloadBridge.shared.networkStatus(available: self.connected)
                 AppSettings.shared.setMeteredConnection(value: KotlinBoolean(bool: expensive))
                 DownloadStore.shared.networkPolicyChanged()

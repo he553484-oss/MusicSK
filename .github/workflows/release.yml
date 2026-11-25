@@ -153,6 +153,7 @@ jobs:
           run_check transport bash scripts/check-transport.sh
           run_check local-library bash scripts/check-local-library.sh
           run_check authenticated-library bash scripts/check-authenticated-library.sh
+          run_check lockscreen-artwork bash scripts/check-lockscreen-artwork.sh
           run_check listening bash scripts/check-listening.sh
           run_check jiosaavn-response bash scripts/check-jiosaavn-response.sh
           run_check jiosaavn-stream bash scripts/check-jiosaavn-stream.sh
