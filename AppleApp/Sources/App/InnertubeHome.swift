@@ -217,8 +217,14 @@ final class InnertubeFeed: Sendable {
             LibraryBridge.shared.library(callback: LibraryFeedAdapter { json, message in
                 if let json {
                     do {
-                        let page = try JSONDecoder().decode(FeedPage.self, from: Data(json.utf8))
-                        continuation.resume(returning: page.shelves)
+                        let shelves = try LibraryFeedDecoder.decode(Data(json.utf8)).map { shelf in
+                            FeedShelf(title: shelf.title, items: shelf.items.map { item in
+                                ShelfCard(title: item.title, subtitle: item.subtitle,
+                                          thumbnailUrl: item.thumbnailURL, videoId: item.videoID,
+                                          browseId: item.browseID)
+                            }, subtitle: shelf.subtitle)
+                        }
+                        continuation.resume(returning: shelves)
                     } catch {
                         continuation.resume(throwing: error)
                     }
