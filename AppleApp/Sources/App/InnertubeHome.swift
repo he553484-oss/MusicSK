@@ -252,7 +252,16 @@ final class InnertubeFeed: Sendable {
             LibraryBridge.shared.librarySongs(callback: LibraryFeedAdapter { json, message in
                 if let json {
                     do {
-                        let songs = try JSONDecoder().decode([YouTubeSong].self, from: Data(json.utf8))
+                        let report = try LibraryFeedDecoder.decodeSongs(Data(json.utf8))
+                        if report.malformedCount > 0 || report.duplicateCount > 0 {
+                            PlaybackDebugLog.shared.record("library songs validation malformed=\(report.malformedCount) duplicates=\(report.duplicateCount)")
+                        }
+                        let songs = report.items.map { song in
+                            YouTubeSong(videoId: song.videoID, title: song.title, artist: song.artist,
+                                thumbnailUrl: song.thumbnailURL, durationText: song.durationText,
+                                artistId: song.artistID, albumId: song.albumID, albumName: song.albumName,
+                                isVideo: song.isVideo, setVideoId: song.setVideoID)
+                        }
                         continuation.resume(returning: songs)
                     } catch {
                         continuation.resume(throwing: error)

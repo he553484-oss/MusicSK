@@ -34,4 +34,9 @@ let items = (0..<10_000).map { ["title": "Track \($0)", "browseId": "VL\($0)"] }
 let data = try JSONSerialization.data(withJSONObject: ["shelves": [["title":"Playlists", "items":items]]])
 let large = try LibraryFeedDecoder.decode(data)
 precondition(large[0].items.count == 10_000)
+let songs = try LibraryFeedDecoder.decodeSongs(Data(#"[{"videoId":"one","title":"Song","artist":"Artist"},{"videoId":"one","title":"Duplicate"},{"videoId":"","title":"Bad"},null,{"videoId":"two","title":"Another"}]"#.utf8))
+precondition(songs.items.map(\.videoID) == ["one", "two"])
+precondition(songs.items[1].artist == "")
+precondition(songs.malformedCount == 2 && songs.duplicateCount == 1)
+do { _ = try LibraryFeedDecoder.decodeSongs(Data(#"[null]"#.utf8)); fatalError("invalid song list accepted") } catch {}
 print("PASS authenticated library: incomplete records, duplicates, empty and 10,000 entries")

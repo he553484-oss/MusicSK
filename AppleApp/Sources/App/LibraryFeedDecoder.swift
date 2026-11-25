@@ -23,6 +23,45 @@ enum LibraryFeedDecoder {
         let malformedCount: Int
         let duplicateCount: Int
     }
+    struct Song {
+        let videoID: String
+        let title: String
+        let artist: String
+        let thumbnailURL: String?
+        let durationText: String?
+        let artistID: String?
+        let albumID: String?
+        let albumName: String?
+        let isVideo: Bool?
+        let setVideoID: String?
+    }
+    struct SongsReport {
+        let items: [Song]
+        let malformedCount: Int
+        let duplicateCount: Int
+    }
+
+    static func decodeSongs(_ data: Data) throws -> SongsReport {
+        guard let rows = try JSONSerialization.jsonObject(with: data) as? [Any] else {
+            throw URLError(.cannotDecodeContentData)
+        }
+        var items: [Song] = []
+        var seen = Set<String>()
+        var malformed = 0
+        var duplicates = 0
+        for element in rows {
+            guard let row = element as? [String: Any], let id = nonempty(row["videoId"]),
+                  let title = nonempty(row["title"]) else { malformed += 1; continue }
+            guard seen.insert(id).inserted else { duplicates += 1; continue }
+            items.append(Song(videoID: id, title: title, artist: row["artist"] as? String ?? "",
+                thumbnailURL: row["thumbnailUrl"] as? String, durationText: row["durationText"] as? String,
+                artistID: row["artistId"] as? String, albumID: row["albumId"] as? String,
+                albumName: row["albumName"] as? String, isVideo: row["isVideo"] as? Bool,
+                setVideoID: row["setVideoId"] as? String))
+        }
+        if items.isEmpty && malformed > 0 { throw URLError(.cannotDecodeContentData) }
+        return SongsReport(items: items, malformedCount: malformed, duplicateCount: duplicates)
+    }
 
     static func decode(_ data: Data) throws -> [Shelf] {
         try decodeWithReport(data).shelves
