@@ -184,10 +184,10 @@ jobs:
             shasum -a 256 -c SHA256.txt
           )
 
-      - name: Test shared JioSaavn response handling on macOS
+      - name: Test shared provider and authenticated library parsing on macOS
         if: env.MODE == 'build-ios'
         timeout-minutes: 20
-        run: ./gradlew :shared:macosArm64Test --tests '*JioSaavnTransportTest*'
+        run: ./gradlew :shared:macosArm64Test --tests '*JioSaavnTransportTest*' --tests '*AuthenticatedLibraryParserTest*'
 
       - name: Exercise the native audio engine on macOS
         if: ${{ !cancelled() && env.MODE == 'build-ios' && steps.build_ios.outcome == 'success' }}
