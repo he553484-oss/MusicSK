@@ -1,6 +1,6 @@
 # MusicSK 1.7 — estado de desarrollo
 
-Estado: **incompleto; candidata en verificación**. No se ha reproducido ni diagnosticado el cierre de Biblioteca con la cuenta real en un iPhone; no se declara resuelto. La rama parte de `1db723e`, que conserva el código de 1.6 compilado en `5d05337`.
+Estado: **incompleto; candidata experimental**. En el simulador, la ejecución sintética de Biblioteca terminó antes de la captura; todavía no se ha determinado si terminó la app o el monitor, ni si tiene la misma causa que el iPhone. No se ha diagnosticado el cierre con la cuenta real; no se declara resuelto. La rama parte de `1db723e`, que conserva el código de 1.6 compilado en `5d05337`.
 
 ## Cambios y evidencias
 
@@ -15,7 +15,13 @@ Estado: **incompleto; candidata en verificación**. No se ha reproducido ni diag
 
 ## Compilación
 
-La [compilación iOS](https://github.com/he553484-oss/MusicSK/actions/runs/45549917197) y las [capturas](https://github.com/he553484-oss/MusicSK/actions/runs/45549921190) corresponden a `53fcf06`. Consultar sus resultados y validar la IPA arm64 antes de atribuir éxito. La versión configurada es 1.7.0 build 12. No se afirma que se haya generado una IPA hasta verificar el artefacto.
+La [compilación iOS](https://github.com/he553484-oss/MusicSK/actions/runs/45549917197) del commit `53fcf06` terminó correctamente. Su [IPA sin firmar](https://github.com/he553484-oss/MusicSK/actions/runs/45549917197/artifacts/14993784086) se descargó y verificó: arm64, iOS 18 mínimo, app y widget, versión 1.7.0 build 12. SHA-256 `f8d371af312eb92e8568ae2027e52c913c27fb404dc62fed2869844535c6c7c5`. Es experimental y requiere firma.
+
+El registro del mismo artefacto informa 51 comprobaciones del motor en macOS, incluida la señal a través de Swift y UniFFI: graves +2,66 dB, agudos −5,50 dB y bypass coincidente. También pasó la decodificación PCM/ALAC de 24 bits y 96 kHz. Estas pruebas no validan la salida física ni el comportamiento en iPhone.
+
+En el runner de Apple también pasaron el verificador Swift de biblioteca y la ejecución Kotlin/Native filtrada para `AuthenticatedLibraryParserTest` y `JioSaavnTransportTest`. Estas pruebas usan datos sintéticos y no demuestran acceso o reproducción real del proveedor.
+
+El workflow de [capturas](https://github.com/he553484-oss/MusicSK/actions/runs/45549921190) falló al iniciar la biblioteca sintética; guardó capturas anteriores, incluida la del álbum, pero no dejó una traza de excepción. Se preparó una ejecución posterior que comprueba el proceso de la app y, si existe, guarda un resumen acotado del crash sin credenciales. El fallo no demuestra por sí solo que el crash autenticado real esté reproducido.
 
 ## Registro de crash en iPhone
 
