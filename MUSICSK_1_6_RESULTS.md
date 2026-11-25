@@ -4,11 +4,13 @@ Estado: **trabajo en curso; no es una versión 1.6 terminada**. La base es `musi
 
 Actualización de verificación: el [workflow 45502708017](https://github.com/he553484-oss/MusicSK/actions/runs/45502708017), commit `22202f3`, terminó correctamente. Produjo una IPA arm64 sin firmar, versión 1.6.0 build 11, que se inspeccionó con el verificador del repositorio: SHA-256 `93d7e341e43d48f722d6b81bd90894fd8566d85c1e20683076be8d218565b19a`. La prueba del mezclador Rust, los tests Kotlin/Native del proveedor y 47 comprobaciones del motor en macOS pasaron; las pruebas de proveedor usan respuestas controladas. Esa IPA es **intermedia** y no incluye los cambios posteriores ni la medición añadida mediante Swift y UniFFI.
 
-La [captura 45502714858](https://github.com/he553484-oss/MusicSK/actions/runs/45502714858) abrió Biblioteca con datos de prueba y generó imágenes sintéticas del reproductor y la cola sin audio. Su comparación mostró diferencias visuales; los cambios posteriores requieren nuevas capturas. La prueba opcional de arranque de vídeo quedó bloqueada por falta de `ffmpeg`. Posteriormente se añadió un vídeo H.264 sintético y se comprobó localmente la respuesta parcial del servidor de pruebas; aún falta ejecutar el benchmark en macOS.
+La [captura 45502714858](https://github.com/he553484-oss/MusicSK/actions/runs/45502714858) abrió Biblioteca con datos de prueba y generó imágenes sintéticas del reproductor y la cola sin audio. Su comparación mostró diferencias visuales. La prueba opcional de arranque de vídeo quedó inicialmente bloqueada por falta de `ffmpeg`; posteriormente se añadió un clip H.264 sintético y se verificó en macOS como se describe abajo.
 
 Se lanzaron la [compilación](https://github.com/he553484-oss/MusicSK/actions/runs/45509290523) y la [captura del simulador](https://github.com/he553484-oss/MusicSK/actions/runs/45509296782) para `47a8d7a`; consultar sus resultados antes de atribuirles éxito. Estas capturas seleccionan expresamente Apple Experience. El informe no sustituye la prueba física de reproducción, EQ, volumen ni vídeo.
 
 La ejecución posterior [45507169317](https://github.com/he553484-oss/MusicSK/actions/runs/45507169317), commit `77e5646`, terminó correctamente y generó otra IPA intermedia sin firmar, validada como arm64 para iOS 18 o superior, versión 1.6.0 build 11. Su SHA-256 es `02718cb8ed2533a095c5d838882a533069d6b5a3e67d7e77c5e79f60f50131e2`. La prueba de señal a través de Swift, UniFFI y el mezclador en macOS pasó: graves +2,66 dB, agudos −5,50 dB; EQ desactivado y Transparent coincidieron con sus referencias. El artefacto incluye el registro de 51 comprobaciones. Esta prueba no demuestra escucha en iPhone ni cubre las rutas Dolby. La IPA precede a los cambios visuales del perfil Apple Experience.
+
+La [captura 45509296782](https://github.com/he553484-oss/MusicSK/actions/runs/45509296782), commit `47a8d7a`, terminó correctamente usando Apple Experience con datos sintéticos. La cola ya no repite la pista actual, muestra más filas y AirPlay aparece como botón central; persisten diferencias con la referencia y la comparación no demuestra paridad 1:1. El benchmark de vídeo con el clip H.264 local pasó en macOS, incluyendo primer fotograma y alineación en pausa; no demuestra reproducción de vídeo a pantalla completa en iPhone. El encabezado de cola se compactó después en `f4c283d`; su captura y compilación están pendientes de verificación.
 
 ## Cambios y pruebas
 
@@ -25,7 +27,7 @@ El usuario indicó iOS 27 en iPhone 15 Pro. Se recibieron capturas del reproduct
 | Pantalla | Estado |
 | --- | --- |
 | Reproductor | Fondo configurable; en Apple Experience se separó el selector nativo de salida y se conservaron mezcla, vídeo y escucha compartida en el menú. Compilación, captura y verificación de este último cambio pendientes. |
-| Cola y minirreproductor | Las capturas de f453576 mostraron duplicación y espacio excesivo en la cola; se ajustaron después y falta verificar el resultado. La captura de inicio estaba sin canción y no permite comparar el minirreproductor activo. |
+| Cola y minirreproductor | La captura `47a8d7a` confirmó que desapareció la fila actual duplicada; hay diferencias en cabecera y controles. La compactación posterior requiere nueva captura. La captura de inicio estaba sin canción y no permite comparar el minirreproductor activo. |
 | Inicio, búsqueda y biblioteca | Comparación pendiente; no se reescribió la lógica de Biblioteca. |
 | Menús, álbum, artista y configuración | Comparación y personalización completa pendientes. |
 
