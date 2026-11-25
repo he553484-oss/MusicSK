@@ -1,6 +1,9 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Continue Playing": {
+      "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Seguir reproduciendo" } } }
+    },
     "Music Videos": {
       "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Videos musicales" } } }
     },

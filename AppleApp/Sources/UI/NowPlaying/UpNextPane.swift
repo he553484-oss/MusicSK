@@ -22,6 +22,11 @@ struct UpNextPane: View {
     var onOpenLyrics: () -> Void = {}
     @State private var hasScrolledOnce = false
     @AppStorage("show_queue_history") private var showQueueHistory = false
+    @AppStorage("musicsk_appearance_profile") private var appearanceProfile = "original"
+
+    private var compactAppleHeader: Bool {
+        appearanceProfile == "apple" && showsCurrentTrackHeader
+    }
 
     /// The queue list, one layout on every platform: "Queue" with Clear, a
     /// "Now playing" section for the current track, "Up next" with drag
@@ -46,9 +51,15 @@ struct UpNextPane: View {
             QueueModeControls()
                 .padding(.horizontal, 24)
             HStack(alignment: .firstTextBaseline) {
-                Text("Queue")
-                    .font(.title2.weight(.bold))
-                    .foregroundStyle(.white)
+                if compactAppleHeader {
+                    Text("Continue Playing")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.white)
+                } else {
+                    Text("Queue")
+                        .font(.title2.weight(.bold))
+                        .foregroundStyle(.white)
+                }
                 Spacer()
                 if !manualUpcoming.isEmpty || !autoplayUpcoming.isEmpty {
                     Button("Clear") { controller.clearUpcoming() }
@@ -92,12 +103,14 @@ struct UpNextPane: View {
                             currentQueueRow
                         }
                         if !manualUpcoming.isEmpty {
-                            Text("Up next")
-                                .font(.headline.weight(.medium))
-                                .foregroundStyle(.white.opacity(0.75))
-                                .listRowBackground(Color.clear)
-                                .listRowSeparator(.hidden)
-                                .listRowInsets(EdgeInsets(top: 4, leading: 24, bottom: 4, trailing: 24))
+                            if !compactAppleHeader {
+                                Text("Up next")
+                                    .font(.headline.weight(.medium))
+                                    .foregroundStyle(.white.opacity(0.75))
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                                    .listRowInsets(EdgeInsets(top: 4, leading: 24, bottom: 4, trailing: 24))
+                            }
                             ForEach(Array(manualUpcoming.enumerated()), id: \.element.id) { localIndex, item in
                                 queueListRow(item, section: 0, index: localIndex, rows: manualUpcoming)
                             }
