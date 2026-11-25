@@ -8,14 +8,21 @@ struct SystemVolumeRow: View {
     var hugsGlyphs: Bool
     var onEditingChanged: (Bool) -> Void
     @State private var volume = AVAudioSession.sharedInstance().outputVolume
+    @State private var editing = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 10) {
             speaker(volume == 0 ? "speaker.slash.fill" : "speaker.fill",
                     alignment: hugsGlyphs ? .leading : .center)
-            SystemVolumeSlider(onVolumeChanged: { volume = $0 }, onEditingChanged: onEditingChanged)
+            SystemVolumeSlider(onVolumeChanged: { volume = $0 }, onEditingChanged: { active in
+                editing = active
+                onEditingChanged(active)
+            })
                 .frame(maxWidth: .infinity)
                 .frame(height: 24)
+                .scaleEffect(x: 1, y: editing && !reduceMotion ? 1.35 : 1)
+                .animation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.88), value: editing)
             speaker("speaker.wave.3.fill", alignment: hugsGlyphs ? .trailing : .center)
         }
     }

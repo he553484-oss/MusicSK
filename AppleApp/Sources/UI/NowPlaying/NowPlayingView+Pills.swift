@@ -63,6 +63,8 @@ extension NowPlayingView {
                     Haptics.play(.tap)
                     controller.toggleLike()
                 }
+                .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
+                .symbolEffect(.bounce, value: !reduceMotion && controller.isLiked)
                 .help(controller.isLiked ? "Remove from Liked Music" : "Like")
                 .padding(.trailing, 8)
             }

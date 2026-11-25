@@ -15,6 +15,7 @@ import AppKit
 /// there is no neighbouring player column (portrait); wide layouts already have
 /// that information beside the queue, so they omit the duplicate header.
 struct UpNextPane: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(PlaybackController.self) private var controller
     @Environment(AuthController.self) private var auth
 
@@ -387,6 +388,8 @@ struct UpNextPane: View {
                     selected: controller.isLiked,
                     label: controller.isLiked ? "Remove Like" : "Like"
                 ) { controller.toggleLike() }
+                .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
+                .symbolEffect(.bounce, value: !reduceMotion && controller.isLiked)
             }
             Menu {
                 if let current = controller.current {
