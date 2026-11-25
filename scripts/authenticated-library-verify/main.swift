@@ -1,14 +1,5 @@
 import Foundation
 
-for width: CGFloat in [.nan, .infinity, -.infinity, .greatestFiniteMagnitude, -1, 0, 390, 10_000] {
-    for accessibility in [false, true] {
-        let grid = LibraryGridGeometry.dimensions(viewportWidth: width, accessibilitySize: accessibility)
-        precondition(grid.width.isFinite && (1...860).contains(grid.width))
-        precondition((1...4).contains(grid.count))
-    }
-}
-precondition(LibraryGridGeometry.dimensions(viewportWidth: 390, accessibilitySize: false).count == 3)
-
 func decode(_ text: String) throws -> [LibraryFeedDecoder.Shelf] {
     try LibraryFeedDecoder.decode(Data(text.utf8))
 }

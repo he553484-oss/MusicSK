@@ -33,9 +33,9 @@ struct LibraryLandingView: View {
         private let spacing: CGFloat = 14
 
         init(viewportWidth: CGFloat, accessibilitySize: Bool) {
-            let dimensions = LibraryGridGeometry.dimensions(viewportWidth: viewportWidth, accessibilitySize: accessibilitySize)
-            width = dimensions.width
-            count = dimensions.count
+            width = min(860, max(1, viewportWidth - 40))
+            let minimum: CGFloat = accessibilitySize ? 192 : 105
+            count = max(1, min(4, Int((width + spacing) / (minimum + spacing))))
         }
 
         var side: CGFloat { floor((width - spacing * CGFloat(count - 1)) / CGFloat(count)) }
