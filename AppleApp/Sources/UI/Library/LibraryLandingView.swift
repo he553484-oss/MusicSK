@@ -21,6 +21,12 @@ struct LibraryLandingView: View {
     @State private var dataGeneration: Int64?
     @State private var loading = true
     @State private var error: String?
+    private var signedInForPresentation: Bool {
+        #if os(iOS) && targetEnvironment(simulator)
+        if UserDefaults.standard.bool(forKey: "musicsk_capture_authenticated_library_fixture") { return true }
+        #endif
+        return auth.signedIn
+    }
     private struct ArtworkGrid {
         let width: CGFloat
         let count: Int
@@ -55,7 +61,9 @@ struct LibraryLandingView: View {
             }
             #if os(iOS) && targetEnvironment(simulator)
             // The regression test must make the lazy Replay row visible.
-            .defaultScrollAnchor(UserDefaults.standard.bool(forKey: "musicsk_capture_library") ? .bottom : nil, for: .initialOffset)
+            .defaultScrollAnchor(UserDefaults.standard.bool(forKey: "musicsk_capture_library") &&
+                !UserDefaults.standard.bool(forKey: "musicsk_capture_authenticated_library_fixture") ? .bottom : nil,
+                for: .initialOffset)
             #endif
         }
         .refreshable {
@@ -63,6 +71,28 @@ struct LibraryLandingView: View {
             await loadShelves(force: true)
         }
         .task(id: auth.sessionEpoch) {
+            #if os(iOS) && targetEnvironment(simulator)
+            if UserDefaults.standard.bool(forKey: "musicsk_capture_authenticated_library_fixture") {
+                let cards: [[String: Any]] = (0..<1_000).map { index in
+                    ["title": "Playlist de prueba \(index)", "browseId": "VLfixture\(index)"]
+                }
+                let duplicate: [String: Any] = ["title": "Playlist duplicada", "browseId": "VLfixture0"]
+                let payload: [String: Any] = ["shelves": [["title": "Playlists", "items": cards + [duplicate]]]]
+                if let data = try? JSONSerialization.data(withJSONObject: payload),
+                   let report = try? LibraryFeedDecoder.decodeWithReport(data) {
+                    shelves = report.shelves.map { shelf in
+                        FeedShelf(title: shelf.title, items: shelf.items.map {
+                            ShelfCard(title: $0.title, subtitle: $0.subtitle, thumbnailUrl: $0.thumbnailURL,
+                                      videoId: $0.videoID, browseId: $0.browseID)
+                        }, subtitle: shelf.subtitle)
+                    }
+                    dataGeneration = PageSession.generation()
+                    loading = false
+                    PlaybackDebugLog.shared.record("simulator authenticated library fixture loaded items=\(report.shelves.first?.items.count ?? 0) duplicates=\(report.duplicateCount)")
+                }
+                return
+            }
+            #endif
             PlaybackDebugLog.shared.record("library landing load started signed_in=\(auth.signedIn)")
             downloadStore.refresh()
             await loadShelves()
@@ -79,7 +109,7 @@ struct LibraryLandingView: View {
         let currentShelves = LibraryFeedDecoder.belongsToCurrentSession(dataGeneration, current: PageSession.generation()) ? shelves : []
         let savedShelves = pinnedShelves(currentShelves).filter { !$0.items.isEmpty }
 
-        if auth.signedIn && loading && savedShelves.isEmpty {
+        if signedInForPresentation && loading && savedShelves.isEmpty {
             LazyVGrid(columns: grid.columns, alignment: .leading, spacing: 18) {
                 ForEach(0..<min(grid.count * 2, 6), id: \.self) { _ in
                     VStack(alignment: .leading, spacing: 8) {
@@ -89,7 +119,7 @@ struct LibraryLandingView: View {
                 }
             }
             .accessibilityLabel("Loading Library")
-        } else if auth.signedIn && !savedShelves.isEmpty {
+        } else if signedInForPresentation && !savedShelves.isEmpty {
             ForEach(savedShelves) { shelf in
                 shelfSection(shelf, grid: grid)
             }
@@ -110,7 +140,7 @@ struct LibraryLandingView: View {
                 }
             }
 
-            if !auth.signedIn {
+            if !signedInForPresentation {
                 signedInPrompt
             } else if let error {
                 EmptyStateView(
@@ -155,7 +185,7 @@ struct LibraryLandingView: View {
             category("Playlists", image: "music.note.list") {
                 SavedPlaylistsView()
             }
-            if auth.signedIn {
+            if signedInForPresentation {
                 category("Recent", image: "clock.arrow.circlepath") {
                     YoutubeLibraryView()
                 }

@@ -188,6 +188,12 @@ capture 09-album-fixture-es.png
 grep -hsF 'simulator album fixture loaded' "$support"/Diagnostics/*.log >/dev/null
 stop_app
 
+# Synthetic authenticated-library payload; never a real session or credential.
+start_app MAIN -musicsk_capture_library YES -musicsk_capture_authenticated_library_fixture YES
+capture 10-biblioteca-autenticada-fixture-es.png
+grep -hsF 'simulator authenticated library fixture loaded items=1000 duplicates=1' "$support"/Diagnostics/*.log >/dev/null
+stop_app
+
 version="$(/usr/libexec/PlistBuddy -c 'Print CFBundleShortVersionString' "$app/Info.plist")"
 build="$(/usr/libexec/PlistBuddy -c 'Print CFBundleVersion' "$app/Info.plist")"
 toolchain="$(xcodebuild -version | paste -sd ' ' -)"
@@ -216,4 +222,6 @@ Las capturas 07 y 08 usan el perfil Apple Experience, con metadatos y portada
 sintéticos, sin audio, para comprobar únicamente la distribución del reproductor
 y la cola.
 La captura 09 usa un álbum y portada sintéticos, sin audio ni acceso a catálogo.
+La captura 10 usa una biblioteca sintética con 1.000 registros y un duplicado;
+no autentica una cuenta ni verifica la biblioteca real del usuario.
 EOF
