@@ -125,6 +125,12 @@ capture() {
             sleep 5
             python3 "$repo/scripts/summarize-simulator-crash.py" \
                 "$HOME/Library/Logs/DiagnosticReports" "$output/simulator-crash-summary.txt" "$run_started" || true
+            # Preserve only our fixed, non-sensitive library milestones from
+            # the fresh synthetic simulator; never export the full app log.
+            if [[ -n "${support:-}" ]]; then
+                grep -hsE 'library landing load (started|finished)|library (feed validation|feed decoded|bridge callback)|simulator authenticated library fixture loaded' \
+                    "$support"/Diagnostics/*.log > "$output/library-milestones.txt" || true
+            fi
             exit 1
         fi
     fi
