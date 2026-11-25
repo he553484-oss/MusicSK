@@ -10,9 +10,14 @@ struct LockScreenArtworkSettings: View {
     var body: some View {
         Form {
             Section {
-                Toggle("Allow Animated Artwork", isOn: $animated)
-                Toggle("Animated Artwork on Wi-Fi Only", isOn: $wifiOnly)
-                    .disabled(!animated)
+                if #available(iOS 26, *) {
+                    Toggle("Allow Animated Artwork", isOn: $animated)
+                    Toggle("Animated Artwork on Wi-Fi Only", isOn: $wifiOnly)
+                        .disabled(!animated)
+                } else {
+                    Text("Animated lock screen artwork requires iOS 26 or later.")
+                        .foregroundStyle(.secondary)
+                }
             } footer: {
                 Text("The system controls artwork expansion and may show a still image for accessibility, power, data or thermal reasons.")
             }

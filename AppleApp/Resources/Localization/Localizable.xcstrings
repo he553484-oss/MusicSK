@@ -1,6 +1,7 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "Animated lock screen artwork requires iOS 26 or later.": { "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Las portadas animadas en la pantalla de bloqueo requieren iOS 26 o posterior." } } } },
     "Lock Screen": { "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Pantalla de bloqueo" } } } },
     "Animated artwork preferences": { "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Preferencias de portada animada" } } } },
     "Allow Animated Artwork": { "localizations": { "es": { "stringUnit": { "state": "translated", "value": "Permitir portadas animadas" } } } },
