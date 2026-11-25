@@ -128,7 +128,7 @@ capture() {
             # Preserve only our fixed, non-sensitive library milestones from
             # the fresh synthetic simulator; never export the full app log.
             if [[ -n "${support:-}" ]]; then
-                grep -hsE 'library landing load (started|finished)|library (feed validation|feed decoded|bridge callback)|simulator authenticated library fixture loaded' \
+                grep -hsE 'library landing load (started|finished)|library (feed validation|feed decoded|bridge callback)|simulator authenticated library fixture (started|encoded|decoded|decode failed|loaded)' \
                     "$support"/Diagnostics/*.log > "$output/library-milestones.txt" || true
             fi
             exit 1

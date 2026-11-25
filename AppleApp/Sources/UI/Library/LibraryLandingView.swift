@@ -73,13 +73,19 @@ struct LibraryLandingView: View {
         .task(id: auth.sessionEpoch) {
             #if os(iOS) && targetEnvironment(simulator)
             if UserDefaults.standard.bool(forKey: "musicsk_capture_authenticated_library_fixture") {
+                PlaybackDebugLog.shared.record("simulator authenticated library fixture started")
                 let cards: [[String: Any]] = (0..<1_000).map { index in
                     ["title": "Playlist de prueba \(index)", "browseId": "VLfixture\(index)"]
                 }
                 let duplicate: [String: Any] = ["title": "Playlist duplicada", "browseId": "VLfixture0"]
                 let payload: [String: Any] = ["shelves": [["title": "Playlists", "items": cards + [duplicate]]]]
-                if let data = try? JSONSerialization.data(withJSONObject: payload),
-                   let report = try? LibraryFeedDecoder.decodeWithReport(data) {
+                if let data = try? JSONSerialization.data(withJSONObject: payload) {
+                    PlaybackDebugLog.shared.record("simulator authenticated library fixture encoded")
+                    guard let report = try? LibraryFeedDecoder.decodeWithReport(data) else {
+                        PlaybackDebugLog.shared.record("simulator authenticated library fixture decode failed")
+                        return
+                    }
+                    PlaybackDebugLog.shared.record("simulator authenticated library fixture decoded")
                     shelves = report.shelves.map { shelf in
                         FeedShelf(title: shelf.title, items: shelf.items.map {
                             ShelfCard(title: $0.title, subtitle: $0.subtitle, thumbnailUrl: $0.thumbnailURL,
