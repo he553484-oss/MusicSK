@@ -221,7 +221,7 @@ Control Center y la pantalla bloqueada requieren comprobaciones adicionales.
 Las capturas 07 y 08 usan el perfil Apple Experience, con metadatos y portada
 sintéticos, sin audio, para comprobar únicamente la distribución del reproductor
 y la cola.
-La captura 09 usa un álbum y portada sintéticos, sin audio ni acceso a catálogo.
+La captura 09 usa un álbum y portada sintéticos, sin consultar ese álbum ni reproducir audio.
 La captura 10 usa una biblioteca sintética con 1.000 registros y un duplicado;
 no autentica una cuenta ni verifica la biblioteca real del usuario.
 EOF

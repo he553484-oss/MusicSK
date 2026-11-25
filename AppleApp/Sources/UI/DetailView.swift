@@ -376,6 +376,9 @@ struct DetailView: View {
             headerArt = art
         }
         .task(id: CanvasInput(accountEpoch: auth.sessionEpoch, album: page.title, credit: headerLines(page).credit.ifBlank { page.songs.first?.artist ?? "" })) {
+            #if os(iOS) && targetEnvironment(simulator)
+            if UserDefaults.standard.bool(forKey: "musicsk_capture_album"), browseId == "MPREb-capture" { return }
+            #endif
             await loadCanvas(page)
         }
         .task(id: input) {
